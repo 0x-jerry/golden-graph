@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
     "target": "ESNext",
     "module": "ESNext",
     "strict": true,
@@ -13,10 +12,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "outDir": "dist",
-    "types": ["vitest/globals"],
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "types": ["vitest/globals"]
   },
   "include": ["src", "test"]
 }

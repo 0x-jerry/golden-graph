@@ -1,5 +1,5 @@
-import { GWorksapce } from '@/core'
-import type { IVec2 } from '@/math/vec2'
+import { GWorksapce } from '../core'
+import type { IVec2 } from '../math'
 import * as d3 from 'd3'
 
 export class RRenderer {
@@ -14,4 +14,5 @@ export class RRenderer {
   mount(el: HTMLElement) {
     el.append(this.svg.node()!)
   }
+
 }

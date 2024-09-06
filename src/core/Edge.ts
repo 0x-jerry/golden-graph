@@ -1,15 +1,7 @@
-import type { IGHandle } from './Handle'
-import { GModel, type IGModel } from './Model'
-import type { IGNode } from './Node'
+import type { GHandle } from './Handle'
+import { GModel } from './Model'
 
-export interface IGEdgeNode {
-  node: IGNode
-  handle: IGHandle
+export class GEdge extends GModel {
+  start?: GHandle
+  end?: GHandle
 }
-
-export interface IGEdge extends IGModel {
-  start?: IGEdgeNode
-  end?: IGEdgeNode
-}
-
-export class GEdge extends GModel implements IGEdge {}
