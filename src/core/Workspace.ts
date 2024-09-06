@@ -3,10 +3,11 @@ import type { GNode } from './Node'
 import { GEdge } from './Edge'
 import { GModel } from './Model'
 import { ModelManager } from './ModelManager'
+import { EdgesManager } from './EdgesManager'
 
 export class GWorksapce extends GModel {
   nodes = new ModelManager<GNode>()
-  edges = new ModelManager<GEdge>()
+  edges = new EdgesManager()
 
   addNode(node: GNode) {
     this.nodes.add(node)
@@ -17,12 +18,7 @@ export class GWorksapce extends GModel {
       return
     }
 
-    // check startHandle, endHandle connections
-
-    const edge = new GEdge()
-
-    edge.start = startHandle
-    edge.end = endHandle
+    const edge = new GEdge(startHandle, endHandle)
 
     this.edges.add(edge)
 
