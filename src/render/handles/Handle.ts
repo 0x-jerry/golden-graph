@@ -13,6 +13,6 @@ export class RHandle<T = unknown> {
   constructor(data: GHandle<T>) {
     this.data = data
 
-    this._g.attr('data-id', [this.data._handleType, this.data.id].join('-'))
+    this._g.attr('data-id', [this.data._position, this.data.id].join('-'))
   }
 }
