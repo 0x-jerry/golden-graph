@@ -1,21 +1,49 @@
-import { GWorksapce } from '../core'
-import type { IVec2 } from '../math'
+import { GNode, GWorksapce } from '../core'
+import { Vec2, type IVec2 } from '../math'
 import * as d3 from 'd3'
+import { RNode } from './Node'
+import { remove } from '@0x-jerry/utils'
 
 export class RRenderer {
-  w = new GWorksapce()
-
-  svg: d3.Selection<SVGSVGElement, undefined, null, undefined>
+  _g = d3.create('div').attr('class', 'r-workspace')
 
   get dom() {
-    return this.svg.node()!
+    return this._g.node()!
   }
 
-  constructor(size: IVec2) {
-    this.svg = d3.create('svg').attr('viewBox', [0, 0, size.x, size.y])
+  size: IVec2 = new Vec2(800, 600)
+
+  nodes: RNode[] = []
+
+  constructor(readonly w: GWorksapce) {
+    this._initDom()
+
+    this._updateDom()
+  }
+
+  _initDom() {
+    const _nodes = this.w.nodes.all()
+
+    _nodes.map((t) => this.addNode(t))
+  }
+
+  _updateDom() {
+    this.dom.style.width = this.size.x + 'px'
+    this.dom.style.height = this.size.y + 'px'
+    this.dom.style.position = 'relative'
+  }
+
+  addNode(node: GNode) {
+    const n = new RNode(node)
+
+    n.on('deleted', () => {
+      remove(this.nodes, n)
+    })
+
+    this.nodes.push(n)
   }
 
   mount(el: HTMLElement) {
-    el.append(this.svg.node()!)
+    el.append(this._g.node()!)
   }
 }

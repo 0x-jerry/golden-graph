@@ -4,7 +4,7 @@ import d3 from 'd3'
 export class RHandle<T = unknown> {
   data: GHandle<T>
 
-  _g = d3.create('g')
+  _g = d3.create('div').attr('class', 'r-handle')
 
   get dom() {
     return this._g.node()!

@@ -2,7 +2,7 @@ import type { GHandle } from './Handle'
 import { HandleManager } from './HandleManager'
 import { GModel, type IGModel } from './Model'
 
-export interface IGNode<Data extends Record<string, unknown> = Record<string, unknown>>
+export interface IGNode<Data extends Record<string, any> = Record<string, any>>
   extends IGModel {
   title: string
   description?: string
@@ -11,7 +11,9 @@ export interface IGNode<Data extends Record<string, unknown> = Record<string, un
   data?: Data
 }
 
-export class GNode<Data extends Record<string, unknown> = Record<string, unknown>> extends GModel {
+export class GNode<
+  Data extends Record<string, any> = Record<string, any>
+> extends GModel {
   title = 'Node'
   description?: string
 
@@ -38,7 +40,7 @@ export class GNode<Data extends Record<string, unknown> = Record<string, unknown
     const hanldes = [
       ...this._handles.inputs._data.values(),
       ...this._handles.defaults._data.values(),
-      ...this._handles.outputs._data.values(),
+      ...this._handles.outputs._data.values()
     ]
 
     return hanldes.sort((a, b) => a.order - b.order)

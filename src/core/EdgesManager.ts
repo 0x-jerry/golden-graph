@@ -28,4 +28,8 @@ export class EdgesManager {
       }
     }
   }
+
+  all() {
+    return this._edges.all()
+  }
 }

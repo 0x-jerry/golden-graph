@@ -18,4 +18,8 @@ export class ModelManager<T extends IGModel> {
   remove(id: string) {
     this._data.delete(id)
   }
+
+  all() {
+    return [...this._data.values()]
+  }
 }

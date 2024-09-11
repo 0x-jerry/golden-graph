@@ -1,9 +1,7 @@
 import type { GHandle } from '../../core'
-import d3 from 'd3'
 import { RHandle } from './Handle'
 
 export class RNumberHandle extends RHandle<number> {
-
   constructor(data: GHandle<number>) {
     super(data)
 
@@ -11,11 +9,12 @@ export class RNumberHandle extends RHandle<number> {
   }
 
   init() {
-    this._g.append('text')
+    this._g.append('div').attr('class', 'r-text')
+
     this.updateUI()
   }
 
   updateUI() {
-    this._g.select('text').text(this.data.value || 0)
+    this._g.select('.r-text').text(this.data.value || 0)
   }
 }
