@@ -34,6 +34,16 @@ export class GNode<Data extends Record<string, unknown> = Record<string, unknown
     this._handles.outputs.get(key)?.update(value)
   }
 
+  getHandles() {
+    const hanldes = [
+      ...this._handles.inputs._data.values(),
+      ...this._handles.defaults._data.values(),
+      ...this._handles.outputs._data.values(),
+    ]
+
+    return hanldes.sort((a, b) => a.order - b.order)
+  }
+
   async getInputValue<T>(key: string) {
     await this.process()
 
@@ -41,9 +51,9 @@ export class GNode<Data extends Record<string, unknown> = Record<string, unknown
     return value
   }
 
-  addInputHandle(key: string, value: GHandle) {
-    value.id = key
-    this._handles.inputs.add(value)
+  addInputHandle(key: string, handle: GHandle) {
+    handle.id = key
+    this._handles.inputs.add(handle)
   }
 
   getInputHandle(key: string) {
@@ -54,9 +64,9 @@ export class GNode<Data extends Record<string, unknown> = Record<string, unknown
     this._handles.inputs.remove(key)
   }
 
-  addOutputHandle(key: string, value: GHandle) {
-    value.id = key
-    this._handles.outputs.add(value)
+  addOutputHandle(key: string, handle: GHandle) {
+    handle.id = key
+    this._handles.outputs.add(handle)
   }
 
   removeOutputHandle(key: string) {
