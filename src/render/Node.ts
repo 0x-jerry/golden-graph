@@ -22,6 +22,8 @@ export class RNode<
 
   _size: IVec2 = new Vec2(200, 400)
 
+  _pos = new Vec2()
+
   get dom() {
     return this._g.node()!
   }
@@ -51,5 +53,18 @@ export class RNode<
 
       this.dom.append(_handle.dom)
     }
+  }
+
+  update(
+    x: d3.ScaleLinear<number, number, never>,
+    y: d3.ScaleLinear<number, number, never>,
+    scale: number = 1
+  ) {
+    const pos = this._pos
+
+    this._g.style(
+      'transform',
+      `translate(${x(pos.x)}px, ${y(pos.y)}px) scale(${scale})`
+    )
   }
 }
