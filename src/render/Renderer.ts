@@ -7,6 +7,10 @@ export class RRenderer {
 
   svg: d3.Selection<SVGSVGElement, undefined, null, undefined>
 
+  get dom() {
+    return this.svg.node()!
+  }
+
   constructor(size: IVec2) {
     this.svg = d3.create('svg').attr('viewBox', [0, 0, size.x, size.y])
   }
@@ -14,5 +18,4 @@ export class RRenderer {
   mount(el: HTMLElement) {
     el.append(this.svg.node()!)
   }
-
 }

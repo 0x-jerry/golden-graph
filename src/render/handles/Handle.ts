@@ -15,4 +15,23 @@ export class RHandle<T = unknown> {
 
     this._g.attr('data-id', [this.data._position, this.data.id].join('-'))
   }
+
+  _init_handle() {
+    const size = 4
+
+    this._g
+      //
+      .append('rect')
+      .attr('class', 'r-handle')
+      .attr('width', size)
+      .attr('height', size)
+  }
+
+  attr(key: string, value?: any) {
+    if (value != null) {
+      return this._g.attr(key)
+    }
+
+    this._g.attr(key, value)
+  }
 }
