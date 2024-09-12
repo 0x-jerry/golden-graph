@@ -1,6 +1,7 @@
 import type { GHandle } from '../../core'
 import type { RHandle } from './Handle'
-import { RNumberHandle } from './NumberHandle'
+import { RInputHandle } from './InputHandle'
+import { RTextHandle } from './TextHandle'
 
 interface Ctor<T> {
   new (data?: any): T
@@ -8,7 +9,8 @@ interface Ctor<T> {
 
 const factories = new Map<string, Ctor<RHandle>>()
 
-factories.set('number', RNumberHandle)
+factories.set('number', RInputHandle)
+factories.set('text', RTextHandle)
 
 export function createHandle(data: GHandle) {
   const Ctor = factories.get(data.type)
