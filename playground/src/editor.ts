@@ -1,24 +1,34 @@
-import { RRenderer, GNode, GHandle, GHandleType } from '@0x-jerry/golden-graph/src'
+import {
+  RRenderer,
+  GNode,
+  GHandle,
+  GWorksapce,
+  GHandlePosition
+} from '../../src'
 
 export function setup(rootEl: HTMLElement) {
-  const renderer = new RRenderer({ x: 800, y: 600 })
-
-  renderer.mount(rootEl)
+  const $w = new GWorksapce()
 
   const n1 = new GNode()
-  n1.addOutputHandle('output', new GHandle('number', { defaultValue: 0, type: GHandleType.Output }))
+  n1.addOutputHandle(
+    'output',
+    new GHandle('number', { defaultValue: 0, type: GHandlePosition.Right })
+  )
 
   n1.onProcess = async (t) => {
     t.setOutputValue('output', 100)
   }
 
-  renderer.w.addNode(n1)
+  $w.addNode(n1)
 
   const n2 = new GNode()
-  n2.addInputHandle('input', new GHandle('number', { type: GHandleType.Input }))
+  n2.addInputHandle(
+    'input',
+    new GHandle('number', { type: GHandlePosition.Left })
+  )
   n2.addOutputHandle(
     'output',
-    new GHandle('string', { defaultValue: '', type: GHandleType.Output })
+    new GHandle('string', { defaultValue: '', type: GHandlePosition.Right })
   )
 
   n2.onProcess = async (t) => {
@@ -26,16 +36,23 @@ export function setup(rootEl: HTMLElement) {
     t.setOutputValue('output', s?.toString())
   }
 
-  renderer.w.addNode(n2)
+  $w.addNode(n2)
 
   const n3 = new GNode()
 
-  n3.addInputHandle('input', new GHandle('string', { type: GHandleType.Input }))
+  n3.addInputHandle(
+    'input',
+    new GHandle('string', { type: GHandlePosition.Left })
+  )
 
   n3.onProcess = async (t) => {
     const s = await t.getInputValue<string>('input')
     console.log(s)
   }
 
-  renderer.w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
+  $w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
+  //  -----------
+  const renderer = new RRenderer($w)
+
+  renderer.mount(rootEl)
 }
