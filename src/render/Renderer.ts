@@ -1,9 +1,9 @@
 import { GNode, GWorksapce } from '../core'
 import { Vec2, type IVec2 } from '../math'
-import * as d3 from 'd3'
 import { RNode } from './Node'
 import { remove } from '@0x-jerry/utils'
 import { Coord } from './Coord'
+import * as d3 from 'd3'
 
 export class RRenderer {
   _g = d3.create('div').attr('class', 'r-workspace')

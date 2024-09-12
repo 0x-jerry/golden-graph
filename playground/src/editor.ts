@@ -28,7 +28,7 @@ export function setup(rootEl: HTMLElement) {
   )
   n2.addOutputHandle(
     'output',
-    new GHandle('string', { defaultValue: '', type: GHandlePosition.Right })
+    new GHandle('text', { defaultValue: '', type: GHandlePosition.Right })
   )
 
   n2.onProcess = async (t) => {
@@ -42,7 +42,7 @@ export function setup(rootEl: HTMLElement) {
 
   n3.addInputHandle(
     'input',
-    new GHandle('string', { type: GHandlePosition.Left })
+    new GHandle('text', { type: GHandlePosition.Left })
   )
 
   n3.onProcess = async (t) => {

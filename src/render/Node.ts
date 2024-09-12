@@ -1,5 +1,5 @@
 import type { GNode } from '../core'
-import d3 from 'd3'
+import * as d3 from 'd3'
 import { createHandle } from './handles'
 import { Vec2, type IVec2 } from '../math'
 import { EventEmitter } from '@0x-jerry/utils'

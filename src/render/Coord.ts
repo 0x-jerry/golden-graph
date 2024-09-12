@@ -1,4 +1,4 @@
-import d3 from 'd3'
+import * as d3 from 'd3'
 import type { IVec2 } from '../math'
 import { EventEmitter } from '@0x-jerry/utils'
 
@@ -28,15 +28,15 @@ export class Coord extends EventEmitter<ICoordEventMap> {
   constructor(readonly range: IVec2) {
     super()
     this._g
-      //
-      .attr('width', range.x)
-      .attr('height', range.y)
+      .attr('viewBox', [0, 0, range.x, range.y])
       .style('position', 'absolute')
+      .style('width', '100%')
+      .style('height', '100%')
       .style('left', 0)
       .style('top', 0)
 
-    this.x = d3.scaleLinear().domain([0, range.x])
-    this.y = d3.scaleLinear().domain([0, range.y])
+    this.x = d3.scaleLinear().domain([0, range.x]).range([0, range.x])
+    this.y = d3.scaleLinear().domain([0, range.y]).range([0, range.y])
 
     const zoom = this.zoom
     this._g.call(zoom).call(zoom.transform, d3.zoomIdentity)

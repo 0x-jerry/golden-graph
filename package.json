@@ -19,6 +19,7 @@
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
+    "play": "npm run dev -C playground",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
