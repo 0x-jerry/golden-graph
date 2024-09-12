@@ -22,8 +22,6 @@ export class RNode<
 
   _size: IVec2 = new Vec2(200, 400)
 
-  _pos = new Vec2()
-
   get dom() {
     return this._g.node()!
   }
@@ -62,7 +60,7 @@ export class RNode<
     y: d3.ScaleLinear<number, number, never>,
     scale: number = 1
   ) {
-    const pos = this._pos
+    const pos = this.data.pos
 
     this._g
       //

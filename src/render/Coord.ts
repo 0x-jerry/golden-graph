@@ -57,7 +57,7 @@ export class Coord extends EventEmitter<ICoordEventMap> {
     const k = this.range.y / this.range.x
 
     this._x
-      .attr('transform', `translate(0, ${this.range.y})`)
+      .attr('transform', `translate(0, ${this.range.y - 1})`)
       .call(d3.axisTop(x).ticks(ticks))
 
     this._y.call(d3.axisRight(y).ticks(ticks * k))

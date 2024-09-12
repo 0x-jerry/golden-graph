@@ -10,6 +10,9 @@ export function setup(rootEl: HTMLElement) {
   const $w = new GWorksapce()
 
   const n1 = new GNode()
+  n1.pos.x = 200
+  n1.pos.y = 100
+
   n1.addOutputHandle(
     'output',
     new GHandle('number', { defaultValue: 0, type: GHandlePosition.Right })
@@ -22,6 +25,9 @@ export function setup(rootEl: HTMLElement) {
   $w.addNode(n1)
 
   const n2 = new GNode()
+  n2.pos.x = 20
+  n2.pos.y = 10
+
   n2.addInputHandle(
     'input',
     new GHandle('number', { type: GHandlePosition.Left })

@@ -1,3 +1,4 @@
+import { Vec2, type IVec2 } from '../math'
 import type { GHandle } from './Handle'
 import { HandleManager } from './HandleManager'
 import { GModel, type IGModel } from './Model'
@@ -20,6 +21,8 @@ export class GNode<
   _handles = new HandleManager()
   _data?: Data
   _dirty = true
+
+  pos: IVec2 = new Vec2(0, 0)
 
   constructor(opt: { id?: string; description?: string } = {}) {
     super(opt.id)

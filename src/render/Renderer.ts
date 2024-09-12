@@ -33,6 +33,7 @@ export class RRenderer {
     this._g.style('position', 'relative')
       .style('width', this.size.x + 'px')
       .style('height', this.size.y + 'px')
+      .style('overflow', 'hidden')
 
     this.dom.append(this.coord.dom)
 
@@ -66,5 +67,8 @@ export class RRenderer {
 
   mount(el: HTMLElement) {
     el.append(this._g.node()!)
+
+    this.coord.update()
+    this._updateDom()
   }
 }
