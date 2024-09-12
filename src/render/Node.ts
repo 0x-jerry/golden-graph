@@ -31,6 +31,8 @@ export class RNode<
   constructor(data: GNode<T>, opt?: RNodeOption) {
     super()
 
+    this._g.style('position', 'absolute')
+
     this.data = data
 
     if (opt?.width != null) {
@@ -62,9 +64,10 @@ export class RNode<
   ) {
     const pos = this._pos
 
-    this._g.style(
-      'transform',
-      `translate(${x(pos.x)}px, ${y(pos.y)}px) scale(${scale})`
-    )
+    this._g
+      //
+      .style('left', x(pos.x))
+      .style('top', y(pos.y))
+      .style('scale', scale)
   }
 }

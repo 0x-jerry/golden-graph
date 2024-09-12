@@ -30,6 +30,8 @@ export class RRenderer {
   }
 
   _initDom() {
+    this._g.style('position', 'relative')
+
     this.dom.append(this.coord.dom)
 
     const _nodes = this.w.nodes.all()
@@ -42,14 +44,13 @@ export class RRenderer {
   _updateDom() {
     this.dom.style.width = this.size.x + 'px'
     this.dom.style.height = this.size.y + 'px'
-    this.dom.style.position = 'relative'
 
-    const zoomOpt = this.coord.option
-    const _x = zoomOpt.rescaleX(this.coord.x)
-    const _y = zoomOpt.rescaleX(this.coord.y)
+    const zoomTransform = this.coord.option
+    const _x = zoomTransform.rescaleX(this.coord.x)
+    const _y = zoomTransform.rescaleY(this.coord.y)
 
     this.nodes.forEach((n) => {
-      n.update(_x, _y, zoomOpt.k)
+      n.update(_x, _y, zoomTransform.k)
     })
   }
 
