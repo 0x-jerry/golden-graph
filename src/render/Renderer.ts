@@ -31,6 +31,8 @@ export class RRenderer {
 
   _initDom() {
     this._g.style('position', 'relative')
+      .style('width', this.size.x + 'px')
+      .style('height', this.size.y + 'px')
 
     this.dom.append(this.coord.dom)
 
@@ -42,9 +44,6 @@ export class RRenderer {
   }
 
   _updateDom() {
-    this.dom.style.width = this.size.x + 'px'
-    this.dom.style.height = this.size.y + 'px'
-
     const zoomTransform = this.coord.option
     const _x = zoomTransform.rescaleX(this.coord.x)
     const _y = zoomTransform.rescaleY(this.coord.y)

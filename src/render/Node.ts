@@ -66,8 +66,8 @@ export class RNode<
 
     this._g
       //
-      .style('left', x(pos.x))
-      .style('top', y(pos.y))
+      .style('left', x(pos.x) + 'px')
+      .style('top', y(pos.y) + 'px')
       .style('scale', scale)
   }
 }
