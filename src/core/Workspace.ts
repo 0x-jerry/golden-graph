@@ -14,7 +14,7 @@ export class GWorksapce extends GModel {
   }
 
   connect(startHandle: GHandle, endHandle: GHandle) {
-    if (startHandle.type !== endHandle.type) {
+    if (startHandle.valueType !== endHandle.valueType) {
       return
     }
 

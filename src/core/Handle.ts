@@ -1,40 +1,38 @@
 import { GModel } from './Model'
 import type { GNode } from './Node'
 
-export enum GHandlePosition {
+export enum GHandleType {
   None,
-  Left,
-  Right,
-  Top,
-  Bottom
+  Input,
+  Output,
 }
 
 export interface IGHandleOptions<T> {
   id?: string
   defaultValue?: T
-  type?: GHandlePosition
+  type?: GHandleType
   attrs?: Record<string, unknown>
 }
 
 export class GHandle<T = unknown> extends GModel {
-  type: string
+  valueType: string
   order: number = 0
   value?: T
-
   _defaultValue?: T
+
   _targetHandle?: GHandle
   _node?: GNode
 
-  _position = GHandlePosition.None
+  _type = GHandleType.None
 
   attrs: Record<string, unknown> = {}
 
   get isOutput() {
-    return this._position === GHandlePosition.Right
+    return this._type === GHandleType.Output
   }
 
   get isInput() {
-    return this._position === GHandlePosition.Left
+    return this._type === GHandleType.Input
   }
 
   get node() {
@@ -44,11 +42,11 @@ export class GHandle<T = unknown> extends GModel {
   constructor(type: string, opt?: IGHandleOptions<T>) {
     super(opt?.id)
 
-    this.type = type
+    this.valueType = type
 
     Object.assign(this.attrs, opt?.attrs)
 
-    this._position = opt?.type ?? GHandlePosition.None
+    this._type = opt?.type ?? GHandleType.None
 
     this._defaultValue = opt?.defaultValue
   }

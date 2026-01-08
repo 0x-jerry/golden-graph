@@ -4,8 +4,16 @@ body {
   display: flex;
 }
 
+* {
+  user-select: none;
+}
+
 .r-node {
   padding: 10px;
   background: #fafafa;
   border: 1px solid #eee;
+}
+
+.r-node-title {
+  padding-bottom: 4px;
 }

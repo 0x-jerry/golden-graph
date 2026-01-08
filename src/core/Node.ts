@@ -3,8 +3,7 @@ import type { GHandle } from './Handle'
 import { HandleManager } from './HandleManager'
 import { GModel, type IGModel } from './Model'
 
-export interface IGNode<Data extends Record<string, any> = Record<string, any>>
-  extends IGModel {
+export interface IGNode<Data extends Record<string, any> = Record<string, any>> extends IGModel {
   title: string
   description?: string
   handles: GHandle[]
@@ -12,9 +11,7 @@ export interface IGNode<Data extends Record<string, any> = Record<string, any>>
   data?: Data
 }
 
-export class GNode<
-  Data extends Record<string, any> = Record<string, any>
-> extends GModel {
+export class GNode<Data extends Record<string, any> = Record<string, any>> extends GModel {
   title = 'Node'
   description?: string
 
@@ -43,7 +40,7 @@ export class GNode<
     const hanldes = [
       ...this._handles.inputs._data.values(),
       ...this._handles.defaults._data.values(),
-      ...this._handles.outputs._data.values()
+      ...this._handles.outputs._data.values(),
     ]
 
     return hanldes.sort((a, b) => a.order - b.order)
@@ -87,5 +84,15 @@ export class GNode<
       await this.onProcess?.(this)
       this._dirty = false
     }
+  }
+
+  move(x: number, y: number) {
+    this.pos.x += x
+    this.pos.y += y
+  }
+
+  moveTo(x: number, y: number) {
+    this.pos.x = x
+    this.pos.y = y
   }
 }

@@ -26,16 +26,18 @@
   },
   "devDependencies": {
     "@0x-jerry/x-release": "^2.4.1",
-    "@types/d3": "^7.4.3",
     "@types/node": "^25.0.3",
     "@vitest/coverage-v8": "^4.0.16",
+    "less": "^4.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "unplugin-vue": "^7.1.0",
+    "vitest": "^4.0.16",
+    "vue-tsc": "^3.2.2"
   },
   "dependencies": {
     "@0x-jerry/utils": "^6.0.0",
-    "d3": "^7.9.0",
-    "tsdown": "^0.18.0"
+    "tsdown": "^0.18.0",
+    "vue": "^3.5.26"
   }
 }

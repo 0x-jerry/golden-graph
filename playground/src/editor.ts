@@ -1,64 +1,56 @@
-import {
-  RRenderer,
-  GNode,
-  GHandle,
-  GWorksapce,
-  GHandlePosition
-} from '../../src'
+import { GNode, GHandle, GWorksapce, GHandleType } from '../../src'
 
-export function setup(rootEl: HTMLElement) {
+export function setup() {
   const $w = new GWorksapce()
 
-  const n1 = new GNode()
-  n1.pos.x = 200
-  n1.pos.y = 100
+  const n1 = buildNodeNumberInput()
 
-  n1.addOutputHandle(
-    'output',
-    new GHandle('number', { defaultValue: 0, type: GHandlePosition.Right })
-  )
-
-  n1.onProcess = async (t) => {
-    t.setOutputValue('output', 100)
-  }
+  n1.move(100, 100)
 
   $w.addNode(n1)
 
-  const n2 = new GNode()
-  n2.pos.x = 20
-  n2.pos.y = 10
+  const n2 = buildNodeToString()
 
-  n2.addInputHandle(
-    'input',
-    new GHandle('number', { type: GHandlePosition.Left })
-  )
-  n2.addOutputHandle(
+  n2.move(200, 200)
+
+  $w.addNode(n2)
+
+  $w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
+
+  return $w
+}
+
+function buildNodeNumberInput() {
+  const node = new GNode()
+  node.title = 'Number'
+
+  node.addOutputHandle(
     'output',
-    new GHandle('text', { defaultValue: '', type: GHandlePosition.Right })
+    new GHandle('number', { defaultValue: 0, type: GHandleType.Output })
   )
 
-  n2.onProcess = async (t) => {
+  node.onProcess = async (t) => {
+    t.setOutputValue('output', 100)
+  }
+
+  return node
+}
+
+function buildNodeToString() {
+  const node = new GNode()
+  node.title = 'ToString'
+
+  node.addInputHandle('input', new GHandle('number', { type: GHandleType.Input }))
+
+  node.addOutputHandle(
+    'output',
+    new GHandle('text', { defaultValue: '', type: GHandleType.Output })
+  )
+
+  node.onProcess = async (t) => {
     const s = await t.getInputValue<number>('input')
     t.setOutputValue('output', s?.toString())
   }
 
-  $w.addNode(n2)
-
-  const n3 = new GNode()
-
-  n3.addInputHandle(
-    'input',
-    new GHandle('text', { type: GHandlePosition.Left })
-  )
-
-  n3.onProcess = async (t) => {
-    const s = await t.getInputValue<string>('input')
-    console.log(s)
-  }
-
-  $w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
-  //  -----------
-  const renderer = new RRenderer($w)
-
-  renderer.mount(rootEl)
+  return node
 }
