@@ -1,6 +1,16 @@
+import { EventEmitter } from '@0x-jerry/utils'
 import type { IGModel } from './Model'
 
-export class ModelManager<T extends IGModel> {
+export enum ModelManagerChangedType {
+  Added,
+  Removed,
+}
+
+export interface ModelManagerEvents {
+  changed: [type: ModelManagerChangedType, id: string]
+}
+
+export class ModelManager<T extends IGModel> extends EventEmitter<ModelManagerEvents> {
   _data = new Map<string, T>()
 
   add(t: T) {
@@ -8,6 +18,7 @@ export class ModelManager<T extends IGModel> {
 
     if (!exists) {
       this._data.set(t.id, t)
+      this.emit('changed', ModelManagerChangedType.Added, t.id)
     }
   }
 
@@ -17,6 +28,7 @@ export class ModelManager<T extends IGModel> {
 
   remove(id: string) {
     this._data.delete(id)
+    this.emit('changed', ModelManagerChangedType.Removed, id)
   }
 
   all() {

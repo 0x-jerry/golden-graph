@@ -8,45 +8,52 @@ export enum GHandleType {
 }
 
 export interface IGHandleOptions<T> {
+  name: string
+  type: string
   id?: string
   defaultValue?: T
-  type?: GHandleType
+  handleType?: GHandleType
   attrs?: Record<string, unknown>
 }
 
 export class GHandle<T = unknown> extends GModel {
-  valueType: string
   order: number = 0
+
   value?: T
+  valueType: string
+
+  name: string
+
   _defaultValue?: T
 
   _targetHandle?: GHandle
   _node?: GNode
 
-  _type = GHandleType.None
+  _handleType = GHandleType.None
 
   attrs: Record<string, unknown> = {}
 
   get isOutput() {
-    return this._type === GHandleType.Output
+    return this._handleType === GHandleType.Output
   }
 
   get isInput() {
-    return this._type === GHandleType.Input
+    return this._handleType === GHandleType.Input
   }
 
   get node() {
     return this._node
   }
 
-  constructor(type: string, opt?: IGHandleOptions<T>) {
+  constructor(opt: IGHandleOptions<T>) {
     super(opt?.id)
 
-    this.valueType = type
+    this.name = opt.name
+    this.valueType = opt.type
 
     Object.assign(this.attrs, opt?.attrs)
 
-    this._type = opt?.type ?? GHandleType.None
+    this._handleType = opt?.handleType ?? GHandleType.None
 
     this._defaultValue = opt?.defaultValue
   }

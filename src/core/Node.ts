@@ -53,8 +53,7 @@ export class GNode<Data extends Record<string, any> = Record<string, any>> exten
     return value
   }
 
-  addInputHandle(key: string, handle: GHandle) {
-    handle.id = key
+  addInputHandle(handle: GHandle) {
     this._handles.inputs.add(handle)
   }
 
@@ -66,8 +65,7 @@ export class GNode<Data extends Record<string, any> = Record<string, any>> exten
     this._handles.inputs.remove(key)
   }
 
-  addOutputHandle(key: string, handle: GHandle) {
-    handle.id = key
+  addOutputHandle(handle: GHandle) {
     this._handles.outputs.add(handle)
   }
 

@@ -25,8 +25,13 @@ function buildNodeNumberInput() {
   node.title = 'Number'
 
   node.addOutputHandle(
-    'output',
-    new GHandle('number', { defaultValue: 0, type: GHandleType.Output })
+    new GHandle({
+      id: 'output',
+      type: 'number',
+      name: 'Output',
+      defaultValue: 0,
+      handleType: GHandleType.Output,
+    })
   )
 
   node.onProcess = async (t) => {
@@ -40,11 +45,23 @@ function buildNodeToString() {
   const node = new GNode()
   node.title = 'ToString'
 
-  node.addInputHandle('input', new GHandle('number', { type: GHandleType.Input }))
+  node.addInputHandle(
+    new GHandle({
+      id: 'input',
+      name: 'Number',
+      type: 'number',
+      handleType: GHandleType.Input,
+    })
+  )
 
   node.addOutputHandle(
-    'output',
-    new GHandle('text', { defaultValue: '', type: GHandleType.Output })
+    new GHandle({
+      id: 'output',
+      name: 'String',
+      type: 'string',
+      defaultValue: '',
+      handleType: GHandleType.Output,
+    })
   )
 
   node.onProcess = async (t) => {
