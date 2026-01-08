@@ -18,6 +18,14 @@ export class GWorksapce extends GModel {
       return
     }
 
+    if (startHandle.handleType === endHandle.handleType) {
+      return
+    }
+
+    if (startHandle.node === endHandle.node) {
+      return
+    }
+
     const edge = new GEdge(startHandle, endHandle)
 
     this.edges.add(edge)

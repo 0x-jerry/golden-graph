@@ -29,7 +29,7 @@ useDraggable(draggableEl, {
 </script>
 
 <template>
-  <div class="r-node" :style="{ '--x': state.x + 'px', '--y': state.y + 'px' }">
+  <div class="r-node" :style="{ '--x': state.x + 'px', '--y': state.y + 'px' }" :node-id="node.id">
     <div class="r-node-header" ref="draggableEl">
       <div class="r-node-title">{{ node.title }}</div>
     </div>

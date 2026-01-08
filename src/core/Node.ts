@@ -54,6 +54,7 @@ export class GNode<Data extends Record<string, any> = Record<string, any>> exten
   }
 
   addInputHandle(handle: GHandle) {
+    handle.setNode(this)
     this._handles.inputs.add(handle)
   }
 
@@ -66,6 +67,7 @@ export class GNode<Data extends Record<string, any> = Record<string, any>> exten
   }
 
   addOutputHandle(handle: GHandle) {
+    handle.setNode(this)
     this._handles.outputs.add(handle)
   }
 

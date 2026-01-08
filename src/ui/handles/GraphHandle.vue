@@ -9,7 +9,7 @@ const props = defineProps<GraphHandle>()
 </script>
 
 <template>
-  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]">
+  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.id">
     <div class="r-joint" v-if="handle.isInput"></div>
     <div class="r-handle-name">{{ handle.name }}</div>
     <!-- todo, content -->

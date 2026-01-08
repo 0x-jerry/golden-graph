@@ -29,16 +29,16 @@ export class GHandle<T = unknown> extends GModel {
   _targetHandle?: GHandle
   _node?: GNode
 
-  _handleType = GHandleType.None
+  handleType = GHandleType.None
 
   attrs: Record<string, unknown> = {}
 
   get isOutput() {
-    return this._handleType === GHandleType.Output
+    return this.handleType === GHandleType.Output
   }
 
   get isInput() {
-    return this._handleType === GHandleType.Input
+    return this.handleType === GHandleType.Input
   }
 
   get node() {
@@ -53,7 +53,7 @@ export class GHandle<T = unknown> extends GModel {
 
     Object.assign(this.attrs, opt?.attrs)
 
-    this._handleType = opt?.handleType ?? GHandleType.None
+    this.handleType = opt?.handleType ?? GHandleType.None
 
     this._defaultValue = opt?.defaultValue
   }
@@ -72,5 +72,9 @@ export class GHandle<T = unknown> extends GModel {
     if (updateDirty) {
       this._node?.setDirty()
     }
+  }
+
+  setNode(node: GNode<any>) {
+    this._node = node
   }
 }
