@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { reactive, useTemplateRef } from 'vue'
 import GraphHandle from './handles/GraphHandle.vue'
 import { useGraphNode } from './hooks/useGraphNode'
+import { useDraggable } from '@vueuse/core'
 
 export interface GraphNodeProps {
   nodeId: string
@@ -9,11 +11,26 @@ export interface GraphNodeProps {
 const props = defineProps<GraphNodeProps>()
 
 const node = useGraphNode(() => props.nodeId)
+
+const state = reactive({
+  x: node.value.pos.x,
+  y: node.value.pos.y,
+})
+
+const draggableEl = useTemplateRef('draggableEl')
+
+useDraggable(draggableEl, {
+  onMove(position) {
+    state.x = position.x
+    state.y = position.y
+    node.value.moveTo(position.x, position.y)
+  },
+})
 </script>
 
 <template>
-  <div class="r-node" :style="{ '--x': node.pos.x + 'px', '--y': node.pos.y + 'px' }">
-    <div class="r-node-header">
+  <div class="r-node" :style="{ '--x': state.x + 'px', '--y': state.y + 'px' }">
+    <div class="r-node-header" ref="draggableEl">
       <div class="r-node-title">{{ node.title }}</div>
     </div>
 
@@ -35,8 +52,5 @@ const node = useGraphNode(() => props.nodeId)
   padding: 4px;
   background: #eee;
   margin-bottom: 4px;
-}
-
-.r-node-title {
 }
 </style>
