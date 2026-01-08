@@ -1,4 +1,4 @@
-import { uuid } from '@0x-jerry/utils'
+import { nanoid } from '@0x-jerry/utils'
 
 export interface IGModel {
   id: string
@@ -7,7 +7,7 @@ export interface IGModel {
 export class GModel implements IGModel {
   id: string
 
-  constructor(id = uuid()) {
+  constructor(id = nanoid()) {
     this.id = id
   }
 }
