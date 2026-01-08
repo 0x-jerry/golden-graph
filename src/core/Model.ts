@@ -8,7 +8,10 @@ export interface GModelEvents {
   updated: []
 }
 
-export class GModel<Events = {}> extends EventEmitter<GModelEvents & Events> implements IGModel {
+export class GModel<Events = {}>
+  extends EventEmitter<GModelEvents & Events>
+  implements IGModel
+{
   id: string
 
   constructor(id = nanoid()) {

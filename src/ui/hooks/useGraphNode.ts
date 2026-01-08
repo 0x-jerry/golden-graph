@@ -1,4 +1,4 @@
-import { computed, toValue, type MaybeRefOrGetter } from 'vue'
+import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 import { useGraph } from './useGraph'
 
 export function useGraphNode(id: MaybeRefOrGetter<string>) {

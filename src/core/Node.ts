@@ -1,9 +1,10 @@
-import { Vec2, type IVec2 } from '../math'
+import { type IVec2, Vec2 } from '../math'
 import type { GHandle } from './Handle'
 import { HandleManager } from './HandleManager'
 import { GModel, type IGModel } from './Model'
 
-export interface IGNode<Data extends Record<string, any> = Record<string, any>> extends IGModel {
+export interface IGNode<Data extends Record<string, any> = Record<string, any>>
+  extends IGModel {
   title: string
   description?: string
   handles: GHandle[]
@@ -11,7 +12,9 @@ export interface IGNode<Data extends Record<string, any> = Record<string, any>> 
   data?: Data
 }
 
-export class GNode<Data extends Record<string, any> = Record<string, any>> extends GModel {
+export class GNode<
+  Data extends Record<string, any> = Record<string, any>,
+> extends GModel {
   title = 'Node'
   description?: string
 

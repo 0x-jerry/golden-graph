@@ -15,7 +15,7 @@ export class Vec2 implements IVec2 {
   x = 0
   y = 0
 
-  constructor(x: number = 0, y = x) {
+  constructor(x = 0, y = x) {
     this.x = x
     this.y = y
   }

@@ -2,9 +2,9 @@ import { GModel } from './Model'
 import type { GNode } from './Node'
 
 export enum GHandleType {
-  None,
-  Input,
-  Output,
+  None = 0,
+  Input = 1,
+  Output = 2,
 }
 
 export interface IGHandleOptions<T> {
@@ -17,7 +17,7 @@ export interface IGHandleOptions<T> {
 }
 
 export class GHandle<T = unknown> extends GModel {
-  order: number = 0
+  order = 0
 
   value?: T
   valueType: string

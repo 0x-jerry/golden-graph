@@ -2,15 +2,17 @@ import { EventEmitter } from '@0x-jerry/utils'
 import type { IGModel } from './Model'
 
 export enum ModelManagerChangedType {
-  Added,
-  Removed,
+  Added = 0,
+  Removed = 1,
 }
 
 export interface ModelManagerEvents {
   changed: [type: ModelManagerChangedType, id: string]
 }
 
-export class ModelManager<T extends IGModel> extends EventEmitter<ModelManagerEvents> {
+export class ModelManager<
+  T extends IGModel,
+> extends EventEmitter<ModelManagerEvents> {
   _data = new Map<string, T>()
 
   add(t: T) {

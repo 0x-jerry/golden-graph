@@ -1,11 +1,11 @@
-import type { GHandle } from './Handle'
-import type { GNode } from './Node'
 import { GEdge } from './Edge'
+import { EdgesManager } from './EdgesManager'
+import type { GHandle } from './Handle'
 import { GModel } from './Model'
 import { ModelManager } from './ModelManager'
-import { EdgesManager } from './EdgesManager'
+import type { GNode } from './Node'
 
-export class GWorksapce extends GModel {
+export class GWorkspace extends GModel {
   nodes = new ModelManager<GNode>()
   edges = new EdgesManager()
 

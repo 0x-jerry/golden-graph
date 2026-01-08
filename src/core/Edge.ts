@@ -5,7 +5,7 @@ export class GEdge extends GModel {
   start: GHandle
   end: GHandle
 
-  constructor (start: GHandle, end: GHandle, id?: string) {
+  constructor(start: GHandle, end: GHandle, id?: string) {
     super(id)
 
     this.start = start

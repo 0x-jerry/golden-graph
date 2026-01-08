@@ -1,4 +1,4 @@
-import { GHandle } from './Handle'
+import type { GHandle } from './Handle'
 import { ModelManager } from './ModelManager'
 
 export class HandleManager {

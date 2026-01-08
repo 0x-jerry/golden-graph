@@ -1,7 +1,7 @@
-import { GNode, GHandle, GWorksapce, GHandleType } from '../../src'
+import { GHandle, GHandleType, GNode, GWorkspace } from '../../src'
 
 export function setup() {
-  const $w = new GWorksapce()
+  const $w = new GWorkspace()
 
   const n1 = buildNodeNumberInput()
 
@@ -31,7 +31,7 @@ function buildNodeNumberInput() {
       name: 'Output',
       defaultValue: 0,
       handleType: GHandleType.Output,
-    })
+    }),
   )
 
   node.onProcess = async (t) => {
@@ -51,7 +51,7 @@ function buildNodeToString() {
       name: 'Number',
       type: 'number',
       handleType: GHandleType.Input,
-    })
+    }),
   )
 
   node.addOutputHandle(
@@ -61,7 +61,7 @@ function buildNodeToString() {
       type: 'string',
       defaultValue: '',
       handleType: GHandleType.Output,
-    })
+    }),
   )
 
   node.onProcess = async (t) => {
