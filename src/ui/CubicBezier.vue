@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
-import type { Vec2 } from './types'
+import type { IVec2 } from '../math';
 
 export interface CubicBezierProps {
-  start: Vec2
-  end: Vec2
-  offset: Vec2
+  start: IVec2
+  end: IVec2
+  offset: IVec2
 }
 
 const props = defineProps<CubicBezierProps>()
@@ -25,9 +25,8 @@ const d = computed(() => {
 
   const handleOffset = 150
 
-  return `M ${s.x} ${s.y} C ${s.x - handleOffset} ${s.y}, ${e.x + handleOffset} ${e.y}, ${e.x} ${
-    e.y
-  }`
+  return `M ${s.x} ${s.y} C ${s.x - handleOffset} ${s.y}, ${e.x + handleOffset} ${e.y}, ${e.x} ${e.y
+    }`
 })
 </script>
 

@@ -3,6 +3,7 @@ import { defineContext } from '@0x-jerry/vue-kit'
 import { shallowReactive } from 'vue'
 import type { GWorkspace } from '../../core'
 import { ModelManagerChangedType } from '../../core/ModelManager'
+import { useCoordSystem } from './useCoordSystem'
 import { useGraphEvent } from './useGraphEvent'
 
 interface IuseGraphOption {
@@ -14,9 +15,12 @@ export const useGraph = defineContext(
   (opt: IuseGraphOption) => {
     const { workspace } = opt
 
+    const coord = useCoordSystem.provide()
+
     const state = {
       workspace,
       nodeIds: shallowReactive<string[]>([]),
+      coord,
     }
 
     state.nodeIds.push(...workspace.nodes.all().map((n) => n.id))

@@ -1,5 +1,5 @@
-import { useEventListener, useMouse, type MaybeRefOrGetter } from '@vueuse/core'
-import { toValue } from 'vue'
+import { useEventListener, useMouse } from '@vueuse/core'
+import { type MaybeRefOrGetter, toValue } from 'vue'
 
 export function useSelection(opt: {
   disabled?: MaybeRefOrGetter<boolean>

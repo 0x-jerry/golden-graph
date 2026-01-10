@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useCoordSystem } from './useCoordSystem'
+import { useCoordSystem } from './hooks'
 
 const coord = useCoordSystem()!
 </script>

@@ -2,7 +2,7 @@
 import { useDraggable } from '@vueuse/core'
 import { reactive, useTemplateRef } from 'vue'
 import GraphHandle from './handles/GraphHandle.vue'
-import { useGraphNode } from './hooks/useGraphNode'
+import { useCoordSystem, useGraphNode } from './hooks'
 
 export interface GraphNodeProps {
   nodeId: string
@@ -12,6 +12,8 @@ const props = defineProps<GraphNodeProps>()
 
 const node = useGraphNode(() => props.nodeId)
 
+const coord = useCoordSystem()!
+
 const state = reactive({
   x: node.value.pos.x,
   y: node.value.pos.y,
@@ -20,10 +22,10 @@ const state = reactive({
 const draggableEl = useTemplateRef('draggableEl')
 
 useDraggable(draggableEl, {
-  onMove(position) {
-    state.x = position.x
-    state.y = position.y
-    node.value.moveTo(position.x, position.y)
+  onMove(_, evt) {
+    state.x += evt.movementX / coord.scale
+    state.y += evt.movementY / coord.scale
+    node.value.moveTo(state.x, state.y)
   },
 })
 </script>
@@ -40,12 +42,15 @@ useDraggable(draggableEl, {
 
 <style lang="less">
 .r-node {
+  pointer-events: auto;
   position: absolute;
   left: var(--x);
   top: var(--y);
   width: 200px;
 
   border: 1px solid #ddd;
+
+  background: white;
 }
 
 .r-node-header {

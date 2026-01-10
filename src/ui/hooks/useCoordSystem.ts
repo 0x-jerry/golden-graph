@@ -1,6 +1,6 @@
 import { defineContext } from '@0x-jerry/vue-kit'
 import { reactive } from 'vue'
-import type { Vec2 } from './types'
+import type { IVec2 } from '../../math'
 
 class CoordSystem {
   /**
@@ -13,7 +13,7 @@ class CoordSystem {
 
   scale = 1
 
-  zoomAt(point: Vec2, scale: number) {
+  zoomAt(point: IVec2, scale: number) {
     const dx = point.x / scale - point.x / this.scale
     const dy = point.y / scale - point.y / this.scale
 
@@ -42,10 +42,10 @@ class CoordSystem {
     return (this.origin.y + rawY) * this.scale
   }
 
-  getCoordStyle(pos: Vec2) {
+  getCoordStyle(pos: IVec2) {
     return {
-      '--x': this.x(pos.x) + 'px',
-      '--y': this.y(pos.y) + 'px',
+      '--x': `${this.x(pos.x)}px`,
+      '--y': `${this.y(pos.y)}px`,
       '--scale': this.scale,
     }
   }

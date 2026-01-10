@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { GWorksapce } from '../core'
+import type { GWorkspace } from '../core'
+import CoordSystem from './CoordSystem.vue';
 import GraphWorkspace from './GraphWorkspace.vue'
 import { useGraph } from './hooks'
 
 export interface GraphRendererProps {
-  workspace: GWorksapce
+  workspace: GWorkspace
 }
 
 const props = defineProps<GraphRendererProps>()
@@ -16,7 +17,9 @@ useGraph.provide({
 
 <template>
   <div class="r-renderer">
-    <GraphWorkspace></GraphWorkspace>
+    <CoordSystem>
+      <GraphWorkspace></GraphWorkspace>
+    </CoordSystem>
   </div>
 </template>
 
@@ -24,5 +27,7 @@ useGraph.provide({
 .r-renderer {
   width: 100%;
   height: 100%;
+
+  user-select: none;
 }
 </style>

@@ -1,19 +1,19 @@
 <script lang="ts" setup>
-import { computed, useTemplateRef } from 'vue'
-import type { Vec2 } from './types'
 import { useDraggable } from '@vueuse/core'
-import { useCoordSystem } from './useCoordSystem'
+import { computed, useTemplateRef } from 'vue'
+import type { IVec2 } from '../math'
+import { useCoordSystem } from './hooks'
 
 export interface GroupNodeProps {
   width: number
   height: number
-  pos: Vec2
+  pos: IVec2
 
   disabled?: boolean
 }
 
 export interface GroupNodeEvents {
-  moved: [offset: Vec2]
+  moved: [offset: IVec2]
   updated: [width: number, height: number]
 }
 
@@ -27,10 +27,10 @@ const style = computed(() => {
   const { pos, width, height } = props
 
   return {
-    '--x': pos.x + 'px',
-    '--y': pos.y + 'px',
-    '--width': width + 'px',
-    '--height': height + 'px',
+    '--x': `${pos.x}px`,
+    '--y': `${pos.y}px`,
+    '--width': `${width}px`,
+    '--height': `${height}px`,
   }
 })
 
