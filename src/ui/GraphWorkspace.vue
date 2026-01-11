@@ -8,7 +8,7 @@ const graph = useGraph()!
 <template>
   <div class="r-workspace">
     <svg class="r-connections" xmlns="http://www.w3.org/2000/svg">
-      <!-- <CubicBezier v-bind="curveTest" :offset="{ x: 50000, y: 50000 }" /> -->
+      <!-- <CubicBezier v-bind="curveTest"  /> -->
     </svg>
     <GraphNode v-for="id in graph.nodeIds" :key="id" :node-id="id" />
   </div>
@@ -23,11 +23,9 @@ const graph = useGraph()!
 
 .r-connections {
   pointer-events: none;
-  position: relative;
-
-  width: 100000px;
-  height: 100000px;
-  left: -50000px;
-  top: -50000px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
 }
 </style>
