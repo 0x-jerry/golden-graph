@@ -36,7 +36,7 @@ useDraggable(draggableEl, {
       <div class="r-node-name">{{ node.name }}</div>
     </div>
 
-    <GraphHandle v-for="handle in node.handles" :key="handle.key" :handle="handle" />
+    <GraphHandle v-for="handle in node.handles" :key="handle.key" :handle-key="handle.key" />
   </div>
 </template>
 

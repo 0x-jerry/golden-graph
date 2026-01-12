@@ -12,7 +12,7 @@ export function setup(workspace: Workspace) {
 
   n2.moveTo(200, 200);
 
-  // $w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
+  workspace.connect(n1.getHandle("output")!, n2.getHandle("input")!);
 
   return workspace;
 }
@@ -29,7 +29,7 @@ class NumberNode extends Node {
     numberHandle.position = HandlePosition.Right;
     numberHandle.type = "number";
 
-    this.handles.push(numberHandle);
+    this.addHandle(numberHandle);
     this.setData("output", 10);
   }
 }
@@ -46,7 +46,7 @@ class ToStringNode extends Node {
     inputHandle.position = HandlePosition.Left;
     inputHandle.type = "number";
 
-    this.handles.push(inputHandle);
+    this.addHandle(inputHandle);
 
     const outputHandle = new NodeHandle();
     outputHandle.key = "output";
@@ -54,6 +54,6 @@ class ToStringNode extends Node {
     outputHandle.position = HandlePosition.Right;
     outputHandle.type = "string";
 
-    this.handles.push(outputHandle);
+    this.addHandle(outputHandle);
   }
 }

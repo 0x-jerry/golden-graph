@@ -1,20 +1,20 @@
 import { shallowReactive } from "vue";
 import { CoordSystem } from "./CoordSystem";
-import type { Edge } from "./Edge";
+import { Edge } from "./Edge";
 import { createIncrementIdGenerator, type Factory } from "./helper";
 import type { Node } from "./Node";
 import type { IPersistent } from "./Persistent";
 import type { IWorkspace } from "./types";
 import { Register } from "./Register";
-import { remove } from "@0x-jerry/utils";
+import { nanoid, remove } from "@0x-jerry/utils";
+import type { NodeHandle } from "./NodeHandle";
 
 export class Workspace implements IPersistent<IWorkspace> {
   version = "1.0.0";
-  id: number;
+  id = nanoid();
 
   _nodes: Node[] = shallowReactive([]);
   _edges: Edge[] = shallowReactive([]);
-
 
   _idGenerator = createIncrementIdGenerator();
 
@@ -30,10 +30,6 @@ export class Workspace implements IPersistent<IWorkspace> {
     return this._edges;
   }
 
-  constructor() {
-    this.id = this.nextId();
-  }
-
   registerNode<T extends Node>(type: string, node: Factory<T>) {
     this._nodeRegister.set(type, node);
   }
@@ -45,6 +41,7 @@ export class Workspace implements IPersistent<IWorkspace> {
     }
 
     const node = new factory();
+    node.setWorkspace(this)
     node.id = this.nextId();
 
     if (opt) {
@@ -52,11 +49,23 @@ export class Workspace implements IPersistent<IWorkspace> {
     }
 
     this._nodes.push(node);
-    return node
+    return node;
   }
 
   removeNodeById(id: number) {
     return remove(this._nodes, (n) => n.id === id);
+  }
+
+  connect(start: NodeHandle, end: NodeHandle) {
+    const edge = new Edge();
+    edge.id = this.nextId()
+
+    edge.setStart(start);
+    edge.setEnd(end);
+
+    this._edges.push(edge);
+
+    return edge
   }
 
   nextId() {

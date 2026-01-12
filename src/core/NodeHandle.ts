@@ -3,6 +3,7 @@ import { HandlePosition } from "./HandlePosition";
 import type { Node } from "./Node";
 import type { IPersistent } from "./Persistent";
 import type { INodeHandle } from "./types";
+import { getNodeHandleDom } from "./dom";
 
 export class NodeHandle implements IPersistent<INodeHandle> {
   type: Arrayable<string> = "default";
@@ -24,7 +25,25 @@ export class NodeHandle implements IPersistent<INodeHandle> {
   }
 
   get node() {
+    if (!this._node) {
+      throw new Error(`Node is not set`);
+    }
+
     return this._node;
+  }
+
+  getDom() {
+    const nodeId = this.node.id;
+    const wsId = this.node.workspace.id;
+
+    return getNodeHandleDom(wsId, nodeId, this.key);
+  }
+
+  getJointDom() {
+    return this.getDom()?.querySelector(`[role="handle-joint"]`) as
+      | HTMLElement
+      | null
+      | undefined;
   }
 
   setNode(node: Node) {

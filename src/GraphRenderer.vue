@@ -17,7 +17,7 @@ props.setup?.(ws)
 </script>
 
 <template>
-  <div class="r-renderer">
+  <div class="r-renderer" :workspace-id="ws.id">
     <CoordSystem>
       <GraphWorkspace></GraphWorkspace>
     </CoordSystem>

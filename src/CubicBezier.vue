@@ -1,33 +1,33 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
-import type { IVec2 } from './math';
+import { computed } from "vue";
+import type { IVec2 } from "./core";
 
 export interface CubicBezierProps {
-  start: IVec2
-  end: IVec2
-  offset: IVec2
+  start: IVec2;
+  end: IVec2;
 }
 
-const props = defineProps<CubicBezierProps>()
+const props = defineProps<CubicBezierProps>();
 
 const d = computed(() => {
-  const { start, end, offset } = props
+  const { start, end } = props;
 
   const s = {
-    x: start.x + offset.x,
-    y: start.y + offset.y,
-  }
+    x: start.x,
+    y: start.y,
+  };
 
   const e = {
-    x: end.x + offset.x,
-    y: end.y + offset.y,
-  }
+    x: end.x,
+    y: end.y,
+  };
 
-  const handleOffset = 150
+  const handleOffset = 150;
 
-  return `M ${s.x} ${s.y} C ${s.x - handleOffset} ${s.y}, ${e.x + handleOffset} ${e.y}, ${e.x} ${e.y
-    }`
-})
+  return `M ${s.x} ${s.y} C ${s.x - handleOffset} ${s.y}, ${
+    e.x + handleOffset
+  } ${e.y}, ${e.x} ${e.y}`;
+});
 </script>
 
 <template>

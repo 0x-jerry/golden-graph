@@ -1,22 +1,28 @@
 <script lang="ts" setup>
-import type { NodeHandle } from '../core';
+import { useNodeHandle } from "../hooks";
 
 export interface GraphHandle {
-  handle: NodeHandle
+  handleKey: string;
 }
 
-const props = defineProps<GraphHandle>()
+const props = defineProps<GraphHandle>();
+
+const handle = useNodeHandle(() => props.handleKey);
 </script>
 
 <template>
-  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.key">
+  <div
+    class="r-handle"
+    :class="[{ 'is-output': handle.isOutput }]"
+    :handle-key="handle.key"
+  >
     <template v-if="handle.isInput">
-      <div class="r-joint"></div>
+      <div class="r-joint" role="handle-joint"></div>
       <div class="r-handle-name">{{ handle.name }}</div>
     </template>
     <template v-else>
       <div class="r-handle-name">{{ handle.name }}</div>
-      <div class="r-joint"></div>
+      <div class="r-joint" role="handle-joint"></div>
     </template>
   </div>
 </template>

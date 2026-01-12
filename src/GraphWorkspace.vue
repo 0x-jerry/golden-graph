@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GraphEdge from './GraphEdge.vue';
 import GraphNode from './GraphNode.vue'
 import { useWorkspace } from './hooks';
 
@@ -8,7 +9,7 @@ const workspace = useWorkspace()!
 <template>
   <div class="r-workspace">
     <svg class="r-connections" xmlns="http://www.w3.org/2000/svg">
-      <!-- <CubicBezier v-bind="curveTest"  /> -->
+      <GraphEdge v-for="edge in workspace.edges" :key="edge.id" :edge-id="edge.id" />
     </svg>
     <GraphNode v-for="node in workspace.nodes" :key="node.id" :node-id="node.id" />
   </div>
