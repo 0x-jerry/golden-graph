@@ -1,8 +1,7 @@
-import { defineContext } from '@0x-jerry/vue-kit'
-import { useWorkspace } from './useWorkspace'
+import { useWorkspace } from "./useWorkspace";
 
-export const useCoordSystem = defineContext(Symbol.for('coord-system'), () => {
-  const state = useWorkspace()!
+export function useCoordSystem() {
+  const state = useWorkspace()!;
 
-  return state.coord
-})
+  return state.coord;
+}

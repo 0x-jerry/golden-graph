@@ -1,73 +1,59 @@
-import { GHandle, GHandleType, GNode, GWorkspace } from '../../src'
+import { Node, NodeHandle, Workspace } from "../../src/core";
+import { HandlePosition } from "../../src/core/HandlePosition";
 
-export function setup() {
-  const $w = new GWorkspace()
+export function setup(workspace: Workspace) {
+  workspace.registerNode("Number", NumberNode);
+  workspace.registerNode("ToString", ToStringNode);
 
-  const n1 = buildNodeNumberInput()
+  const n1 = workspace.addNode("Number");
+  n1.moveTo(100, 100);
 
-  n1.move(100, 100)
+  const n2 = workspace.addNode("ToString");
 
-  $w.addNode(n1)
+  n2.moveTo(200, 200);
 
-  const n2 = buildNodeToString()
+  // $w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
 
-  n2.move(200, 200)
-
-  $w.addNode(n2)
-
-  $w.connect(n1.getOutputHandle('output')!, n2.getInputHandle('input')!)
-
-  return $w
+  return workspace;
 }
 
-function buildNodeNumberInput() {
-  const node = new GNode()
-  node.title = 'Number'
+class NumberNode extends Node {
+  constructor() {
+    super();
 
-  node.addOutputHandle(
-    new GHandle({
-      id: 'output',
-      type: 'number',
-      name: 'Output',
-      defaultValue: 0,
-      handleType: GHandleType.Output,
-    }),
-  )
+    this.name = "Number Node";
 
-  node.onProcess = async (t) => {
-    t.setOutputValue('output', 100)
+    const numberHandle = new NodeHandle();
+    numberHandle.key = "output";
+    numberHandle.name = "Number";
+    numberHandle.position = HandlePosition.Right;
+    numberHandle.type = "number";
+
+    this.handles.push(numberHandle);
+    this.setData("output", 10);
   }
-
-  return node
 }
 
-function buildNodeToString() {
-  const node = new GNode()
-  node.title = 'ToString'
+class ToStringNode extends Node {
+  constructor() {
+    super();
 
-  node.addInputHandle(
-    new GHandle({
-      id: 'input',
-      name: 'Number',
-      type: 'number',
-      handleType: GHandleType.Input,
-    }),
-  )
+    this.name = "ToString";
 
-  node.addOutputHandle(
-    new GHandle({
-      id: 'output',
-      name: 'String',
-      type: 'string',
-      defaultValue: '',
-      handleType: GHandleType.Output,
-    }),
-  )
+    const inputHandle = new NodeHandle();
+    inputHandle.key = "input";
+    inputHandle.name = "Input";
+    inputHandle.position = HandlePosition.Left;
+    inputHandle.type = "number";
 
-  node.onProcess = async (t) => {
-    const s = await t.getInputValue<number>('input')
-    t.setOutputValue('output', s?.toString())
+    this.handles.push(inputHandle);
+
+    const outputHandle = new NodeHandle();
+    outputHandle.key = "output";
+    outputHandle.name = "Output";
+    outputHandle.position = HandlePosition.Right;
+    outputHandle.type = "string";
+
+    this.handles.push(outputHandle);
   }
-
-  return node
 }

@@ -2,12 +2,11 @@
 import { GraphRenderer } from '../../src'
 import { setup } from './editor'
 
-const workspace = setup()
 </script>
 
 <template>
   <div class="full-screen">
-    <GraphRenderer :workspace="workspace" />
+    <GraphRenderer :setup="setup" />
   </div>
 </template>
 

@@ -52,6 +52,7 @@ export class Workspace implements IPersistent<IWorkspace> {
     }
 
     this._nodes.push(node);
+    return node
   }
 
   removeNodeById(id: number) {

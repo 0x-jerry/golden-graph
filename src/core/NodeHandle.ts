@@ -1,10 +1,11 @@
+import type { Arrayable } from "@0x-jerry/utils";
 import { HandlePosition } from "./HandlePosition";
 import type { Node } from "./Node";
 import type { IPersistent } from "./Persistent";
 import type { INodeHandle } from "./types";
 
 export class NodeHandle implements IPersistent<INodeHandle> {
-  type = "default";
+  type: Arrayable<string> = "default";
 
   key = "";
 
