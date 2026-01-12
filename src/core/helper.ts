@@ -9,7 +9,9 @@ export function createIncrementIdGenerator() {
       return ++id;
     },
     current() {
-      return id
-    }
+      return id;
+    },
   };
 }
+
+export type Factory<T> = { new (): T };

@@ -1,44 +1,49 @@
+import { reactive } from "vue";
 import type { IPersistent } from "./Persistent";
 import type { ICoordinate, IVec2 } from "./types";
 
 export class CoordSystem implements IPersistent<ICoordinate> {
   /**
-   * Coord system origin position
+   * Coord system _state position
    */
-  origin = {
+  _state = reactive({
     x: 0,
     y: 0,
-  };
+    scale: 1,
+  });
 
-  scale = 1;
+  get scale() {
+    return this._state.scale
+  }
+
 
   zoomAt(point: IVec2, scale: number) {
     const dx = point.x / scale - point.x / this.scale;
     const dy = point.y / scale - point.y / this.scale;
 
-    this.origin.x += dx;
-    this.origin.y += dy;
+    this._state.x += dx;
+    this._state.y += dy;
 
-    this.scale = scale;
+    this._state.scale = scale;
   }
 
   move(x: number, y: number) {
-    this.origin.x += x / this.scale;
-    this.origin.y += y / this.scale;
+    this._state.x += x / this.scale;
+    this._state.y += y / this.scale;
   }
 
   /**
    * Covert coord system to screen system
    */
   x(rawX: number): number {
-    return (this.origin.x + rawX) * this.scale;
+    return (this._state.x + rawX) * this.scale;
   }
 
   /**
    * Covert coord system to screen system
    */
   y(rawY: number): number {
-    return (this.origin.y + rawY) * this.scale;
+    return (this._state.y + rawY) * this.scale;
   }
 
   getCoordStyle(pos: IVec2) {

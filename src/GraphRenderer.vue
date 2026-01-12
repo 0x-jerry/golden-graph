@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import type { GWorkspace } from './core'
 import CoordSystem from './CoordSystem.vue';
+import type { Workspace } from './core';
 import GraphWorkspace from './GraphWorkspace.vue'
-import { useGraph } from './hooks'
+import { useWorkspace } from './hooks';
 
 export interface GraphRendererProps {
-  workspace: GWorkspace
+  setup?: (workspace: Workspace) => void
 }
 
 const props = defineProps<GraphRendererProps>()
 
-useGraph.provide({
-  workspace: props.workspace,
-})
+const ws = useWorkspace.provide()
+
+props.setup?.(ws)
+
 </script>
 
 <template>

@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-import type { GHandle } from '../../core'
+import type { NodeHandle } from '../core';
 
 export interface GraphHandle {
-  handle: GHandle
+  handle: NodeHandle
 }
 
 const props = defineProps<GraphHandle>()
 </script>
 
 <template>
-  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.id">
+  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.key">
     <template v-if="handle.isInput">
       <div class="r-joint"></div>
       <div class="r-handle-name">{{ handle.name }}</div>

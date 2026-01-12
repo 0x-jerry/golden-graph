@@ -1,10 +1,11 @@
+import { shallowRef } from "vue";
 import type { NodeHandle } from "./NodeHandle";
 import type { IPersistent } from "./Persistent";
 import type { IEdge } from "./types";
 
 export class Edge implements IPersistent<IEdge> {
-  start?: NodeHandle;
-  end?: NodeHandle;
+  _start = shallowRef<NodeHandle>();
+  _end = shallowRef<NodeHandle>();
 
   toJSON(): IEdge {
     throw new Error("Method not implemented.");

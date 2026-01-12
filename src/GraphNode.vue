@@ -2,15 +2,15 @@
 import { useDraggable } from '@vueuse/core'
 import { reactive, useTemplateRef } from 'vue'
 import GraphHandle from './handles/GraphHandle.vue'
-import { useCoordSystem, useGraphNode } from './hooks'
+import { useCoordSystem, useNode } from './hooks'
 
 export interface GraphNodeProps {
-  nodeId: string
+  nodeId: number
 }
 
 const props = defineProps<GraphNodeProps>()
 
-const node = useGraphNode(() => props.nodeId)
+const node = useNode.provide(() => props.nodeId)
 
 const coord = useCoordSystem()!
 
@@ -33,10 +33,10 @@ useDraggable(draggableEl, {
 <template>
   <div class="r-node" :style="{ '--x': state.x + 'px', '--y': state.y + 'px' }" :node-id="node.id">
     <div class="r-node-header" ref="draggableEl">
-      <div class="r-node-title">{{ node.title }}</div>
+      <div class="r-node-name">{{ node.name }}</div>
     </div>
 
-    <GraphHandle v-for="handle in node.getHandles()" :key="handle.id" :handle="handle" />
+    <GraphHandle v-for="handle in node.handles" :key="handle.key" :handle="handle" />
   </div>
 </template>
 

@@ -1,23 +1,61 @@
+import { shallowReactive } from "vue";
 import { CoordSystem } from "./CoordSystem";
 import type { Edge } from "./Edge";
-import { createIncrementIdGenerator } from "./helper";
+import { createIncrementIdGenerator, type Factory } from "./helper";
 import type { Node } from "./Node";
 import type { IPersistent } from "./Persistent";
 import type { IWorkspace } from "./types";
+import { Register } from "./Register";
+import { remove } from "@0x-jerry/utils";
 
 export class Workspace implements IPersistent<IWorkspace> {
   version = "1.0.0";
   id: number;
 
-  _nodes: Node[] = [];
-  _edges: Edge[] = [];
+  _nodes: Node[] = shallowReactive([]);
+  _edges: Edge[] = shallowReactive([]);
 
-  _coord = new CoordSystem()
 
   _idGenerator = createIncrementIdGenerator();
 
+  _nodeRegister = new Register<Factory<Node>>();
+
+  readonly coord = new CoordSystem();
+
+  get nodes() {
+    return this._nodes;
+  }
+
+  get edges() {
+    return this._edges;
+  }
+
   constructor() {
     this.id = this.nextId();
+  }
+
+  registerNode<T extends Node>(type: string, node: Factory<T>) {
+    this._nodeRegister.set(type, node);
+  }
+
+  addNode(type: string, opt?: Record<string, unknown>) {
+    const factory = this._nodeRegister.get(type);
+    if (!factory) {
+      throw new Error(`Node [${type}] is not registered!`);
+    }
+
+    const node = new factory();
+    node.id = this.nextId();
+
+    if (opt) {
+      node.updateByOption(opt);
+    }
+
+    this._nodes.push(node);
+  }
+
+  removeNodeById(id: number) {
+    return remove(this._nodes, (n) => n.id === id);
   }
 
   nextId() {

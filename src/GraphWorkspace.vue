@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import GraphNode from './GraphNode.vue'
-import { useGraph } from './hooks'
+import { useWorkspace } from './hooks';
 
-const graph = useGraph()!
+const workspace = useWorkspace()!
 </script>
 
 <template>
@@ -10,7 +10,7 @@ const graph = useGraph()!
     <svg class="r-connections" xmlns="http://www.w3.org/2000/svg">
       <!-- <CubicBezier v-bind="curveTest"  /> -->
     </svg>
-    <GraphNode v-for="id in graph.nodeIds" :key="id" :node-id="id" />
+    <GraphNode v-for="node in workspace.nodes" :key="node.id" :node-id="node.id" />
   </div>
 </template>
 

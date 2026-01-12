@@ -26,14 +26,6 @@ export class NodeHandle implements IPersistent<INodeHandle> {
     return this._node;
   }
 
-  update(newValue?: unknown) {
-    this._node?.setData(this.key, newValue);
-  }
-
-  getValue() {
-    return this._node?.getData(this.key);
-  }
-
   setNode(node: Node) {
     this._node = node;
   }
