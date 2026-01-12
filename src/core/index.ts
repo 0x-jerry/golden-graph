@@ -1,5 +1,6 @@
 export * from './Edge'
-export * from './Group'
-export * from './Handle'
+export * from './NodeHandle'
 export * from './Node'
 export * from './Workspace'
+
+export * from './types'

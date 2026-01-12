@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useDraggable } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
-import type { IVec2 } from '../math'
+import type { IVec2 } from './math'
 import { useCoordSystem } from './hooks'
 
 export interface GroupNodeProps {

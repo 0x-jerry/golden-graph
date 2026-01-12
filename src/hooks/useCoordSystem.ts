@@ -1,8 +1,9 @@
 import { defineContext } from '@0x-jerry/vue-kit'
 import { reactive } from 'vue'
-import type { IVec2 } from '../../math'
+import type { IVec2 } from '../math'
+import type { ICoordinate } from '../core'
 
-class CoordSystem {
+class CoordSystem implements ICoordinate {
   /**
    * Coord system origin position
    */
@@ -51,8 +52,10 @@ class CoordSystem {
   }
 }
 
+export type IUseCoordSystemReturn = CoordSystem
+
 export const useCoordSystem = defineContext(Symbol.for('coord-system'), () => {
-  const state = reactive(new CoordSystem())
+  const state = new CoordSystem()
 
   return state
 })

@@ -1,8 +1,8 @@
 import { remove } from '@0x-jerry/utils'
 import { defineContext } from '@0x-jerry/vue-kit'
 import { shallowReactive } from 'vue'
-import type { GWorkspace } from '../../core'
-import { ModelManagerChangedType } from '../../core/ModelManager'
+import type { GWorkspace } from '../core'
+import { ModelManagerChangedType } from '../core/ModelManager'
 import { useCoordSystem } from './useCoordSystem'
 import { useGraphEvent } from './useGraphEvent'
 

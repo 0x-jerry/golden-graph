@@ -1,36 +1,34 @@
-import { GEdge } from './Edge'
-import { EdgesManager } from './EdgesManager'
-import type { GHandle } from './Handle'
-import { GModel } from './Model'
-import { ModelManager } from './ModelManager'
-import type { GNode } from './Node'
+import { CoordSystem } from "./CoordSystem";
+import type { Edge } from "./Edge";
+import { createIncrementIdGenerator } from "./helper";
+import type { Node } from "./Node";
+import type { IPersistent } from "./Persistent";
+import type { IWorkspace } from "./types";
 
-export class GWorkspace extends GModel {
-  nodes = new ModelManager<GNode>()
-  edges = new EdgesManager()
+export class Workspace implements IPersistent<IWorkspace> {
+  version = "1.0.0";
+  id: number;
 
-  addNode(node: GNode) {
-    this.nodes.add(node)
+  _nodes: Node[] = [];
+  _edges: Edge[] = [];
+
+  _coord = new CoordSystem()
+
+  _idGenerator = createIncrementIdGenerator();
+
+  constructor() {
+    this.id = this.nextId();
   }
 
-  connect(startHandle: GHandle, endHandle: GHandle) {
-    if (startHandle.valueType !== endHandle.valueType) {
-      return
-    }
+  nextId() {
+    return this._idGenerator.next();
+  }
 
-    if (startHandle.handleType === endHandle.handleType) {
-      return
-    }
+  toJSON(): IWorkspace {
+    throw new Error("Method not implemented.");
+  }
 
-    if (startHandle.node === endHandle.node) {
-      return
-    }
-
-    const edge = new GEdge(startHandle, endHandle)
-
-    this.edges.add(edge)
-
-    startHandle.onConnected(endHandle)
-    endHandle.onConnected(startHandle, true)
+  fromJSON(data: IWorkspace): void {
+    throw new Error("Method not implemented.");
   }
 }

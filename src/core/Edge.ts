@@ -1,14 +1,16 @@
-import type { GHandle } from './Handle'
-import { GModel } from './Model'
+import type { NodeHandle } from "./NodeHandle";
+import type { IPersistent } from "./Persistent";
+import type { IEdge } from "./types";
 
-export class GEdge extends GModel {
-  start: GHandle
-  end: GHandle
+export class Edge implements IPersistent<IEdge> {
+  start?: NodeHandle;
+  end?: NodeHandle;
 
-  constructor(start: GHandle, end: GHandle, id?: string) {
-    super(id)
+  toJSON(): IEdge {
+    throw new Error("Method not implemented.");
+  }
 
-    this.start = start
-    this.end = end
+  fromJSON(data: IEdge): void {
+    throw new Error("Method not implemented.");
   }
 }

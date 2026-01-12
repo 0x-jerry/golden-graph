@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
-import type { IVec2 } from '../math';
+import type { IVec2 } from './math';
 
 export interface CubicBezierProps {
   start: IVec2

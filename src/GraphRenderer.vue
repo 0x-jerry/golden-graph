@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GWorkspace } from '../core'
+import type { GWorkspace } from './core'
 import CoordSystem from './CoordSystem.vue';
 import GraphWorkspace from './GraphWorkspace.vue'
 import { useGraph } from './hooks'
