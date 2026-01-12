@@ -6,13 +6,13 @@ import { ModelManagerChangedType } from '../../core/ModelManager'
 import { useCoordSystem } from './useCoordSystem'
 import { useGraphEvent } from './useGraphEvent'
 
-interface IuseGraphOption {
+interface IUseGraphOption {
   workspace: GWorkspace
 }
 
 export const useGraph = defineContext(
   Symbol.for('g-graph'),
-  (opt: IuseGraphOption) => {
+  (opt: IUseGraphOption) => {
     const { workspace } = opt
 
     const coord = useCoordSystem.provide()
