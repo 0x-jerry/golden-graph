@@ -32,6 +32,10 @@ export class Node implements IPersistent<INode> {
 
   _workspace?: Workspace
 
+  get type() {
+    return this._type
+  }
+
   get workspace() {
     if (!this._workspace) {
       throw new Error('Workspace is not set!')

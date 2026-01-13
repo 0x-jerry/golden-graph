@@ -1,4 +1,5 @@
 export * from './Edge'
+export * from './Executor'
 export * from './HandlePosition'
 export * from './Node'
 export * from './NodeHandle'
