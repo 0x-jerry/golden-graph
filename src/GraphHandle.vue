@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { useElementHover } from "@vueuse/core";
+import { computed, useTemplateRef } from "vue";
 import { useConnectionGesture, useNodeHandle } from "./hooks";
 
 export interface GraphHandleProps {
@@ -10,19 +12,52 @@ const props = defineProps<GraphHandleProps>();
 const handle = useNodeHandle(() => props.handleKey);
 
 const gesture = useConnectionGesture()!
+
+const jointEl = useTemplateRef('joint-el')
+
+const isHovering = useElementHover(jointEl)
+
+const jointProps = computed(() => {
+  const props = {
+    class: ['r-joint'],
+    role: 'handle-joint',
+    onPointerdown: () => gesture.startConnection(handle.value),
+    onPointerup: () => gesture.endConnection(handle.value),
+  }
+
+  updateClasses()
+
+  return props
+
+  function updateClasses() {
+    const { isConnectingHandle, handle: gHandle } = gesture.state
+
+    if (!isConnectingHandle || !gHandle || gHandle === handle.value) {
+      return
+    }
+
+    if (!handle.value.canConnectTo(gHandle)) {
+      props.class.push('r-joint-fade')
+
+      return
+    }
+
+    if (isHovering.value) {
+      props.class.push('r-joint-ring')
+    }
+  }
+})
 </script>
 
 <template>
   <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.key">
     <template v-if="handle.isInput">
-      <div class="r-joint" role="handle-joint" @pointerdown="gesture.startConnection(handle)"
-        @pointerup="gesture.endConnection(handle)"></div>
+      <div ref="joint-el" v-bind="jointProps" />
       <div class="r-handle-name">{{ handle.name }}</div>
     </template>
     <template v-else>
       <div class="r-handle-name">{{ handle.name }}</div>
-      <div class="r-joint" role="handle-joint" @pointerdown="gesture.startConnection(handle)"
-        @pointerup="gesture.endConnection(handle)" />
+      <div ref="joint-el" v-bind="jointProps" />
     </template>
   </div>
 </template>
@@ -41,6 +76,14 @@ const gesture = useConnectionGesture()!
   background: red;
 
   pointer-events: auto;
+}
+
+.r-joint-fade {
+  opacity: 0.3;
+}
+
+.r-joint-ring {
+  box-shadow: 0 0 10px 2px red;
 }
 
 .r-handle {

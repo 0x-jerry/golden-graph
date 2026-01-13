@@ -1,17 +1,6 @@
-import type { HandlePosition } from './HandlePosition'
-
 export interface IVec2 {
   x: number
   y: number
-}
-
-export interface INodeHandle {
-  key: string
-  type: string[]
-
-  name: string
-
-  position: HandlePosition
 }
 
 export interface INode {

@@ -2,10 +2,21 @@ import { getNodeHandleDom } from './dom'
 import { HandlePosition } from './HandlePosition'
 import { isIntersected } from './helper'
 import type { Node } from './Node'
-import type { INodeHandle, INodeHandleLoc } from './types'
+import type { INodeHandleLoc } from './types'
 
 export enum NodeHandleType {
   All = '*',
+}
+
+export interface INodeHandleConfig {
+  key: string
+  type: string[]
+
+  name: string
+
+  position: HandlePosition
+
+  multiple?: boolean
 }
 
 export class NodeHandle {
@@ -16,6 +27,8 @@ export class NodeHandle {
   name = 'Default Handle'
 
   position = HandlePosition.None
+
+  multiple = false
 
   _node?: Node
 
@@ -40,6 +53,11 @@ export class NodeHandle {
     }
 
     return this._node
+  }
+
+  is(loc: INodeHandleLoc) {
+    const l = this.loc
+    return l.id === loc.id && l.key === loc.key
   }
 
   getDom() {
@@ -82,6 +100,10 @@ export class NodeHandle {
       return false
     }
 
+    if (this.node === handle.node) {
+      return false
+    }
+
     if (includeTypeAll(this.type) || includeTypeAll(handle.type)) {
       return true
     }
@@ -89,7 +111,7 @@ export class NodeHandle {
     return isIntersected(this.type, handle.type)
   }
 
-  fromConfig(data: INodeHandle): void {
+  fromConfig(data: INodeHandleConfig): void {
     this.key = data.key
     this.name = data.name
     this.type = data.type

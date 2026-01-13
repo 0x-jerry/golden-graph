@@ -1,17 +1,20 @@
 import { defineContext } from '@0x-jerry/vue-kit'
 import { useEventListener } from '@vueuse/core'
-import { reactive } from 'vue'
-import type { IVec2, NodeHandle } from '../core'
+import { reactive, shallowRef } from 'vue'
+import type { IVec2, NodeHandle, Workspace } from '../core'
 
 export interface UseGestureOptions {
-  onCreateEdge?(start: NodeHandle, end: NodeHandle): void
+  workspace: Workspace
 }
 
 export const useConnectionGesture = defineContext(
   Symbol.for('graph-gesture'),
   (opt: UseGestureOptions) => {
+    const ws = opt.workspace
+
     const state = reactive({
       isConnectingHandle: false,
+      handle: shallowRef<NodeHandle>(),
       start: {
         x: 0,
         y: 0,
@@ -21,10 +24,6 @@ export const useConnectionGesture = defineContext(
         y: 0,
       },
     })
-
-    const data = {
-      startHandle: null as null | NodeHandle,
-    }
 
     useEventListener('pointerup', () => {
       if (!state.isConnectingHandle) {
@@ -41,34 +40,62 @@ export const useConnectionGesture = defineContext(
     }
 
     function startConnection(handle: NodeHandle) {
-      data.startHandle = handle
+      state.handle = getStartHandle()
       state.isConnectingHandle = true
 
       const pos = handle.getJointDomPosition()
 
       state.start = { ...pos }
       state.end = { ...pos }
+
+      if (state.handle !== handle) {
+        if (handle.isInput) {
+          state.end = state.handle.getJointDomPosition()
+        } else {
+          state.start = state.handle.getJointDomPosition()
+        }
+      }
+
+
+      return
+
+      function getStartHandle() {
+        if (handle.multiple) {
+          return handle
+        }
+
+        const [edge] = ws.queryEdges(handle.loc)
+        if (!edge) {
+          return handle
+        }
+
+        ws.removeEdgeByIds(edge.id)
+
+        const otherHandle = edge.start === handle ? edge.end : edge.start
+
+        return otherHandle
+      }
     }
 
     function endConnection(handle?: NodeHandle) {
-      if (!data.startHandle) {
+      if (!state.handle) {
         return
       }
 
       if (handle) {
-        opt.onCreateEdge?.(data.startHandle, handle)
+        ws.connect(state.handle, handle)
       }
 
       state.isConnectingHandle = false
-      data.startHandle = null
+      state.handle = undefined
     }
 
     function moveConnection(pos: IVec2) {
-      if (!data.startHandle) {
+      if (!state.handle) {
         return
       }
 
-      if (data.startHandle.isInput) {
+      if (state.handle.isInput) {
         state.end = pos
       } else {
         state.start = pos

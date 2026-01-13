@@ -1,8 +1,8 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
 import { shallowReactive } from 'vue'
-import { NodeHandle } from './NodeHandle'
+import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
-import type { INode, INodeHandle, IVec2, ObjectAny } from './types'
+import type { INode, IVec2, ObjectAny } from './types'
 import type { Workspace } from './Workspace'
 
 export interface NodeBaseUpdateOptions {
@@ -12,7 +12,7 @@ export interface NodeBaseUpdateOptions {
   data?: ObjectAny
 }
 
-export interface INodeHandleOptions extends Omit<INodeHandle, 'type'> {
+export interface INodeHandleOptions extends Omit<INodeHandleConfig, 'type'> {
   value?: any
   type: Arrayable<string>
 }

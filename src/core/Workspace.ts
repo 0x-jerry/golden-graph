@@ -1,13 +1,14 @@
-import { nanoid, remove } from '@0x-jerry/utils'
+import { type Arrayable, ensureArray, nanoid, remove } from '@0x-jerry/utils'
 import { shallowReactive } from 'vue'
 import { CoordSystem } from './CoordSystem'
 import { Edge } from './Edge'
+import { HandlePosition } from './HandlePosition'
 import { createIncrementIdGenerator, type Factory } from './helper'
 import type { Node, NodeBaseUpdateOptions } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
-import type { IWorkspace } from './types'
+import type { INodeHandleLoc, IWorkspace } from './types'
 
 export class Workspace implements IPersistent<IWorkspace> {
   version = '1.0.0'
@@ -54,8 +55,8 @@ export class Workspace implements IPersistent<IWorkspace> {
     return node
   }
 
-  removeNodeById(id: number) {
-    return remove(this._nodes, (n) => n.id === id)
+  removeNodeByIds(...ids: number[]) {
+    return remove(this._edges, (e) => ids.includes(e.id))
   }
 
   getNode(id: number) {
@@ -72,7 +73,7 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   connect(start: NodeHandle, end: NodeHandle) {
     if (!this.canConnect(start, end)) {
-      console.warn("handle %o can not connect to handle %o", start.loc, end.loc)
+      console.warn('handle %o can not connect to handle %o', start.loc, end.loc)
       return
     }
 
@@ -83,9 +84,31 @@ export class Workspace implements IPersistent<IWorkspace> {
     edge.setStart(start)
     edge.setEnd(end)
 
+    if (!start.multiple) {
+      const edges = this.queryEdges(start.loc)
+      this.removeNodeByIds(...edges.map((e) => e.id))
+    }
+
+    if (!end.multiple) {
+      const edges = this.queryEdges(end.loc)
+      this.removeNodeByIds(...edges.map((e) => e.id))
+    }
+
     this._edges.push(edge)
 
     return edge
+  }
+
+  removeEdgeByIds(...ids: number[]) {
+    remove(this._edges, (e) => ids.includes(e.id))
+  }
+
+  queryEdges(loc: INodeHandleLoc) {
+    const filtered = this._edges.filter((edge) => {
+      return edge.start.is(loc) || edge.end.is(loc)
+    })
+
+    return filtered
   }
 
   nextId() {

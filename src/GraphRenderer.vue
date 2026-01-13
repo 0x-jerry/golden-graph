@@ -14,9 +14,7 @@ const props = defineProps<GraphRendererProps>()
 const ws = useWorkspace.provide()
 
 useConnectionGesture.provide({
-  onCreateEdge(start, end) {
-    ws.connect(start, end)
-  },
+  workspace: ws
 })
 
 props.setup?.(ws)
