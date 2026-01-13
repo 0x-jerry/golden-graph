@@ -1,8 +1,8 @@
 <script lang="ts" setup>
+import { useMounted } from "@vueuse/core";
 import { computed } from "vue";
 import CubicBezier from "./CubicBezier.vue";
 import { useEdge } from "./hooks/useEdge";
-import { useMounted } from "@vueuse/core";
 
 export interface GraphEdgeProps {
   edgeId: number;

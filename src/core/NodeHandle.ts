@@ -1,52 +1,52 @@
-import { HandlePosition } from "./HandlePosition";
-import type { Node } from "./Node";
-import type { INodeHandle } from "./types";
-import { getNodeHandleDom } from "./dom";
-import { isIntersected } from "./helper";
+import { getNodeHandleDom } from './dom'
+import { HandlePosition } from './HandlePosition'
+import { isIntersected } from './helper'
+import type { Node } from './Node'
+import type { INodeHandle } from './types'
 
-export class NodeHandle  {
-  type: string[] = ["*"];
+export class NodeHandle {
+  type: string[] = ['*']
 
-  key = "";
+  key = ''
 
-  name = "Default Handle";
+  name = 'Default Handle'
 
-  position = HandlePosition.None;
+  position = HandlePosition.None
 
-  _node?: Node;
+  _node?: Node
 
   get isOutput() {
-    return this.position === HandlePosition.Right;
+    return this.position === HandlePosition.Right
   }
 
   get isInput() {
-    return this.position === HandlePosition.Left;
+    return this.position === HandlePosition.Left
   }
 
   get node() {
     if (!this._node) {
-      throw new Error(`Node is not set`);
+      throw new Error('Node is not set')
     }
 
-    return this._node;
+    return this._node
   }
 
   getDom() {
-    const nodeId = this.node.id;
-    const wsId = this.node.workspace.id;
+    const nodeId = this.node.id
+    const wsId = this.node.workspace.id
 
-    return getNodeHandleDom(wsId, nodeId, this.key);
+    return getNodeHandleDom(wsId, nodeId, this.key)
   }
 
   getJointDom() {
     return this.getDom()?.querySelector(`[role="handle-joint"]`) as
       | HTMLElement
       | null
-      | undefined;
+      | undefined
   }
 
   setNode(node: Node) {
-    this._node = node;
+    this._node = node
   }
 
   canConnectTo(handle: NodeHandle): boolean {

@@ -1,9 +1,9 @@
-import { shallowReactive } from "vue";
-import type { IPersistent } from "./Persistent";
-import type { INode, INodeHandle, IVec2, ObjectAny } from "./types";
-import { NodeHandle } from "./NodeHandle";
-import type { Workspace } from "./Workspace";
-import { ensureArray, type Arrayable } from "@0x-jerry/utils";
+import { type Arrayable, ensureArray } from '@0x-jerry/utils'
+import { shallowReactive } from 'vue'
+import { NodeHandle } from './NodeHandle'
+import type { IPersistent } from './Persistent'
+import type { INode, INodeHandle, IVec2, ObjectAny } from './types'
+import type { Workspace } from './Workspace'
 
 export interface NodeBaseUpdateOptions {
   name?: string
@@ -12,7 +12,7 @@ export interface NodeBaseUpdateOptions {
   data?: ObjectAny
 }
 
-export interface INodeHandleOptions extends Omit< INodeHandle, 'type'> {
+export interface INodeHandleOptions extends Omit<INodeHandle, 'type'> {
   value?: any
   type: Arrayable<string>
 }
@@ -20,53 +20,53 @@ export interface INodeHandleOptions extends Omit< INodeHandle, 'type'> {
 export class Node implements IPersistent<INode> {
   _type = 'DefaultNode'
 
-  id = 0;
-  name = "Node";
-  description?: string;
+  id = 0
+  name = 'Node'
+  description?: string
 
-  _data: Record<string, unknown> = shallowReactive({});
+  _data: Record<string, unknown> = shallowReactive({})
 
-  readonly pos = shallowReactive({ x: 0, y: 0 });
+  readonly pos = shallowReactive({ x: 0, y: 0 })
 
-  _handles: NodeHandle[] = shallowReactive([]);
+  _handles: NodeHandle[] = shallowReactive([])
 
-  _workspace?: Workspace;
+  _workspace?: Workspace
 
   get workspace() {
     if (!this._workspace) {
-      throw new Error(`Workspace is not set!`)
+      throw new Error('Workspace is not set!')
     }
 
-    return this._workspace;
+    return this._workspace
   }
 
   get handles() {
-    return this._handles as readonly NodeHandle[];
+    return this._handles as readonly NodeHandle[]
   }
 
   getData<T>(key: string): T | undefined {
-    return this._data[key] as T | undefined;
+    return this._data[key] as T | undefined
   }
 
   setData(key: string, value: unknown) {
-    this._data[key] = value;
+    this._data[key] = value
   }
 
   setWorkspace(w: Workspace) {
-    this._workspace = w;
+    this._workspace = w
   }
 
   updateByOption<T extends NodeBaseUpdateOptions>(opt: T) {
     if (opt.name) {
-      this.name = opt.name;
+      this.name = opt.name
     }
 
     if (opt.description) {
-      this.description = opt.description;
+      this.description = opt.description
     }
 
     if (opt.data) {
-      Object.assign(this._data, opt.data);
+      Object.assign(this._data, opt.data)
     }
 
     if (opt.pos) {
@@ -78,7 +78,7 @@ export class Node implements IPersistent<INode> {
     const handle = new NodeHandle()
     handle.fromConfig({
       ...conf,
-      type: ensureArray(conf.type)
+      type: ensureArray(conf.type),
     })
 
     handle.setNode(this)
@@ -91,19 +91,19 @@ export class Node implements IPersistent<INode> {
   }
 
   getHandle(key: string) {
-    return this.handles.find((n) => n.key === key);
+    return this.handles.find((n) => n.key === key)
   }
 
-  onProcess?: (instance: this) => unknown;
+  onProcess?: (instance: this) => unknown
 
   move(x: number, y: number) {
-    this.pos.x += x;
-    this.pos.y += y;
+    this.pos.x += x
+    this.pos.y += y
   }
 
   moveTo(x: number, y: number) {
-    this.pos.x = x;
-    this.pos.y = y;
+    this.pos.x = x
+    this.pos.y = y
   }
 
   toJSON(): INode {
@@ -114,7 +114,7 @@ export class Node implements IPersistent<INode> {
       pos: {
         x: this.pos.x,
         y: this.pos.y,
-      }
+      },
     }
   }
 

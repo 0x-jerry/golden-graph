@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { useDraggable } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
-import type { IVec2 } from './math'
 import { useCoordSystem } from './hooks'
+import type { IVec2 } from './math'
 
 export interface GroupNodeProps {
   width: number

@@ -1,24 +1,24 @@
-import { computed, type MaybeRefOrGetter, toValue } from "vue";
-import { useWorkspace } from "./useWorkspace";
-import { defineContext } from "@0x-jerry/vue-kit";
+import { defineContext } from '@0x-jerry/vue-kit'
+import { computed, type MaybeRefOrGetter, toValue } from 'vue'
+import { useWorkspace } from './useWorkspace'
 
 export const useNode = defineContext(
-  "workspace-node",
+  'workspace-node',
   (id: MaybeRefOrGetter<number>) => {
-    const workspace = useWorkspace()!;
+    const workspace = useWorkspace()!
 
     const node = computed(() => {
-      const _id = toValue(id);
+      const _id = toValue(id)
 
-      const n = workspace.nodes.find((n) => n.id === _id);
+      const n = workspace.nodes.find((n) => n.id === _id)
 
       if (!n) {
-        throw new Error(`Can not find node by id ${_id}`);
+        throw new Error(`Can not find node by id ${_id}`)
       }
 
-      return n;
-    });
+      return n
+    })
 
-    return node;
-  }
-);
+    return node
+  },
+)

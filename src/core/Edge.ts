@@ -1,30 +1,30 @@
-import { shallowRef } from "vue";
-import type { NodeHandle } from "./NodeHandle";
-import type { IPersistent } from "./Persistent";
-import type { IEdge, INodeHandleLoc } from "./types";
-import type { Workspace } from "./Workspace";
+import { shallowRef } from 'vue'
+import type { NodeHandle } from './NodeHandle'
+import type { IPersistent } from './Persistent'
+import type { IEdge, INodeHandleLoc } from './types'
+import type { Workspace } from './Workspace'
 
 export class Edge implements IPersistent<IEdge> {
-  id = 0;
+  id = 0
 
   type = 'default'
 
-  _start = shallowRef<NodeHandle>();
-  _end = shallowRef<NodeHandle>();
+  _start = shallowRef<NodeHandle>()
+  _end = shallowRef<NodeHandle>()
 
   _workspace?: Workspace
 
   get start() {
-    return this._start.value as NodeHandle;
+    return this._start.value as NodeHandle
   }
 
   get end() {
-    return this._end.value as NodeHandle;
+    return this._end.value as NodeHandle
   }
 
   get workspace() {
     if (!this._workspace) {
-      throw new Error(`Workspace is not set!`)
+      throw new Error('Workspace is not set!')
     }
     return this._workspace
   }
@@ -34,11 +34,11 @@ export class Edge implements IPersistent<IEdge> {
   }
 
   setStart(start: NodeHandle) {
-    this._start.value = start;
+    this._start.value = start
   }
 
   setEnd(end: NodeHandle) {
-    this._end.value = end;
+    this._end.value = end
   }
 
   toJSON(): IEdge {
@@ -47,12 +47,12 @@ export class Edge implements IPersistent<IEdge> {
       type: this.type,
       start: {
         id: this.start.node.id,
-        key: this.start.key
+        key: this.start.key,
       },
       end: {
         id: this.end.node.id,
-        key: this.end.key
-      }
+        key: this.end.key,
+      },
     }
   }
 
@@ -65,12 +65,14 @@ export class Edge implements IPersistent<IEdge> {
   }
 
   _getHandleInstance(handleLoc: INodeHandleLoc) {
-    const node = this.workspace.getNode(handleLoc.id);
+    const node = this.workspace.getNode(handleLoc.id)
 
     const handle = node?.getHandle(handleLoc.key)
 
     if (!handle) {
-      throw new Error(`Can not find handle by node id ${handleLoc.id} and key ${handleLoc.key}`)
+      throw new Error(
+        `Can not find handle by node id ${handleLoc.id} and key ${handleLoc.key}`,
+      )
     }
 
     return handle

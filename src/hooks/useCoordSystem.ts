@@ -1,7 +1,7 @@
-import { useWorkspace } from "./useWorkspace";
+import { useWorkspace } from './useWorkspace'
 
 export function useCoordSystem() {
-  const state = useWorkspace()!;
+  const state = useWorkspace()!
 
-  return state.coord;
+  return state.coord
 }

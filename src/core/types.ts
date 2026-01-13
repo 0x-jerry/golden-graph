@@ -1,68 +1,68 @@
-import type { HandlePosition } from "./HandlePosition";
+import type { HandlePosition } from './HandlePosition'
 
 export interface IVec2 {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
 export interface INodeHandle {
-  key: string;
-  type: string[];
+  key: string
+  type: string[]
 
-  name: string;
+  name: string
 
-  position: HandlePosition;
+  position: HandlePosition
 }
 
 export interface INode {
-  id: number;
-  type: string;
+  id: number
+  type: string
 
-  data?: Record<string, unknown>;
+  data?: Record<string, unknown>
 
-  pos: IVec2;
+  pos: IVec2
 }
 
 export interface INodeHandleLoc {
   /**
    * Node ID
    */
-  id: number;
+  id: number
   /**
    * Handle Key
    */
-  key: string;
+  key: string
 }
 
 export interface IEdge {
-  id: number;
+  id: number
 
-  type: string;
+  type: string
 
-  start: INodeHandleLoc;
+  start: INodeHandleLoc
 
-  end: INodeHandleLoc;
+  end: INodeHandleLoc
 }
 
 export interface ICoordinate {
-  origin: IVec2;
-  scale: number;
+  origin: IVec2
+  scale: number
 }
 
 export interface IWorkspace {
   /**
    * For data migration
    */
-  version: string;
+  version: string
 
   extra: {
     incrementID: number
   }
 
-  coordinate: ICoordinate;
+  coordinate: ICoordinate
 
-  nodes: INode[];
-  edges: IEdge[];
+  nodes: INode[]
+  edges: IEdge[]
 }
 
 export type ObjectAny = Record<string, any>

@@ -1,3 +1,1 @@
-export class Register<T> extends Map<string, T> {
-
-}
+export class Register<T> extends Map<string, T> {}
