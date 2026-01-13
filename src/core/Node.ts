@@ -1,8 +1,19 @@
 import { shallowReactive } from "vue";
 import type { IPersistent } from "./Persistent";
-import type { INode } from "./types";
-import type { NodeHandle } from "./NodeHandle";
+import type { INode, INodeHandle, IVec2, ObjectAny } from "./types";
+import { NodeHandle } from "./NodeHandle";
 import type { Workspace } from "./Workspace";
+
+export interface NodeBaseUpdateOptions {
+  name?: string
+  pos?: IVec2
+  description?: string
+  data?: ObjectAny
+}
+
+export interface INodeHandleOptions extends INodeHandle {
+  value?: any
+}
 
 export class Node implements IPersistent<INode> {
   id = 0;
@@ -41,7 +52,7 @@ export class Node implements IPersistent<INode> {
     this._workspace = w;
   }
 
-  updateByOption(opt: Record<string, any>) {
+  updateByOption<T extends NodeBaseUpdateOptions>(opt: T) {
     if (opt.name) {
       this.name = opt.name;
     }
@@ -55,9 +66,16 @@ export class Node implements IPersistent<INode> {
     }
   }
 
-  addHandle(handle: NodeHandle) {
-    handle.setNode(this);
-    this._handles.push(handle);
+  addHandle(conf: INodeHandleOptions) {
+    const handle = new NodeHandle()
+    handle.fromJSON(conf)
+    handle.setNode(this)
+
+    if (conf.value !== undefined) {
+      this.setData('value', conf.value)
+    }
+
+    this._handles.push(handle)
   }
 
   getHandle(key: string) {

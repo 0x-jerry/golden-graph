@@ -1,16 +1,22 @@
-import { Node, NodeHandle, Workspace } from "../../src/core";
-import { HandlePosition } from "../../src/core/HandlePosition";
+import { Node, Workspace, HandlePosition } from "../../src/core";
 
 export function setup(workspace: Workspace) {
   workspace.registerNode("Number", NumberNode);
   workspace.registerNode("ToString", ToStringNode);
 
-  const n1 = workspace.addNode("Number");
-  n1.moveTo(100, 100);
+  const n1 = workspace.addNode("Number", {
+    pos: {
+      x: 100,
+      y: 100,
+    }
+  });
 
-  const n2 = workspace.addNode("ToString");
-
-  n2.moveTo(200, 200);
+  const n2 = workspace.addNode("ToString", {
+    pos: {
+      x: 200,
+      y: 200
+    }
+  });
 
   workspace.connect(n1.getHandle("output")!, n2.getHandle("input")!);
 
@@ -21,16 +27,15 @@ class NumberNode extends Node {
   constructor() {
     super();
 
-    this.name = "Number Node";
+    this.name = "Number Input";
 
-    const numberHandle = new NodeHandle();
-    numberHandle.key = "output";
-    numberHandle.name = "Number";
-    numberHandle.position = HandlePosition.Right;
-    numberHandle.type = "number";
-
-    this.addHandle(numberHandle);
-    this.setData("output", 10);
+    this.addHandle({
+      key: 'output',
+      name: 'Number',
+      position: HandlePosition.Right,
+      type: 'number',
+      value: 10
+    });
   }
 }
 
@@ -38,22 +43,20 @@ class ToStringNode extends Node {
   constructor() {
     super();
 
-    this.name = "ToString";
+    this.name = "To String";
 
-    const inputHandle = new NodeHandle();
-    inputHandle.key = "input";
-    inputHandle.name = "Input";
-    inputHandle.position = HandlePosition.Left;
-    inputHandle.type = "number";
+    this.addHandle({
+      key: 'input',
+      name: 'Input',
+      type: '*',
+      position: HandlePosition.Left,
+    });
 
-    this.addHandle(inputHandle);
-
-    const outputHandle = new NodeHandle();
-    outputHandle.key = "output";
-    outputHandle.name = "Output";
-    outputHandle.position = HandlePosition.Right;
-    outputHandle.type = "string";
-
-    this.addHandle(outputHandle);
+    this.addHandle({
+      key: 'output',
+      name: 'Output',
+      position: HandlePosition.Right,
+      type: 'string',
+    });
   }
 }

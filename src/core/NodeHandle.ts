@@ -51,10 +51,18 @@ export class NodeHandle implements IPersistent<INodeHandle> {
   }
 
   toJSON(): INodeHandle {
-    throw new Error("Method not implemented.");
+    return {
+      key: this.key,
+      name: this.name,
+      type: this.type,
+      position: this.position
+    }
   }
 
   fromJSON(data: INodeHandle): void {
-    throw new Error("Method not implemented.");
+    this.key = data.key
+    this.name = data.name
+    this.type = data.key
+    this.position = data.position
   }
 }

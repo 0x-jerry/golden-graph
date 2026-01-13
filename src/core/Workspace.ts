@@ -2,7 +2,7 @@ import { shallowReactive } from "vue";
 import { CoordSystem } from "./CoordSystem";
 import { Edge } from "./Edge";
 import { createIncrementIdGenerator, type Factory } from "./helper";
-import type { Node } from "./Node";
+import type { Node, NodeBaseUpdateOptions } from "./Node";
 import type { IPersistent } from "./Persistent";
 import type { IWorkspace } from "./types";
 import { Register } from "./Register";
@@ -34,7 +34,7 @@ export class Workspace implements IPersistent<IWorkspace> {
     this._nodeRegister.set(type, node);
   }
 
-  addNode(type: string, opt?: Record<string, unknown>) {
+  addNode<T extends NodeBaseUpdateOptions>(type: string, opt?: T) {
     const factory = this._nodeRegister.get(type);
     if (!factory) {
       throw new Error(`Node [${type}] is not registered!`);
