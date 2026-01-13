@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDraggable } from '@vueuse/core'
 import { reactive, useTemplateRef } from 'vue'
-import GraphHandle from './handles/GraphHandle.vue'
+import GraphHandle from './GraphHandle.vue'
 import { useCoordSystem, useNode } from './hooks'
 
 export interface GraphNodeProps {

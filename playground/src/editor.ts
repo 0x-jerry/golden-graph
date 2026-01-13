@@ -18,6 +18,13 @@ export function setup(workspace: Workspace) {
     },
   })
 
+  workspace.addNode('ToString', {
+    pos: {
+      x: 300,
+      y: 300,
+    },
+  })
+
   workspace.connect(n1.getHandle('output')!, n2.getHandle('input')!)
 
   return workspace

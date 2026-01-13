@@ -3,35 +3,37 @@ import { clamp } from '@0x-jerry/utils'
 import { useDraggable, useEventListener, useMouseInElement } from '@vueuse/core'
 import { reactive, useTemplateRef } from 'vue'
 import GridPattern from './GridPattern.vue'
-import { useCoordSystem, useSelection } from './hooks'
+import { useConnectionGesture, useCoordSystem, useSelection } from './hooks'
 
 const coord = useCoordSystem()!
+
+const connectionGesture = useConnectionGesture()!
 
 const el = useTemplateRef('el')
 
 const mouseInElement = useMouseInElement(el)
 
-const gesture = reactive({
+const state = reactive({
   shift: false,
   selected: [] as number[],
 })
 
 useEventListener('keydown', (evt) => {
   if (evt.key === 'Shift' || evt.shiftKey) {
-    gesture.shift = true
+    state.shift = true
   }
 })
 
 useEventListener('keyup', (evt) => {
   if (evt.key === 'Shift' || evt.shiftKey) {
-    gesture.shift = false
+    state.shift = false
   }
 })
 
 useDraggable(el, {
   exact: true,
   onStart(position, event) {
-    if (gesture.shift) {
+    if (state.shift) {
       return false
     }
   },
@@ -42,23 +44,23 @@ useDraggable(el, {
 
 useSelection({
   disabled() {
-    return !gesture.shift
+    return !state.shift
   },
   onStart() {
-    gesture.selected = []
+    state.selected = []
   },
   onMove(rect) {
     const selected: number[] = []
     // todo
 
-    gesture.selected = selected
+    state.selected = selected
   },
   onEnd() {
-    const selected = gesture.selected
+    const selected = state.selected
 
     console.log('selected nodes', selected)
 
-    gesture.selected = []
+    state.selected = []
   },
 })
 
@@ -78,10 +80,25 @@ function handleZoom(event: WheelEvent) {
 
   coord.zoomAt(pos, scale)
 }
+
+function handlePointerMove(evt: MouseEvent) {
+  if (!el.value) {
+    return
+  }
+
+  const r = el.value.getBoundingClientRect()
+  const x = evt.clientX - r.left
+  const y = evt.clientY - r.top
+
+  connectionGesture.moveConnection({
+    x,
+    y
+  })
+}
 </script>
 
 <template>
-  <div ref="el" class="coord-system" @wheel="handleZoom">
+  <div ref="el" class="coord-system" @wheel="handleZoom" @pointermove="handlePointerMove">
     <GridPattern />
     <div class="coord-content" :style="coord.getCoordStyle({ x: 0, y: 0 })">
       <slot></slot>

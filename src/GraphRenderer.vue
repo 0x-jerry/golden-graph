@@ -3,6 +3,7 @@ import CoordSystem from './CoordSystem.vue';
 import type { Workspace } from './core';
 import GraphWorkspace from './GraphWorkspace.vue'
 import { useWorkspace } from './hooks';
+import { useConnectionGesture } from './hooks/useConnectionGesture';
 
 export interface GraphRendererProps {
   setup?: (workspace: Workspace) => void
@@ -11,6 +12,12 @@ export interface GraphRendererProps {
 const props = defineProps<GraphRendererProps>()
 
 const ws = useWorkspace.provide()
+
+useConnectionGesture.provide({
+  onCreateEdge(start, end) {
+    ws.connect(start, end)
+  },
+})
 
 props.setup?.(ws)
 

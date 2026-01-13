@@ -72,6 +72,7 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   connect(start: NodeHandle, end: NodeHandle) {
     if (!this.canConnect(start, end)) {
+      console.warn("handle %o can not connect to handle %o", start.loc, end.loc)
       return
     }
 

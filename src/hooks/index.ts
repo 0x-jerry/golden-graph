@@ -1,3 +1,4 @@
+export * from './useConnectionGesture'
 export * from './useCoordSystem'
 export * from './useEdge'
 export * from './useNode'

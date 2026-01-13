@@ -1,28 +1,28 @@
 <script lang="ts" setup>
-import { useNodeHandle } from "../hooks";
+import { useConnectionGesture, useNodeHandle } from "./hooks";
 
-export interface GraphHandle {
+export interface GraphHandleProps {
   handleKey: string;
 }
 
-const props = defineProps<GraphHandle>();
+const props = defineProps<GraphHandleProps>();
 
 const handle = useNodeHandle(() => props.handleKey);
+
+const gesture = useConnectionGesture()!
 </script>
 
 <template>
-  <div
-    class="r-handle"
-    :class="[{ 'is-output': handle.isOutput }]"
-    :handle-key="handle.key"
-  >
+  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.key">
     <template v-if="handle.isInput">
-      <div class="r-joint" role="handle-joint"></div>
+      <div class="r-joint" role="handle-joint" @pointerdown="gesture.startConnection(handle)"
+        @pointerup="gesture.endConnection(handle)"></div>
       <div class="r-handle-name">{{ handle.name }}</div>
     </template>
     <template v-else>
       <div class="r-handle-name">{{ handle.name }}</div>
-      <div class="r-joint" role="handle-joint"></div>
+      <div class="r-joint" role="handle-joint" @pointerdown="gesture.startConnection(handle)"
+        @pointerup="gesture.endConnection(handle)" />
     </template>
   </div>
 </template>
@@ -39,6 +39,8 @@ const handle = useNodeHandle(() => props.handleKey);
   border-radius: var(--size);
 
   background: red;
+
+  pointer-events: auto;
 }
 
 .r-handle {
