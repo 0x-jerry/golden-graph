@@ -14,6 +14,9 @@ const ws = useWorkspace.provide()
 
 props.setup?.(ws)
 
+defineExpose({
+  workspace: ws
+})
 </script>
 
 <template>
