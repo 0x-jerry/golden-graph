@@ -1,4 +1,3 @@
-import type { Arrayable } from "@0x-jerry/utils";
 import type { HandlePosition } from "./HandlePosition";
 
 export interface IVec2 {
@@ -8,7 +7,7 @@ export interface IVec2 {
 
 export interface INodeHandle {
   key: string;
-  type: Arrayable<string>;
+  type: string[];
 
   name: string;
 

@@ -3,6 +3,7 @@ import type { IPersistent } from "./Persistent";
 import type { INode, INodeHandle, IVec2, ObjectAny } from "./types";
 import { NodeHandle } from "./NodeHandle";
 import type { Workspace } from "./Workspace";
+import { ensureArray, type Arrayable } from "@0x-jerry/utils";
 
 export interface NodeBaseUpdateOptions {
   name?: string
@@ -11,8 +12,9 @@ export interface NodeBaseUpdateOptions {
   data?: ObjectAny
 }
 
-export interface INodeHandleOptions extends INodeHandle {
+export interface INodeHandleOptions extends Omit< INodeHandle, 'type'> {
   value?: any
+  type: Arrayable<string>
 }
 
 export class Node implements IPersistent<INode> {
@@ -74,7 +76,11 @@ export class Node implements IPersistent<INode> {
 
   addHandle(conf: INodeHandleOptions) {
     const handle = new NodeHandle()
-    handle.fromConfig(conf)
+    handle.fromConfig({
+      ...conf,
+      type: ensureArray(conf.type)
+    })
+
     handle.setNode(this)
 
     if (conf.value !== undefined) {

@@ -9,6 +9,10 @@ import { Register } from "./Register";
 import { nanoid, remove } from "@0x-jerry/utils";
 import type { NodeHandle } from "./NodeHandle";
 
+class Gesture {
+  constructor(readonly ws: Workspace) {}
+}
+
 export class Workspace implements IPersistent<IWorkspace> {
   version = "1.0.0";
   id = nanoid();
@@ -21,6 +25,8 @@ export class Workspace implements IPersistent<IWorkspace> {
   _nodeRegister = new Register<Factory<Node>>();
 
   readonly coord = new CoordSystem();
+
+  readonly gesture = new Gesture(this);
 
   get nodes() {
     return this._nodes;
@@ -41,9 +47,9 @@ export class Workspace implements IPersistent<IWorkspace> {
     }
 
     const node = new factory();
-    node._type = type
+    node._type = type;
 
-    node.setWorkspace(this)
+    node.setWorkspace(this);
     node.id = this.nextId();
 
     if (opt) {
@@ -59,20 +65,32 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   getNode(id: number) {
-    return this.nodes.find(n => n.id === id);
+    return this.nodes.find((n) => n.id === id);
+  }
+
+  canConnect(start: NodeHandle, end: NodeHandle) {
+    if (start.position === end.position) {
+      return;
+    }
+
+    return start.canConnectTo(end);
   }
 
   connect(start: NodeHandle, end: NodeHandle) {
+    if (!this.canConnect(start, end)) {
+      return;
+    }
+
     const edge = new Edge();
-    edge.setWorkspace(this)
-    edge.id = this.nextId()
+    edge.setWorkspace(this);
+    edge.id = this.nextId();
 
     edge.setStart(start);
     edge.setEnd(end);
 
     this._edges.push(edge);
 
-    return edge
+    return edge;
   }
 
   nextId() {
@@ -80,38 +98,38 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   clear() {
-    this._edges.splice(0)
-    this._nodes.splice(0)
-    this._idGenerator.reset(0)
+    this._edges.splice(0);
+    this._nodes.splice(0);
+    this._idGenerator.reset(0);
   }
 
   toJSON(): IWorkspace {
     return {
       version: this.version,
       coordinate: this.coord.toJSON(),
-      nodes: this.nodes.map(n => n.toJSON()),
-      edges: this.edges.map(n => n.toJSON()),
+      nodes: this.nodes.map((n) => n.toJSON()),
+      edges: this.edges.map((n) => n.toJSON()),
       extra: {
-        incrementID: this._idGenerator.current()
-      }
-    }
+        incrementID: this._idGenerator.current(),
+      },
+    };
   }
 
   fromJSON(data: IWorkspace): void {
-    this._idGenerator.reset(data.extra.incrementID)
+    this._idGenerator.reset(data.extra.incrementID);
 
     for (const node of data.nodes) {
-      const n = this.addNode(node.type)
+      const n = this.addNode(node.type);
 
-      n.fromJSON(node)
+      n.fromJSON(node);
     }
 
     for (const edgeData of data.edges) {
-      const edge = new Edge()
-      edge.setWorkspace(this)
+      const edge = new Edge();
+      edge.setWorkspace(this);
 
-      edge.fromJSON(edgeData)
-      this._edges.push(edge)
+      edge.fromJSON(edgeData);
+      this._edges.push(edge);
     }
   }
 }

@@ -1,11 +1,11 @@
-import type { Arrayable } from "@0x-jerry/utils";
 import { HandlePosition } from "./HandlePosition";
 import type { Node } from "./Node";
 import type { INodeHandle } from "./types";
 import { getNodeHandleDom } from "./dom";
+import { isIntersected } from "./helper";
 
 export class NodeHandle  {
-  type: Arrayable<string> = "default";
+  type: string[] = ["*"];
 
   key = "";
 
@@ -49,10 +49,18 @@ export class NodeHandle  {
     this._node = node;
   }
 
+  canConnectTo(handle: NodeHandle): boolean {
+    if (this.position === handle.position) {
+      return false
+    }
+
+    return isIntersected(this.type, handle.type)
+  }
+
   fromConfig(data: INodeHandle): void {
     this.key = data.key
     this.name = data.name
-    this.type = data.key
+    this.type = data.type
     this.position = data.position
   }
 }
