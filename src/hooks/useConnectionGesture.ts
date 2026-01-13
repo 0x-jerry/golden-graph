@@ -49,13 +49,14 @@ export const useConnectionGesture = defineContext(
       state.end = { ...pos }
 
       if (state.handle !== handle) {
+        const newPos = state.handle.getJointDomPosition()
+
         if (handle.isInput) {
-          state.end = state.handle.getJointDomPosition()
+          state.end = newPos
         } else {
-          state.start = state.handle.getJointDomPosition()
+          state.start = newPos
         }
       }
-
 
       return
 

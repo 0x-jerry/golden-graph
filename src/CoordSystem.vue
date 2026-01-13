@@ -90,10 +90,7 @@ function handlePointerMove(evt: MouseEvent) {
   const x = evt.clientX - r.left
   const y = evt.clientY - r.top
 
-  connectionGesture.moveConnection({
-    x,
-    y
-  })
+  connectionGesture.moveConnection(coord.convertScreenCoord({ x, y }))
 }
 </script>
 

@@ -12,6 +12,13 @@ export class CoordSystem implements IPersistent<ICoordinate> {
     scale: 1,
   })
 
+  get origin() {
+    return {
+      x: this._state.x,
+      y: this._state.y,
+    }
+  }
+
   get scale() {
     return this._state.scale
   }
@@ -34,21 +41,29 @@ export class CoordSystem implements IPersistent<ICoordinate> {
   /**
    * Covert coord system to screen system
    */
-  x(rawX: number): number {
-    return (this._state.x + rawX) * this.scale
+  convertToScreenCoord(pos: IVec2) {
+    return {
+      x: (this._state.x + pos.x) * this.scale,
+      y: (this._state.y + pos.y) * this.scale,
+    }
   }
 
   /**
-   * Covert coord system to screen system
+   * Covert screen system to coord system
    */
-  y(rawY: number): number {
-    return (this._state.y + rawY) * this.scale
+  convertScreenCoord(pos: IVec2) {
+    return {
+      x: pos.x / this.scale - this._state.x,
+      y: pos.y / this.scale - this._state.y,
+    }
   }
 
   getCoordStyle(pos: IVec2) {
+    const p = this.convertToScreenCoord(pos)
+
     return {
-      '--x': `${this.x(pos.x)}px`,
-      '--y': `${this.y(pos.y)}px`,
+      '--x': `${p.x}px`,
+      '--y': `${p.y}px`,
       '--scale': this.scale,
     }
   }
