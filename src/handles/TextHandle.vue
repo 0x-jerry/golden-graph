@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useNodeHandle } from '../hooks/useNodeHandle';
+import type { INodeHandleConfigOptions } from '../core';
+import { useHandleOptions } from './useHandleOptions';
 
-const handle = useNodeHandle()!;
+export interface TextHandleProps extends INodeHandleConfigOptions {
+  content?: string;
+}
 
-const value = computed({
-  get() {
-    return handle.value.getValue()
-  },
-  set(value) {
-    handle.value.setValue(value)
-  }
-})
+const options = useHandleOptions<TextHandleProps>()
 </script>
+
 <template>
   <div>
-    {{ value }}
+    {{ options.content }}
   </div>
 </template>

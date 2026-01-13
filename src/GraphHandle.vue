@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useElementHover } from "@vueuse/core";
 import { computed, useTemplateRef } from "vue";
+import { getHandleComponent } from "./handles";
 import { useConnectionGesture, useNodeHandle } from "./hooks";
 
 export interface GraphHandleProps {
@@ -47,18 +48,19 @@ const jointProps = computed(() => {
     }
   }
 })
+
+const options = computed(() => handle.value.getOptions())
+
+const ContentComponent = computed(() => getHandleComponent(options.value.type))
 </script>
 
 <template>
   <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.key">
-    <template v-if="handle.isInput">
-      <div ref="joint-el" v-bind="jointProps" />
-      <div class="r-handle-name">{{ handle.name }}</div>
-    </template>
-    <template v-else>
-      <div class="r-handle-name">{{ handle.name }}</div>
-      <div ref="joint-el" v-bind="jointProps" />
-    </template>
+    <div ref="joint-el" v-bind="jointProps" />
+
+    <div class="r-handle-content">
+      <component v-if="ContentComponent" :is="ContentComponent" v-bind="options" />
+    </div>
   </div>
 </template>
 
@@ -94,7 +96,7 @@ const jointProps = computed(() => {
   height: 24px;
 
   &.is-output {
-    justify-content: flex-end;
+    flex-direction: row-reverse;
 
     .r-joint {
       left: unset;

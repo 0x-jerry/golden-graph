@@ -2,10 +2,16 @@ import { getNodeHandleDom } from './dom'
 import { HandlePosition } from './HandlePosition'
 import { isIntersected } from './helper'
 import type { Node } from './Node'
-import type { INodeHandleLoc } from './types'
+import type { INodeHandleLoc, ObjectAny } from './types'
 
 export enum NodeHandleType {
   All = '*',
+}
+
+export interface INodeHandleConfigOptions {
+  [key: string]: any
+
+  type: string
 }
 
 export interface INodeHandleConfig {
@@ -17,6 +23,8 @@ export interface INodeHandleConfig {
   position: HandlePosition
 
   multiple?: boolean
+
+  options?: INodeHandleConfigOptions
 }
 
 export class NodeHandle {
@@ -30,7 +38,13 @@ export class NodeHandle {
 
   multiple = false
 
+  _options: ObjectAny = {}
+
   _node?: Node
+
+  getOptions<T extends INodeHandleConfigOptions = INodeHandleConfigOptions>() {
+    return this._options as Readonly<T>
+  }
 
   get loc(): INodeHandleLoc {
     return {
@@ -124,6 +138,8 @@ export class NodeHandle {
     this.name = data.name
     this.type = data.type
     this.position = data.position
+
+    Object.assign(this._options, data.options)
   }
 }
 
