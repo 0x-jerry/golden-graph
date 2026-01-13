@@ -41,6 +41,8 @@ export class Workspace implements IPersistent<IWorkspace> {
     }
 
     const node = new factory();
+    node._type = type
+
     node.setWorkspace(this)
     node.id = this.nextId();
 
@@ -56,8 +58,13 @@ export class Workspace implements IPersistent<IWorkspace> {
     return remove(this._nodes, (n) => n.id === id);
   }
 
+  getNode(id: number) {
+    return this.nodes.find(n => n.id === id);
+  }
+
   connect(start: NodeHandle, end: NodeHandle) {
     const edge = new Edge();
+    edge.setWorkspace(this)
     edge.id = this.nextId()
 
     edge.setStart(start);
@@ -73,10 +80,32 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   toJSON(): IWorkspace {
-    throw new Error("Method not implemented.");
+    return {
+      version: this.version,
+      coordinate: this.coord.toJSON(),
+      nodes: this.nodes.map(n => n.toJSON()),
+      edges: this.edges.map(n => n.toJSON()),
+      extra: {
+        incrementID: this._idGenerator.current()
+      }
+    }
   }
 
   fromJSON(data: IWorkspace): void {
-    throw new Error("Method not implemented.");
+    this._idGenerator.reset(data.extra.incrementID)
+
+    for (const node of data.nodes) {
+      const n = this.addNode(node.type)
+
+      n.fromJSON(node)
+    }
+
+    for (const edgeData of data.edges) {
+      const edge = new Edge()
+      edge.setWorkspace(this)
+
+      edge.fromJSON(edgeData)
+      this._edges.push(edge)
+    }
   }
 }

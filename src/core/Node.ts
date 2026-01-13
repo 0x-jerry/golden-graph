@@ -16,13 +16,15 @@ export interface INodeHandleOptions extends INodeHandle {
 }
 
 export class Node implements IPersistent<INode> {
+  _type = 'DefaultNode'
+
   id = 0;
   name = "Node";
   description?: string;
 
   _data: Record<string, unknown> = shallowReactive({});
 
-  pos = shallowReactive({ x: 0, y: 0 });
+  readonly pos = shallowReactive({ x: 0, y: 0 });
 
   _handles: NodeHandle[] = shallowReactive([]);
 
@@ -68,7 +70,7 @@ export class Node implements IPersistent<INode> {
 
   addHandle(conf: INodeHandleOptions) {
     const handle = new NodeHandle()
-    handle.fromJSON(conf)
+    handle.fromConfig(conf)
     handle.setNode(this)
 
     if (conf.value !== undefined) {
@@ -95,10 +97,22 @@ export class Node implements IPersistent<INode> {
   }
 
   toJSON(): INode {
-    throw new Error("Method not implemented.");
+    return {
+      id: this.id,
+      type: this._type,
+      data: this._data,
+      pos: {
+        x: this.pos.x,
+        y: this.pos.y,
+      }
+    }
   }
 
   fromJSON(data: INode): void {
-    throw new Error("Method not implemented.");
+    this.id = data.id
+    this.pos.x = data.pos.x
+    this.pos.y = data.pos.y
+
+    Object.assign(this._data, data.data)
   }
 }

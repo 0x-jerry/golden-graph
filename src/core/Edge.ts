@@ -1,13 +1,18 @@
 import { shallowRef } from "vue";
 import type { NodeHandle } from "./NodeHandle";
 import type { IPersistent } from "./Persistent";
-import type { IEdge } from "./types";
+import type { IEdge, INodeHandleLoc } from "./types";
+import type { Workspace } from "./Workspace";
 
 export class Edge implements IPersistent<IEdge> {
   id = 0;
 
+  type = 'default'
+
   _start = shallowRef<NodeHandle>();
   _end = shallowRef<NodeHandle>();
+
+  _workspace?: Workspace
 
   get start() {
     return this._start.value as NodeHandle;
@@ -15,6 +20,17 @@ export class Edge implements IPersistent<IEdge> {
 
   get end() {
     return this._end.value as NodeHandle;
+  }
+
+  get workspace() {
+    if (!this._workspace) {
+      throw new Error(`Workspace is not set!`)
+    }
+    return this._workspace
+  }
+
+  setWorkspace(workspace: Workspace) {
+    this._workspace = workspace
   }
 
   setStart(start: NodeHandle) {
@@ -26,10 +42,37 @@ export class Edge implements IPersistent<IEdge> {
   }
 
   toJSON(): IEdge {
-    throw new Error("Method not implemented.");
+    return {
+      id: this.id,
+      type: this.type,
+      start: {
+        id: this.start.node.id,
+        key: this.start.key
+      },
+      end: {
+        id: this.start.node.id,
+        key: this.start.key
+      }
+    }
   }
 
   fromJSON(data: IEdge): void {
-    throw new Error("Method not implemented.");
+    this.id = data.id
+    this.type = data.type
+
+    this.setStart(this._getHanldeInstance(data.start))
+    this.setEnd(this._getHanldeInstance(data.end))
+  }
+
+  _getHanldeInstance(handleLoc: INodeHandleLoc) {
+    const node = this.workspace.getNode(handleLoc.id);
+
+    const handle = node?.getHandle(handleLoc.key)
+
+    if (!handle) {
+      throw new Error(`Can not find handle by node id ${handleLoc.id} and key ${handleLoc.key}`)
+    }
+
+    return handle
   }
 }

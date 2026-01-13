@@ -55,10 +55,18 @@ export class CoordSystem implements IPersistent<ICoordinate> {
   }
 
   toJSON(): ICoordinate {
-    throw new Error("Method not implemented.");
+    return {
+      origin: {
+        x: this._state.x,
+        y: this._state.y,
+      },
+      scale: this._state.scale
+    }
   }
 
   fromJSON(data: ICoordinate): void {
-    throw new Error("Method not implemented.");
+    this._state.x = data.origin.x
+    this._state.y = data.origin.y
+    this._state.scale = data.scale
   }
 }

@@ -18,17 +18,13 @@ export interface INodeHandle {
 export interface INode {
   id: number;
   type: string;
-  name: string;
-  description?: string;
-
-  handles: INodeHandle[];
 
   data?: Record<string, unknown>;
 
   pos: IVec2;
 }
 
-interface INodeHandleLoc {
+export interface INodeHandleLoc {
   /**
    * Node ID
    */
@@ -59,8 +55,6 @@ export interface IWorkspace {
    * For data migration
    */
   version: string;
-
-  id: number;
 
   extra: {
     incrementID: number

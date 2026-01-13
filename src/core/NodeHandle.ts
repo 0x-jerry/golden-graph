@@ -1,11 +1,10 @@
 import type { Arrayable } from "@0x-jerry/utils";
 import { HandlePosition } from "./HandlePosition";
 import type { Node } from "./Node";
-import type { IPersistent } from "./Persistent";
 import type { INodeHandle } from "./types";
 import { getNodeHandleDom } from "./dom";
 
-export class NodeHandle implements IPersistent<INodeHandle> {
+export class NodeHandle  {
   type: Arrayable<string> = "default";
 
   key = "";
@@ -50,16 +49,7 @@ export class NodeHandle implements IPersistent<INodeHandle> {
     this._node = node;
   }
 
-  toJSON(): INodeHandle {
-    return {
-      key: this.key,
-      name: this.name,
-      type: this.type,
-      position: this.position
-    }
-  }
-
-  fromJSON(data: INodeHandle): void {
+  fromConfig(data: INodeHandle): void {
     this.key = data.key
     this.name = data.name
     this.type = data.key
