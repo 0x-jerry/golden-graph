@@ -61,6 +61,10 @@ export const useConnectionGesture = defineContext(
       return
 
       function getStartHandle() {
+        if (handle.isRight) {
+          return handle
+        }
+
         if (handle.multiple) {
           return handle
         }
