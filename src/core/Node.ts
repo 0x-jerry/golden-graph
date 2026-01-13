@@ -66,6 +66,10 @@ export class Node implements IPersistent<INode> {
     if (opt.data) {
       Object.assign(this._data, opt.data);
     }
+
+    if (opt.pos) {
+      this.moveTo(opt.pos.x, opt.pos.y)
+    }
   }
 
   addHandle(conf: INodeHandleOptions) {

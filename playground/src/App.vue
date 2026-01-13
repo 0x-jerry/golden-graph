@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue';
+import { nextTick, useTemplateRef } from 'vue';
 import { GraphRenderer } from '../../src'
 import { setup } from './editor'
 
-const instance = useTemplateRef<InstanceType<typeof GraphRenderer>>('renderer')
+const instance = useTemplateRef('renderer')
 
 const cacheKey = 'graph-save-data'
 
@@ -18,7 +18,7 @@ function save() {
   localStorage.setItem(cacheKey, JSON.stringify(data));
 }
 
-function load() {
+async function load() {
   const ws = instance.value?.workspace
   if (!ws) {
     return
@@ -28,7 +28,17 @@ function load() {
     return
   }
 
+
+  ws.clear()
+
+  await nextTick()
   ws.fromJSON(JSON.parse(data))
+
+  console.log(ws)
+}
+
+function clear() {
+  instance.value?.workspace.clear()
 }
 
 </script>
@@ -36,6 +46,7 @@ function load() {
 <template>
   <div class="full-screen">
     <div class="tools">
+      <button @click="clear">Clear</button>
       <button @click="save">Save</button>
       <button @click="load">Load</button>
     </div>
@@ -59,6 +70,8 @@ function load() {
   height: 50px;
   display: flex;
   padding: 0 20px;
+  align-items: center;
+
   gap: 8px;
 }
 

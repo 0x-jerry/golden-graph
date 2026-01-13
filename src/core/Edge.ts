@@ -50,8 +50,8 @@ export class Edge implements IPersistent<IEdge> {
         key: this.start.key
       },
       end: {
-        id: this.start.node.id,
-        key: this.start.key
+        id: this.end.node.id,
+        key: this.end.key
       }
     }
   }
@@ -60,11 +60,11 @@ export class Edge implements IPersistent<IEdge> {
     this.id = data.id
     this.type = data.type
 
-    this.setStart(this._getHanldeInstance(data.start))
-    this.setEnd(this._getHanldeInstance(data.end))
+    this.setStart(this._getHandleInstance(data.start))
+    this.setEnd(this._getHandleInstance(data.end))
   }
 
-  _getHanldeInstance(handleLoc: INodeHandleLoc) {
+  _getHandleInstance(handleLoc: INodeHandleLoc) {
     const node = this.workspace.getNode(handleLoc.id);
 
     const handle = node?.getHandle(handleLoc.key)

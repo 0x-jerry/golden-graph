@@ -79,6 +79,12 @@ export class Workspace implements IPersistent<IWorkspace> {
     return this._idGenerator.next();
   }
 
+  clear() {
+    this._edges.splice(0)
+    this._nodes.splice(0)
+    this._idGenerator.reset(0)
+  }
+
   toJSON(): IWorkspace {
     return {
       version: this.version,
