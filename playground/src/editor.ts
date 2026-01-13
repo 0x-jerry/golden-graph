@@ -60,6 +60,13 @@ class ToStringNode extends Node {
     })
 
     this.addHandle({
+      options: {
+        type: 'text',
+        content: 'This is a ToString node, and some text explanation',
+      },
+    })
+
+    this.addHandle({
       key: 'output',
       name: 'Output',
       position: HandlePosition.Right,

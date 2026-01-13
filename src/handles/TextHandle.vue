@@ -10,7 +10,17 @@ const options = useHandleOptions<TextHandleProps>()
 </script>
 
 <template>
-  <div>
+  <div class="text-handle">
     {{ options.content }}
   </div>
 </template>
+
+
+<style>
+.text-handle {
+  width: 100%;
+  text-align: center;
+  color: #666;
+  margin: 8px 0;
+}
+</style>

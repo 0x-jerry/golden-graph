@@ -14,7 +14,7 @@ export interface NodeBaseUpdateOptions {
 
 export interface INodeHandleOptions extends Omit<INodeHandleConfig, 'type'> {
   value?: any
-  type: Arrayable<string>
+  type?: Arrayable<string>
 }
 
 export class Node implements IPersistent<INode> {

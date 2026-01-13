@@ -15,12 +15,12 @@ export interface INodeHandleConfigOptions {
 }
 
 export interface INodeHandleConfig {
-  key: string
-  type: string[]
+  key?: string
+  type?: string[]
 
-  name: string
+  name?: string
 
-  position: HandlePosition
+  position?: HandlePosition
 
   multiple?: boolean
 
@@ -53,12 +53,16 @@ export class NodeHandle {
     }
   }
 
-  get isOutput() {
+  get isRight() {
     return this.position === HandlePosition.Right
   }
 
-  get isInput() {
+  get isLeft() {
     return this.position === HandlePosition.Left
+  }
+
+  get isNone() {
+    return this.position === HandlePosition.None
   }
 
   get node() {
@@ -134,10 +138,10 @@ export class NodeHandle {
   }
 
   fromConfig(data: INodeHandleConfig): void {
-    this.key = data.key
-    this.name = data.name
-    this.type = data.type
-    this.position = data.position
+    this.key = data.key ?? ''
+    this.name = data.name ?? ''
+    this.type = data.type ?? []
+    this.position = data.position ?? HandlePosition.None
 
     Object.assign(this._options, data.options)
   }

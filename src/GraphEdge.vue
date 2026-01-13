@@ -22,7 +22,7 @@ const pathProps = computed(() => {
   let startHandle = edge.value.start;
   let endHandle = edge.value.end;
 
-  if (edge.value.start.isOutput) {
+  if (edge.value.start.isRight) {
     startHandle = edge.value.end;
     endHandle = edge.value.start;
   }
@@ -46,12 +46,8 @@ const pathProps = computed(() => {
 </script>
 
 <template>
-  <CubicBezier
-    v-if="pathProps"
-    v-bind="pathProps"
-    :data-start="`${edge.start.node.id}-${edge.start.key}`"
-    :data-end="`${edge.end.node.id}-${edge.end.key}`"
-  />
+  <CubicBezier v-if="pathProps" v-bind="pathProps" :data-start="`${edge.start.node.id}-${edge.start.key}`"
+    :data-end="`${edge.end.node.id}-${edge.end.key}`" />
 </template>
 
 <style lang="less"></style>

@@ -55,8 +55,8 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
 </script>
 
 <template>
-  <div class="r-handle" :class="[{ 'is-output': handle.isOutput }]" :handle-key="handle.key">
-    <div ref="joint-el" v-bind="jointProps" />
+  <div class="r-handle" :class="[{ 'is-output': handle.isRight }]" :handle-key="handle.key">
+    <div ref="joint-el" v-if="!handle.isNone" v-bind="jointProps" />
 
     <div class="r-handle-content">
       <component v-if="ContentComponent" :is="ContentComponent" v-bind="options" />
@@ -88,12 +88,19 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
   box-shadow: 0 0 10px 2px red;
 }
 
+.r-handle-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  width: 0;
+}
+
 .r-handle {
   display: flex;
   align-items: center;
   gap: 4px;
 
-  height: 24px;
+  min-height: 24px;
 
   &.is-output {
     flex-direction: row-reverse;
@@ -101,6 +108,10 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
     .r-joint {
       left: unset;
       right: calc(-1 * var(--size) / 2);
+    }
+
+    .r-handle-content {
+      justify-content: flex-end;
     }
   }
 }
