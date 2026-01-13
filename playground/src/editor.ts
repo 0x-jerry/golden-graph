@@ -3,6 +3,7 @@ import { HandlePosition, Node, type Workspace } from '../../src/core'
 export function setup(workspace: Workspace) {
   workspace.registerNode('Number', NumberNode)
   workspace.registerNode('ToString', ToStringNode)
+  workspace.registerNode('Output', OutputNode)
 
   const n1 = workspace.addNode('Number', {
     pos: {
@@ -18,10 +19,10 @@ export function setup(workspace: Workspace) {
     },
   })
 
-  workspace.addNode('ToString', {
+  workspace.addNode('Output', {
     pos: {
-      x: 300,
-      y: 300,
+      x: 500,
+      y: 500,
     },
   })
 
@@ -42,6 +43,9 @@ class NumberNode extends Node {
       position: HandlePosition.Right,
       type: 'number',
       value: 10,
+      options: {
+        type: 'number',
+      },
     })
   }
 }
@@ -71,6 +75,25 @@ class ToStringNode extends Node {
       name: 'Output',
       position: HandlePosition.Right,
       type: 'string',
+    })
+  }
+}
+
+class OutputNode extends Node {
+  constructor() {
+    super()
+
+    this.name = 'Output'
+
+    this.addHandle({
+      key: 'input',
+      name: 'Input',
+      position: HandlePosition.Left,
+      type: '*',
+      value: '',
+      options: {
+        type: 'display',
+      },
     })
   }
 }

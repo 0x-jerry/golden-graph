@@ -100,7 +100,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
   align-items: center;
   gap: 4px;
 
-  min-height: 24px;
+  min-height: 26px;
 
   &.is-output {
     flex-direction: row-reverse;

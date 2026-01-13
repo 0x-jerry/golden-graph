@@ -76,15 +76,15 @@ export class Node implements IPersistent<INode> {
 
   addHandle(conf: INodeHandleOptions) {
     const handle = new NodeHandle()
+    handle.setNode(this)
+
     handle.fromConfig({
       ...conf,
       type: ensureArray(conf.type),
     })
 
-    handle.setNode(this)
-
     if (conf.value !== undefined) {
-      this.setData('value', conf.value)
+      this.setData(handle.key, conf.value)
     }
 
     this._handles.push(handle)

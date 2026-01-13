@@ -2,22 +2,22 @@
 import type { INodeHandleConfigOptions } from '../core';
 import { useHandleOptions } from './useHandleOptions';
 
-export interface TextHandleProps extends INodeHandleConfigOptions {
+export interface TextHandleOptions extends INodeHandleConfigOptions {
   content?: string;
 }
 
-const options = useHandleOptions<TextHandleProps>()
+const options = useHandleOptions<TextHandleOptions>()
 </script>
 
 <template>
-  <div class="text-handle">
+  <div class="handle-content">
     {{ options.content }}
   </div>
 </template>
 
 
 <style>
-.text-handle {
+.handle-content {
   width: 100%;
   text-align: center;
   color: #666;
