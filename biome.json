@@ -6,7 +6,12 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**", "playground/src/**"]
+    "includes": [
+      "src/**",
+      "src/**/*.vue",
+      "playground/src/**",
+      "playground/src/**/*.vue"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -5,16 +5,16 @@ import { useNodeHandle } from '../hooks/useNodeHandle';
 const handle = useNodeHandle()!;
 
 const value = computed({
-    get() {
-        return handle.value.getValue()
-    },
-    set(value) {
-        handle.value.setValue(value)
-    }
+  get() {
+    return handle.value.getValue()
+  },
+  set(value) {
+    handle.value.setValue(value)
+  }
 })
 </script>
 <template>
-    <div>
-        {{ value }}
-    </div>
+  <div>
+    {{ value }}
+  </div>
 </template>

@@ -1,9 +1,9 @@
-import TextHandle from "./TextHandle.vue";
+import TextHandle from './TextHandle.vue'
 
 function registerBuiltinHandles() {
-    const map = {
-        'text': TextHandle
-    }
+  const map = {
+    text: TextHandle,
+  }
 
-    return map
+  return map
 }
