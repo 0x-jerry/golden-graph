@@ -9,7 +9,7 @@ export interface GraphHandleProps {
 
 const props = defineProps<GraphHandleProps>();
 
-const handle = useNodeHandle(() => props.handleKey);
+const handle = useNodeHandle.provide(() => props.handleKey);
 
 const gesture = useConnectionGesture()!
 

@@ -1,7 +1,8 @@
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 import { useNode } from './useNode'
+import { defineContext } from '@0x-jerry/vue-kit'
 
-export function useNodeHandle(key: MaybeRefOrGetter<string>) {
+export const useNodeHandle = defineContext(Symbol.for('node-handle'), (key: MaybeRefOrGetter<string>) => {
   const node = useNode()!
 
   const handle = computed(() => {
@@ -15,4 +16,4 @@ export function useNodeHandle(key: MaybeRefOrGetter<string>) {
   })
 
   return handle
-}
+})

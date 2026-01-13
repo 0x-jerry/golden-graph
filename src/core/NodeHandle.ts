@@ -60,6 +60,14 @@ export class NodeHandle {
     return l.id === loc.id && l.key === loc.key
   }
 
+  getValue<T>(): T | undefined {
+    return this.node.getData(this.key)
+  }
+
+  setValue(value: unknown) {
+    this.node.setData(this.key, value)
+  }
+
   getDom() {
     const nodeId = this.node.id
     const wsId = this.node.workspace.id
