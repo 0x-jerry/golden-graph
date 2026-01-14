@@ -22,7 +22,8 @@
     "test:coverage": "vitest run --coverage",
     "build": "vite build",
     "prepublishOnly": "npm run build",
-    "release": "x-release"
+    "release": "x-release",
+    "lint": "biome check --write"
   },
   "devDependencies": {
     "@0x-jerry/x-release": "^2.4.1",
