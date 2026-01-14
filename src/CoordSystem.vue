@@ -4,7 +4,7 @@ import { useDraggable, useEventListener, useMouseInElement } from '@vueuse/core'
 import { reactive, useTemplateRef } from 'vue'
 import GridPattern from './GridPattern.vue'
 import { useConnectionGesture, useCoordSystem, useSelection, useWorkspace } from './hooks'
-import type { IRectBox, RectBox } from './utils/RectBox'
+import { RectBox } from './utils/RectBox'
 
 const ws = useWorkspace()!
 const coord = useCoordSystem()!
@@ -34,7 +34,7 @@ useEventListener('keyup', (evt) => {
 
 useDraggable(el, {
   exact: true,
-  onStart(position, event) {
+  onStart() {
     if (state.shift) {
       return false
     }
@@ -52,7 +52,23 @@ useSelection({
     state.selected = []
   },
   onMove(rect) {
-    state.selected = queryNodesByBounding(rect)
+    const coordRect = el.value?.getBoundingClientRect()
+    if (!coordRect) {
+      return
+    }
+
+    const tl = coord.convertScreenCoord({
+      x: rect.left - coordRect.left,
+      y: rect.top - coordRect.top
+    })
+
+    const rb = coord.convertScreenCoord({
+      x: rect.right - coordRect.left,
+      y: rect.bottom - coordRect.top
+    })
+
+    const converted = RectBox.fromRectBox(tl.x, tl.y, rb.x, rb.y)
+    state.selected = queryNodesByBounding(converted)
   },
   onEnd() {
     const selected = state.selected

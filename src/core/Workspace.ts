@@ -94,6 +94,8 @@ export class Workspace implements IPersistent<IWorkspace> {
     g.size.y = rect.bottom - rect.top + padding * 2 + headerHeight
 
     g.nodes.push(...nodeIds)
+
+    this._groups.push(g)
   }
 
   getNodesBounding(...nodeIds: number[]) {
@@ -198,8 +200,10 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   clear() {
+    this._groups.splice(0)
     this._edges.splice(0)
     this._nodes.splice(0)
+
     this._idGenerator.reset(0)
   }
 

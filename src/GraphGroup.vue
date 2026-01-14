@@ -25,10 +25,10 @@ const style = computed(() => {
   const { pos, size } = group.value
 
   return {
-    '--x': pos.x + 'px',
-    '--y': pos.y + 'px',
-    '--width': size.x + 'px',
-    '--height': size.y + 'px',
+    '--x': `${pos.x}px`,
+    '--y': `${pos.y}px`,
+    '--width': `${size.x}px`,
+    '--height': `${size.y}px`,
   }
 })
 
@@ -81,6 +81,8 @@ function handleResize(evt: Event) {
 
   .group-header {
     pointer-events: auto;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 8px;
   }
 }
 </style>

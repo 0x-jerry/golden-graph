@@ -56,8 +56,8 @@ export function useSelection(opt: {
     const w = Math.abs(state.x1 - state.x2)
     const h = Math.abs(state.y1 - state.y2)
 
-    areaEl.style.width = w + 'px'
-    areaEl.style.height = h + 'px'
+    areaEl.style.width = `${w}px`
+    areaEl.style.height = `${h}px`
 
     areaEl.style.translate = `${x}px ${y}px`
   }

@@ -21,7 +21,7 @@ export class Group implements IPersistent<IGroup> {
   readonly nodes = shallowReactive<number[]>([])
 
   _state = reactive({
-    name: '',
+    name: 'Untitled',
   })
 
   get workspace() {

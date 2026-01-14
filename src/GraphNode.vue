@@ -19,11 +19,10 @@ const draggableEl = useTemplateRef('draggableEl')
 
 useDraggable(draggableEl, {
   onMove(_, evt) {
-    const pos = node.value.pos;
-    const x = pos.x + evt.movementX / coord.scale
-    const y = pos.y + evt.movementY / coord.scale
+    const x = evt.movementX / coord.scale
+    const y = evt.movementY / coord.scale
 
-    node.value.moveTo(x, y)
+    node.value.move(x, y)
   },
 })
 
