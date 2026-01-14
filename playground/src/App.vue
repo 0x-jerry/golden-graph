@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { nextTick, useTemplateRef } from 'vue';
+import { computed, nextTick, useTemplateRef } from 'vue';
 import { GraphRenderer } from '../../src'
 import { setup } from './editor'
 
-const instance = useTemplateRef('renderer')
+const instance = useTemplateRef<InstanceType<typeof GraphRenderer>>('renderer')
 
 const cacheKey = 'graph-save-data'
 
+const workspace = computed(() => instance.value?.workspace);
+
 function save() {
-  const ws = instance.value?.workspace
+  const ws = workspace.value
   if (!ws) {
     return
   }
@@ -19,7 +21,7 @@ function save() {
 }
 
 async function load() {
-  const ws = instance.value?.workspace
+  const ws = workspace.value
   if (!ws) {
     return
   }
@@ -38,11 +40,11 @@ async function load() {
 }
 
 function clear() {
-  instance.value?.workspace.clear()
+  workspace.value?.clear()
 }
 
 async function run() {
-  const ws = instance.value?.workspace
+  const ws = workspace.value
   if (!ws) {
     return
   }
@@ -57,7 +59,7 @@ async function run() {
       <button @click="clear">Clear</button>
       <button @click="save">Save</button>
       <button @click="load">Load</button>
-      <button @click="run">Run</button>
+      <button :disabled="workspace?.executorState.isProcessing" @click="run">Run</button>
     </div>
 
     <div class="graph-render-content">

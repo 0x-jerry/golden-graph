@@ -1,5 +1,5 @@
 import { nanoid, remove } from '@0x-jerry/utils'
-import { shallowReactive } from 'vue'
+import { shallowReactive, shallowRef } from 'vue'
 import { CoordSystem } from './CoordSystem'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
@@ -23,6 +23,8 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   _executor = new Executor(this)
 
+  _disabled = shallowRef(false)
+
   readonly coord = new CoordSystem()
 
   get nodes() {
@@ -31,6 +33,14 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   get edges() {
     return this._edges
+  }
+
+  get disabled() {
+    return this._disabled.value || this._executor.state.isProcessing
+  }
+
+  get executorState() {
+    return this._executor.state
   }
 
   registerNode<T extends Node>(type: string, node: Factory<T>) {

@@ -10,10 +10,34 @@ export class Executor {
   processed = new Set<Node>()
 
   _state = reactive({
+    isProcessing: false,
     currentNodeId: 0,
   })
 
+  get state() {
+    return this._state
+  }
+
   async execute(entryNodes: Node[]) {
+    if (this._state.isProcessing) {
+      console.warn('Executor is running')
+      return
+    }
+
+    try {
+      this._state.isProcessing = true
+      this._state.currentNodeId = -1
+
+      await this._execute(entryNodes)
+    } catch (error) {
+      throw new Error(String(error), { cause: error })
+    } finally {
+      this._state.isProcessing = false
+      this._state.currentNodeId = -1
+    }
+  }
+
+  async _execute(entryNodes: Node[]) {
     this.processStack = [...entryNodes]
     this.processed.clear()
 
@@ -29,7 +53,7 @@ export class Executor {
 
       if (!--i) {
         console.warn('Infinity loop')
-        break;
+        break
       }
     }
   }
@@ -60,6 +84,7 @@ export class Executor {
       return
     }
 
+    this._state.currentNodeId = node.id
     await node.onProcess?.(node)
 
     this.processed.add(node)

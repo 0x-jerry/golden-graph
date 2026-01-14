@@ -1,3 +1,4 @@
+import { sleep } from '@0x-jerry/utils'
 import { HandlePosition, Node, NodeType, type Workspace } from '../../src/core'
 
 export function setup(workspace: Workspace) {
@@ -79,7 +80,9 @@ class ToStringNode extends Node {
     })
   }
 
-  onProcess = () => {
+  onProcess = async () => {
+    await sleep(1000)
+
     const value = this.getData('input')
     this.setData('output', String(value))
   }
