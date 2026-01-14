@@ -30,6 +30,7 @@
     "@types/node": "^25.0.8",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/coverage-v8": "^4.0.17",
+    "jsdom": "^27.4.0",
     "less": "^4.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
