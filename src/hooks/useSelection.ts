@@ -8,7 +8,6 @@ export function useSelection(opt: {
   onMove?(rect: RectBox): void
   onEnd?(): void
 }) {
-
   const state = {
     started: false,
     x1: 0,
@@ -88,7 +87,7 @@ export function useSelection(opt: {
 
     updateAreaStyle()
 
-    opt.onMove?.(new RectBox(x,y,w,h))
+    opt.onMove?.(new RectBox(x, y, w, h))
   }
 
   function end() {

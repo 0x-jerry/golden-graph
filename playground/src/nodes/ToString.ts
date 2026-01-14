@@ -1,5 +1,5 @@
-import { sleep } from "@0x-jerry/utils"
-import { HandlePosition, Node } from "../../../src"
+import { sleep } from '@0x-jerry/utils'
+import { HandlePosition, Node } from '../../../src'
 
 export class ToStringNode extends Node {
   constructor() {

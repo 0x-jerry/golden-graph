@@ -50,7 +50,7 @@ export class RectBox {
     this.height = value - this.y
   }
 
-  constructor(x: number=0, y: number=0, width: number =0,height: number =0) {
+  constructor(x = 0, y = 0, width = 0, height = 0) {
     this.x = x
     this.y = y
     this.width = width
@@ -62,6 +62,11 @@ export class RectBox {
   }
 
   includes(box: RectBox) {
-    return this.left <= box.left && this.right >= box.right && this.top <= box.top && this.bottom >= box.bottom
+    return (
+      this.left <= box.left &&
+      this.right >= box.right &&
+      this.top <= box.top &&
+      this.bottom >= box.bottom
+    )
   }
 }

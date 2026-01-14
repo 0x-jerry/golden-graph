@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, useTemplateRef } from 'vue'
 import { useDraggable } from '@vueuse/core'
-import { useCoordSystem, useGroup, useWorkspace } from './hooks'
+import { computed, useTemplateRef } from 'vue'
 import type { IVec2 } from './core'
+import { useCoordSystem, useGroup, useWorkspace } from './hooks'
 
 export interface GroupNodeProps {
   groupId: number

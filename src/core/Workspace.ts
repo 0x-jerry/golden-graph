@@ -1,18 +1,17 @@
 import { nanoid, remove } from '@0x-jerry/utils'
 import { shallowReactive, shallowRef } from 'vue'
+import { RectBox } from '../utils/RectBox'
 import { CoordSystem } from './CoordSystem'
+import { getNodeDom } from './dom'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
+import { Group } from './Group'
 import { createIncrementIdGenerator, type Factory } from './helper'
 import { type Node, type NodeBaseUpdateOptions, NodeType } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
 import type { INodeHandleLoc, IWorkspace } from './types'
-import { Group } from './Group'
-import { getNodeDom } from './dom'
-import type { pxValue } from '@vueuse/shared'
-import { RectBox } from '../utils/RectBox'
 
 export class Workspace implements IPersistent<IWorkspace> {
   version = '1.0.0'
@@ -83,7 +82,7 @@ export class Workspace implements IPersistent<IWorkspace> {
 
     const rect = this.getNodesBounding(...nodeIds)
 
-    const padding = 40;
+    const padding = 40
     const headerHeight = 50
 
     const g = new Group()
@@ -135,7 +134,7 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   queryNodes(...ids: number[]) {
-    return this.nodes.filter(n => ids.includes(n.id))
+    return this.nodes.filter((n) => ids.includes(n.id))
   }
 
   removeNodeByIds(...ids: number[]) {
@@ -216,7 +215,7 @@ export class Workspace implements IPersistent<IWorkspace> {
       coordinate: this.coord.toJSON(),
       nodes: this.nodes.map((n) => n.toJSON()),
       edges: this.edges.map((n) => n.toJSON()),
-      groups: this.groups.map(n => n.toJSON()),
+      groups: this.groups.map((n) => n.toJSON()),
       extra: {
         incrementID: this._idGenerator.current(),
       },
