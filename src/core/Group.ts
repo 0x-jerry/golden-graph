@@ -1,8 +1,10 @@
 import { shallowReactive } from "vue";
 import type { IPersistent } from "./Persistent";
-import type { IGroup } from "./types";
+import type { IGroup, IVec2 } from "./types";
 import { reactive } from "vue";
 import type { Workspace } from "./Workspace";
+import { offset } from "happy-dom/lib/PropertySymbol";
+import { groupCollapsed } from "node:console";
 
 export class Group implements IPersistent<IGroup> {
   id = 0
@@ -47,6 +49,17 @@ export class Group implements IPersistent<IGroup> {
 
   setName(name: string) {
     this._state.name = name;
+  }
+
+  move(dPos: IVec2) {
+    this.pos.x += dPos.x
+    this.pos.y += dPos.y
+
+    this.workspace.nodes.forEach(item => {
+      if (this.nodes.includes(item.id)) {
+        item.move(dPos.x, dPos.y)
+      }
+    })
   }
 
   toJSON(): IGroup {

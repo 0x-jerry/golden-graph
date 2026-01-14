@@ -3,8 +3,10 @@ import { clamp } from '@0x-jerry/utils'
 import { useDraggable, useEventListener, useMouseInElement } from '@vueuse/core'
 import { reactive, useTemplateRef } from 'vue'
 import GridPattern from './GridPattern.vue'
-import { useConnectionGesture, useCoordSystem, useSelection } from './hooks'
+import { useConnectionGesture, useCoordSystem, useSelection, useWorkspace } from './hooks'
+import type { IRectBox, RectBox } from './utils/RectBox'
 
+const ws = useWorkspace()!
 const coord = useCoordSystem()!
 
 const connectionGesture = useConnectionGesture()!
@@ -50,19 +52,29 @@ useSelection({
     state.selected = []
   },
   onMove(rect) {
-    const selected: number[] = []
-    // todo
-
-    state.selected = selected
+    state.selected = queryNodesByBounding(rect)
   },
   onEnd() {
     const selected = state.selected
 
-    console.log('selected nodes', selected)
+    ws.addGroup(selected)
 
     state.selected = []
   },
 })
+
+function queryNodesByBounding(rect: RectBox) {
+  const ids: number[] = []
+
+  for (const node of ws.nodes) {
+    const r = ws.getNodesBounding(node.id)
+    if (rect.includes(r)) {
+      ids.push(node.id)
+    }
+  }
+
+  return ids
+}
 
 function handleZoom(event: WheelEvent) {
   event.preventDefault()

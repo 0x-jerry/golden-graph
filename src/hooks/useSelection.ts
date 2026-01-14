@@ -1,12 +1,14 @@
 import { useEventListener, useMouse } from '@vueuse/core'
 import { type MaybeRefOrGetter, toValue } from 'vue'
+import { RectBox } from '../utils/RectBox'
 
 export function useSelection(opt: {
   disabled?: MaybeRefOrGetter<boolean>
   onStart?(): void
-  onMove?(rect: { x: number; y: number; w: number; h: number }): void
+  onMove?(rect: RectBox): void
   onEnd?(): void
 }) {
+
   const state = {
     started: false,
     x1: 0,
@@ -86,12 +88,7 @@ export function useSelection(opt: {
 
     updateAreaStyle()
 
-    opt.onMove?.({
-      x: x,
-      y: y,
-      w: w,
-      h: h,
-    })
+    opt.onMove?.(new RectBox(x,y,w,h))
   }
 
   function end() {

@@ -10,6 +10,9 @@ import type { IPersistent } from './Persistent'
 import { Register } from './Register'
 import type { INodeHandleLoc, IWorkspace } from './types'
 import { Group } from './Group'
+import { getNodeDom } from './dom'
+import type { pxValue } from '@vueuse/shared'
+import { RectBox } from '../utils/RectBox'
 
 export class Workspace implements IPersistent<IWorkspace> {
   version = '1.0.0'
@@ -71,6 +74,68 @@ export class Workspace implements IPersistent<IWorkspace> {
 
     this._nodes.push(node)
     return node
+  }
+
+  addGroup(nodeIds: number[]) {
+    if (!nodeIds.length) {
+      return
+    }
+
+    const rect = this.getNodesBounding(...nodeIds)
+
+    const padding = 40;
+    const headerHeight = 50
+
+    const g = new Group()
+    g.setWorkspace(this)
+    g.pos.x = rect.left - padding
+    g.pos.y = rect.top - padding - headerHeight
+
+    g.size.x = rect.right - rect.left + padding * 2
+    g.size.y = rect.bottom - rect.top + padding * 2 + headerHeight
+
+    g.nodes.push(...nodeIds)
+  }
+
+  getNodesBounding(...nodeIds: number[]) {
+    const nodes = this.queryNodes(...nodeIds)
+
+    let updated = false
+
+    const rect = new RectBox()
+
+    for (const node of nodes) {
+      const r = getNodeDom(this.id, node.id)
+
+      if (!r) {
+        throw new Error(`Can not find node dom by id: ${node.id}`)
+      }
+
+      const left = node.pos.x
+      const top = node.pos.y
+      const right = left + r.clientWidth
+      const bottom = top + r.clientHeight
+
+      if (updated) {
+        rect.left = Math.min(rect.left, left)
+        rect.top = Math.min(rect.top, top)
+        rect.right = Math.max(rect.right, right)
+        rect.bottom = Math.max(rect.bottom, bottom)
+      } else {
+        rect.left = left
+        rect.top = top
+        rect.right = right
+        rect.bottom = bottom
+
+        updated = true
+      }
+    }
+
+    return rect
+  }
+
+  queryNodes(...ids: number[]) {
+    return this.nodes.filter(n => ids.includes(n.id))
   }
 
   removeNodeByIds(...ids: number[]) {
