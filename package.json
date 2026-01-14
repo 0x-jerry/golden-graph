@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "npm run play",
     "play": "npm run dev -C playground",
+    "play:build": "npm run build -C playground",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
