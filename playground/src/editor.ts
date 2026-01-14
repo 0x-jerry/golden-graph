@@ -5,7 +5,6 @@ export function setup(workspace: Workspace) {
   registerNodes(workspace)
 
   const n1 = workspace.addNode('Number', {
-    nodeType: NodeType.Entry,
     pos: {
       x: 100,
       y: 100,

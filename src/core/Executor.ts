@@ -1,3 +1,4 @@
+import { sleep } from '@0x-jerry/utils'
 import { reactive } from 'vue'
 import { HandlePosition } from './HandlePosition'
 import type { Node } from './Node'
@@ -41,7 +42,8 @@ export class Executor {
     this.processStack = [...entryNodes]
     this.processed.clear()
 
-    let i = 100
+    let i = 10_0000
+
     while (this.processStack.length) {
       const currentNode = this.processStack.shift()!
 
@@ -52,8 +54,7 @@ export class Executor {
       await this._process(currentNode)
 
       if (!--i) {
-        console.warn('Infinity loop')
-        break
+        throw new Error('May encountered infinity loop!')
       }
     }
   }
@@ -85,6 +86,9 @@ export class Executor {
     }
 
     this._state.currentNodeId = node.id
+
+    // for debug
+    await sleep(100)
     await node.onProcess?.(node)
 
     this.processed.add(node)

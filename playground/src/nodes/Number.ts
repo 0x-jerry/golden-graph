@@ -1,10 +1,12 @@
-import { HandlePosition, Node } from '../../../src'
+import { HandlePosition, Node, NodeType } from '../../../src'
 
 export class NumberNode extends Node {
   constructor() {
     super()
 
     this.name = 'Number Input'
+
+    this.setNodeType(NodeType.Entry)
 
     this.addHandle({
       key: 'output',

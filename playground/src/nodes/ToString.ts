@@ -1,4 +1,3 @@
-import { sleep } from '@0x-jerry/utils'
 import { HandlePosition, Node } from '../../../src'
 
 export class ToStringNode extends Node {
@@ -29,9 +28,7 @@ export class ToStringNode extends Node {
     })
   }
 
-  onProcess = async () => {
-    await sleep(1000)
-
+  onProcess = () => {
     const value = this.getData('input')
     this.setData('output', String(value))
   }

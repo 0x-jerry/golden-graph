@@ -11,7 +11,6 @@ export interface NodeBaseUpdateOptions {
   pos?: IVec2
   description?: string
   data?: ObjectAny
-  nodeType?: NodeType
 }
 
 export enum NodeType {
@@ -91,10 +90,6 @@ export class Node implements IPersistent<INode> {
 
     if (opt.pos) {
       this.moveTo(opt.pos.x, opt.pos.y)
-    }
-
-    if (opt.nodeType != null) {
-      this.setNodeType(opt.nodeType)
     }
   }
 
