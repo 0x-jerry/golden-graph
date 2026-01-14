@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDraggable } from '@vueuse/core'
-import { computed, reactive, useTemplateRef } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import GraphHandle from './GraphHandle.vue'
 import { useCoordSystem, useNode, useWorkspace } from './hooks'
 
@@ -15,18 +15,15 @@ const node = useNode.provide(() => props.nodeId)
 const ws = useWorkspace()!
 const coord = useCoordSystem()!
 
-const state = reactive({
-  x: node.value.pos.x,
-  y: node.value.pos.y,
-})
-
 const draggableEl = useTemplateRef('draggableEl')
 
 useDraggable(draggableEl, {
   onMove(_, evt) {
-    state.x += evt.movementX / coord.scale
-    state.y += evt.movementY / coord.scale
-    node.value.moveTo(state.x, state.y)
+    const pos = node.value.pos;
+    const x = pos.x + evt.movementX / coord.scale
+    const y = pos.y + evt.movementY / coord.scale
+
+    node.value.moveTo(x, y)
   },
 })
 
@@ -45,7 +42,7 @@ const classes = computed(() => {
 </script>
 
 <template>
-  <div class="r-node" :class="classes" :style="{ '--x': state.x + 'px', '--y': state.y + 'px' }" :node-id="node.id">
+  <div class="r-node" :class="classes" :style="{ '--x': node.pos.x + 'px', '--y': node.pos.y + 'px' }" :node-id="node.id">
     <div class="r-node-header" ref="draggableEl">
       <div class="r-node-name">{{ node.name }}</div>
     </div>

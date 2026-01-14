@@ -3,6 +3,17 @@ export interface IVec2 {
   y: number
 }
 
+export interface IGroup {
+  id: number
+  name: string
+
+  nodes: number[]
+
+  pos: IVec2
+
+  size: IVec2
+}
+
 export interface INode {
   id: number
   type: string
@@ -52,6 +63,7 @@ export interface IWorkspace {
 
   nodes: INode[]
   edges: IEdge[]
+  groups: IGroup[]
 }
 
 export type ObjectAny = Record<string, any>

@@ -9,6 +9,7 @@ import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
 import type { INodeHandleLoc, IWorkspace } from './types'
+import { Group } from './Group'
 
 export class Workspace implements IPersistent<IWorkspace> {
   version = '1.0.0'
@@ -16,6 +17,7 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   _nodes: Node[] = shallowReactive([])
   _edges: Edge[] = shallowReactive([])
+  _groups: Group[] = shallowReactive([])
 
   _idGenerator = createIncrementIdGenerator()
 
@@ -33,6 +35,10 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   get edges() {
     return this._edges
+  }
+
+  get groups() {
+    return this._groups
   }
 
   get disabled() {
@@ -145,6 +151,7 @@ export class Workspace implements IPersistent<IWorkspace> {
       coordinate: this.coord.toJSON(),
       nodes: this.nodes.map((n) => n.toJSON()),
       edges: this.edges.map((n) => n.toJSON()),
+      groups: this.groups.map(n => n.toJSON()),
       extra: {
         incrementID: this._idGenerator.current(),
       },
@@ -166,6 +173,15 @@ export class Workspace implements IPersistent<IWorkspace> {
 
       edge.fromJSON(edgeData)
       this._edges.push(edge)
+    }
+
+    for (const group of data.groups) {
+      const g = new Group()
+      g.setWorkspace(this)
+
+      g.fromJSON(group)
+
+      this._groups.push(g)
     }
   }
 }
