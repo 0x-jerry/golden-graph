@@ -1,3 +1,4 @@
+import type { Optional } from '@0x-jerry/utils'
 import { getNodeHandleDom } from './dom'
 import { HandlePosition } from './HandlePosition'
 import { isIntersected } from './helper'
@@ -94,10 +95,9 @@ export class NodeHandle {
   }
 
   getJointDom() {
-    return this.getDom()?.querySelector(`[role="handle-joint"]`) as
-      | HTMLElement
-      | null
-      | undefined
+    return this.getDom()?.querySelector(
+      `[role="handle-joint"]`,
+    ) as Optional<HTMLElement>
   }
 
   /**
