@@ -17,9 +17,6 @@ importers:
       '@vueuse/core':
         specifier: ^14.1.0
         version: 14.1.0(vue@3.5.26(typescript@5.9.3))
-      tsdown:
-        specifier: 0.20.0-beta.2
-        version: 0.20.0-beta.2(typescript@5.9.3)(vue-tsc@3.2.2(typescript@5.9.3))
       vue:
         specifier: ^3.5.26
         version: 3.5.26(typescript@5.9.3)
@@ -39,6 +36,9 @@ importers:
       less:
         specifier: ^4.5.1
         version: 4.5.1
+      tsdown:
+        specifier: 0.20.0-beta.2
+        version: 0.20.0-beta.2(typescript@5.9.3)(vue-tsc@3.2.2(typescript@5.9.3))
       tsx:
         specifier: ^4.21.0
         version: 4.21.0

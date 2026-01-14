@@ -1,4 +1,4 @@
-import { HandlePosition, Node } from '../../../src/core'
+import { HandlePosition, Node } from '../../../src'
 
 export class NumberNode extends Node {
   constructor() {

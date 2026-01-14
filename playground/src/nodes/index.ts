@@ -1,4 +1,4 @@
-import type { Workspace } from '../../../src/core'
+import type { Workspace } from '../../../src'
 import { DisplayNode } from './Display'
 import { NumberNode } from './Number'
 import { ToStringNode } from './ToString'

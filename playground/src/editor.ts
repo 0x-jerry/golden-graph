@@ -1,4 +1,4 @@
-import { NodeType, type Workspace } from '../../src/core'
+import { NodeType, type Workspace } from '../../src'
 import { registerNodes } from './nodes'
 
 export function setup(workspace: Workspace) {
