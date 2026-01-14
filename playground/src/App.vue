@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { nextTick, useTemplateRef } from 'vue';
 import { GraphRenderer } from '../../src'
-import { Executor } from '../../src/core';
 import { setup } from './editor'
 
 const instance = useTemplateRef('renderer')
@@ -42,15 +41,13 @@ function clear() {
   instance.value?.workspace.clear()
 }
 
-function run() {
+async function run() {
   const ws = instance.value?.workspace
   if (!ws) {
     return
   }
 
-  const nodes = ws.nodes.filter(n => n.type === 'Number')
-
-  new Executor(ws).execute(nodes.map(n => n.id))
+  await ws.execute()
 }
 </script>
 

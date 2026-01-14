@@ -1,5 +1,6 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
 import { shallowReactive } from 'vue'
+import type { HandlePosition } from './HandlePosition'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import type { INode, IVec2, ObjectAny } from './types'
@@ -10,6 +11,12 @@ export interface NodeBaseUpdateOptions {
   pos?: IVec2
   description?: string
   data?: ObjectAny
+  nodeType?: NodeType
+}
+
+export enum NodeType {
+  None = 0,
+  Entry = 1,
 }
 
 export interface INodeHandleOptions extends Omit<INodeHandleConfig, 'type'> {
@@ -19,6 +26,7 @@ export interface INodeHandleOptions extends Omit<INodeHandleConfig, 'type'> {
 
 export class Node implements IPersistent<INode> {
   _type = 'DefaultNode'
+  _nodeType = NodeType.None
 
   id = 0
   name = 'Node'
@@ -34,6 +42,10 @@ export class Node implements IPersistent<INode> {
 
   get type() {
     return this._type
+  }
+
+  get nodeType() {
+    return this._nodeType
   }
 
   get workspace() {
@@ -56,6 +68,10 @@ export class Node implements IPersistent<INode> {
     this._data[key] = value
   }
 
+  setNodeType(t: NodeType) {
+    this._nodeType = t
+  }
+
   setWorkspace(w: Workspace) {
     this._workspace = w
   }
@@ -75,6 +91,10 @@ export class Node implements IPersistent<INode> {
 
     if (opt.pos) {
       this.moveTo(opt.pos.x, opt.pos.y)
+    }
+
+    if (opt.nodeType != null) {
+      this.setNodeType(opt.nodeType)
     }
   }
 
@@ -96,6 +116,10 @@ export class Node implements IPersistent<INode> {
 
   getHandle(key: string) {
     return this.handles.find((n) => n.key === key)
+  }
+
+  queryHandles(position: HandlePosition) {
+    return this.handles.filter((n) => n.position === position)
   }
 
   onProcess?: (instance: this) => unknown

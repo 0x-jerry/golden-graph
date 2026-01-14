@@ -1,9 +1,10 @@
-import { type Arrayable, ensureArray, nanoid, remove } from '@0x-jerry/utils'
+import { nanoid, remove } from '@0x-jerry/utils'
 import { shallowReactive } from 'vue'
 import { CoordSystem } from './CoordSystem'
 import { Edge } from './Edge'
+import { Executor } from './Executor'
 import { createIncrementIdGenerator, type Factory } from './helper'
-import type { Node, NodeBaseUpdateOptions } from './Node'
+import { type Node, type NodeBaseUpdateOptions, NodeType } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
@@ -19,6 +20,8 @@ export class Workspace implements IPersistent<IWorkspace> {
   _idGenerator = createIncrementIdGenerator()
 
   _nodeRegister = new Register<Factory<Node>>()
+
+  _executor = new Executor(this)
 
   readonly coord = new CoordSystem()
 
@@ -118,6 +121,12 @@ export class Workspace implements IPersistent<IWorkspace> {
     this._edges.splice(0)
     this._nodes.splice(0)
     this._idGenerator.reset(0)
+  }
+
+  async execute() {
+    const nodes = this.nodes.filter((n) => n.nodeType === NodeType.Entry)
+
+    await this._executor.execute(nodes)
   }
 
   toJSON(): IWorkspace {

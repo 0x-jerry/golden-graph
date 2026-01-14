@@ -1,4 +1,4 @@
-import { HandlePosition, Node, type Workspace } from '../../src/core'
+import { HandlePosition, Node, NodeType, type Workspace } from '../../src/core'
 
 export function setup(workspace: Workspace) {
   workspace.registerNode('Number', NumberNode)
@@ -6,6 +6,7 @@ export function setup(workspace: Workspace) {
   workspace.registerNode('Output', OutputNode)
 
   const n1 = workspace.addNode('Number', {
+    nodeType: NodeType.Entry,
     pos: {
       x: 100,
       y: 100,
@@ -76,6 +77,11 @@ class ToStringNode extends Node {
       position: HandlePosition.Right,
       type: 'string',
     })
+  }
+
+  onProcess = () => {
+    const value = this.getData('input')
+    this.setData('output', String(value))
   }
 }
 
