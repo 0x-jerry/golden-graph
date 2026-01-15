@@ -32,9 +32,10 @@ const style = computed(() => {
   }
 })
 
-const el = useTemplateRef('el')
+const headerEl = useTemplateRef('header-el')
+const groupNodeEl = useTemplateRef('group-node')
 
-useDraggable(el, {
+useDraggable(headerEl, {
   exact: true,
   onStart() {
     if (ws.disabled) {
@@ -51,14 +52,32 @@ useDraggable(el, {
   },
 })
 
+useDraggable(groupNodeEl, {
+  exact: true,
+  onMove(_position, event) {
+    coord.move(event.movementX, event.movementY)
+  },
+})
+
 function handleResize(evt: Event) {
   console.log('resize', evt)
+}
+
+function handleContextMenu(evt: MouseEvent) {
+  ws.showContextMenus(evt, [
+    {
+      label: 'Delete Group',
+      action: () => {
+        ws.deleteGroup(props.groupId)
+      },
+    },
+  ])
 }
 </script>
 
 <template>
-  <div class="group-node" :style="style" @resize="handleResize">
-    <div ref="el" class="group-header">
+  <div class="group-node" ref="group-node" :style="style" @resize="handleResize" @contextmenu="handleContextMenu">
+    <div ref="header-el" class="group-header">
       {{ group.name }}
     </div>
     <slot></slot>
@@ -78,9 +97,9 @@ function handleResize(evt: Event) {
 
   border: 1px solid rgb(176, 176, 176);
   background: #d5d5d5aa;
+  pointer-events: auto;
 
   .group-header {
-    pointer-events: auto;
     background: rgba(0, 0, 0, 0.15);
     padding: 8px;
   }

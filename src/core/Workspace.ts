@@ -1,6 +1,8 @@
 import { nanoid, remove } from '@0x-jerry/utils'
 import { shallowReactive, shallowRef } from 'vue'
+import type { ContextMenuItem } from '../components/ContextMenu.vue'
 import { RectBox } from '../utils/RectBox'
+import { ContextMenuHelper } from './ContextMenu'
 import { CoordSystem } from './CoordSystem'
 import { getNodeDom } from './dom'
 import { Edge } from './Edge'
@@ -29,6 +31,8 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   _disabled = shallowRef(false)
 
+  _ctxMenuHelper = new ContextMenuHelper()
+
   readonly coord = new CoordSystem()
 
   get nodes() {
@@ -49,6 +53,10 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   get executorState() {
     return this._executor.state
+  }
+
+  get contextMenuState() {
+    return this._ctxMenuHelper.state
   }
 
   registerNode<T extends Node>(type: string, node: Factory<T>) {
@@ -96,6 +104,20 @@ export class Workspace implements IPersistent<IWorkspace> {
     g.nodes.push(...nodeIds)
 
     this._groups.push(g)
+  }
+
+  deleteGroup(groupId: number) {
+    return remove(this._groups, (g) => g.id === groupId)
+  }
+
+  showContextMenus(evt: MouseEvent, menus: ContextMenuItem[]) {
+    evt.preventDefault()
+
+    this._ctxMenuHelper.show(evt.clientX, evt.clientY, menus)
+  }
+
+  hideContextMenus() {
+    this._ctxMenuHelper.hide()
   }
 
   getNodesBounding(...nodeIds: number[]) {
