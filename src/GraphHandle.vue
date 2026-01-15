@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { useElementHover } from "@vueuse/core";
 import { computed, useTemplateRef } from "vue";
-import { getHandleColorByTypes } from "./configs/handle";
 import { getHandleComponent } from "./handles";
 import { useConnectionGesture, useNodeHandle } from "./hooks";
 
@@ -21,10 +20,7 @@ const isHovering = useElementHover(jointEl)
 
 const jointProps = computed(() => {
   const props = {
-    class: ['r-joint'],
-    style: {
-      '--color': getHandleColorByTypes(handle.value.types),
-    },
+    class: ['r-joint', ...handle.value.types.map(n => `type-${n}`)],
     role: 'handle-joint',
     onPointerdown: () => gesture.startConnection(handle.value),
     onPointerup: () => gesture.endConnection(handle.value),
@@ -79,6 +75,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
   height: var(--size);
   border-radius: var(--size);
 
+  --color: var(--color-handle-joint, #000);
   background: var(--color);
 
   pointer-events: auto;

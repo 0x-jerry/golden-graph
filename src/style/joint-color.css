@@ -1,0 +1,11 @@
+.r-joint.type-number {
+  --color-handle-joint: #2563eb;
+}
+
+.r-joint.type-string {
+  --color-handle-joint: #c54822;
+}
+
+.r-joint.type-\* {
+  --color-handle-joint: #21cd5a;
+}

@@ -36,7 +36,7 @@ defineExpose({
 </template>
 
 <style lang="less">
-@import './style/theme.css';
+@import './style/index.css';
 
 .r-renderer {
   width: 100%;
