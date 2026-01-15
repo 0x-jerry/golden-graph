@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useElementHover } from "@vueuse/core";
 import { computed, useTemplateRef } from "vue";
+import { getHandleColorByTypes } from "./configs/handle";
 import { getHandleComponent } from "./handles";
 import { useConnectionGesture, useNodeHandle } from "./hooks";
 
@@ -21,6 +22,9 @@ const isHovering = useElementHover(jointEl)
 const jointProps = computed(() => {
   const props = {
     class: ['r-joint'],
+    style: {
+      '--color': getHandleColorByTypes(handle.value.types),
+    },
     role: 'handle-joint',
     onPointerdown: () => gesture.startConnection(handle.value),
     onPointerup: () => gesture.endConnection(handle.value),
@@ -66,7 +70,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
 
 <style lang="less">
 .r-joint {
-  position: relative;
+  position: absolute;
   --size: var(--gr-size-handle-joint, 10px);
 
   left: calc(-1 * var(--size) / 2);
@@ -75,7 +79,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
   height: var(--size);
   border-radius: var(--size);
 
-  background: var(--gr-color-accent, red);
+  background: var(--color);
 
   pointer-events: auto;
 }
@@ -85,7 +89,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
 }
 
 .r-joint-ring {
-  box-shadow: 0 0 10px 2px var(--gr-color-accent, red);
+  box-shadow: 0 0 10px 2px var(--color);
 }
 
 .r-handle-content {
@@ -93,14 +97,13 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
   align-items: center;
   flex: 1;
   width: 0;
+  padding: 0 calc(var(--gr-size-handle-padding, 8px) / 2 + 8px);
 }
 
 .r-handle {
   display: flex;
   align-items: center;
   gap: 4px;
-
-  min-height: 26px;
 
   &.is-output {
     flex-direction: row-reverse;

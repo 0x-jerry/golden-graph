@@ -1,4 +1,4 @@
-import { NodeType, type Workspace } from '../../src'
+import type { Workspace } from '../../src'
 import { registerNodes } from './nodes'
 
 export function setup(workspace: Workspace) {
@@ -18,10 +18,23 @@ export function setup(workspace: Workspace) {
     },
   })
 
+  workspace.addNode('Math.Op', {
+    pos: {
+      x: 200,
+      y: 500,
+    },
+  })
+
   workspace.addNode('Output', {
     pos: {
       x: 500,
       y: 500,
+    },
+  })
+  workspace.addNode('Output', {
+    pos: {
+      x: 500,
+      y: 200,
     },
   })
 

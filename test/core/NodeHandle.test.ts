@@ -22,7 +22,7 @@ describe('NodeHandle', () => {
     })
     expect(handle.key).toBe('input')
     expect(handle.name).toBe('Input')
-    expect(handle.type).toEqual(['number'])
+    expect(handle.types).toEqual(['number'])
     expect(handle.isLeft).toBe(true)
     expect(handle.getOptions().type).toBe('number')
   })

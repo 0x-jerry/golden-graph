@@ -9,3 +9,5 @@ const handle = useNodeHandle()!
     {{ handle?.name }}
   </div>
 </template>
+
+<style scoped></style>

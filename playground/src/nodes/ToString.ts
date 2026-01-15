@@ -7,6 +7,13 @@ export class ToStringNode extends Node {
     this.name = 'To String'
 
     this.addHandle({
+      key: 'output',
+      name: 'Output',
+      position: HandlePosition.Right,
+      type: 'string',
+    })
+
+    this.addHandle({
       key: 'input',
       name: 'Input',
       type: '*',
@@ -18,13 +25,6 @@ export class ToStringNode extends Node {
         type: 'text',
         content: 'This is a ToString node, and some text explanation',
       },
-    })
-
-    this.addHandle({
-      key: 'output',
-      name: 'Output',
-      position: HandlePosition.Right,
-      type: 'string',
     })
   }
 

@@ -17,7 +17,7 @@ const value = useNodeHandleValue<number>()
 </template>
 
 
-<style>
+<style scoped>
 .handle-content {
   width: 100%;
   display: flex;

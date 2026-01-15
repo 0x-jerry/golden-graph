@@ -16,11 +16,10 @@ const options = useHandleOptions<TextHandleOptions>()
 </template>
 
 
-<style>
+<style scoped>
 .handle-content {
   width: 100%;
   text-align: center;
   color: var(--gr-color-text-muted, #666);
-  margin: 8px 0;
 }
 </style>

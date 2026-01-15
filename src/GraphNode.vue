@@ -82,6 +82,11 @@ function handleContextMenu(evt: MouseEvent) {
   background: var(--gr-color-surface, #ffffff);
   color: var(--gr-color-text-primary, #000000);
   border-radius: var(--gr-size-node-radius, 0);
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
 }
 
 .r-node-active {
@@ -93,8 +98,7 @@ function handleContextMenu(evt: MouseEvent) {
 }
 
 .r-node-header {
-  padding: 4px;
+  padding: 4px 8px;
   background: var(--gr-color-surface-header, #eee);
-  margin-bottom: 4px;
 }
 </style>

@@ -14,11 +14,10 @@ const str = computed(() => JSON.stringify(toRaw(value.value), null, 2))
 </template>
 
 
-<style>
+<style scoped>
 .handle-content {
   width: 100%;
   text-align: center;
   color: var(--gr-color-text-muted, #666);
-  margin: 8px 0;
 }
 </style>

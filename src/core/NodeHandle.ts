@@ -29,7 +29,7 @@ export interface INodeHandleConfig {
 }
 
 export class NodeHandle {
-  type: string[] = [NodeHandleType.All]
+  types: string[] = [NodeHandleType.All]
 
   key = ''
 
@@ -42,10 +42,6 @@ export class NodeHandle {
   _options: ObjectAny = {}
 
   _node?: Node
-
-  getOptions<T extends INodeHandleConfigOptions = INodeHandleConfigOptions>() {
-    return this._options as Readonly<T>
-  }
 
   get loc(): INodeHandleLoc {
     return {
@@ -77,6 +73,10 @@ export class NodeHandle {
   is(loc: INodeHandleLoc) {
     const l = this.loc
     return l.id === loc.id && l.key === loc.key
+  }
+
+  getOptions<T extends INodeHandleConfigOptions = INodeHandleConfigOptions>() {
+    return this._options as Readonly<T>
   }
 
   getValue<T>(): T | undefined {
@@ -130,17 +130,17 @@ export class NodeHandle {
       return false
     }
 
-    if (includeTypeAll(this.type) || includeTypeAll(handle.type)) {
+    if (includeTypeAll(this.types) || includeTypeAll(handle.types)) {
       return true
     }
 
-    return isIntersected(this.type, handle.type)
+    return isIntersected(this.types, handle.types)
   }
 
   fromConfig(data: INodeHandleConfig): void {
     this.key = data.key ?? ''
     this.name = data.name ?? ''
-    this.type = data.type ?? []
+    this.types = data.type ?? []
     this.position = data.position ?? HandlePosition.None
 
     Object.assign(this._options, data.options)

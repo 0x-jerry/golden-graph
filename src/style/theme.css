@@ -10,7 +10,7 @@
   --gr-color-text-muted: #6b7280;
 
   --gr-size-node-radius: 0px;
-  --gr-size-handle-joint: 10px;
+  --gr-size-handle-joint: 12px;
   --gr-size-grid-cell: 80px;
   --gr-size-connection-width: 3px;
 }
