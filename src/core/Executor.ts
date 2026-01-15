@@ -1,4 +1,5 @@
 import { sleep } from '@0x-jerry/utils'
+import { isEqual } from 'lodash-es'
 import { reactive } from 'vue'
 import { HandlePosition } from './HandlePosition'
 import type { Node } from './Node'
@@ -9,6 +10,9 @@ export class Executor {
 
   processStack: Node[] = []
   processed = new Set<Node>()
+
+  _cache = new Map<number, Record<string, unknown>>()
+  _cacheNew = new Map<number, Record<string, unknown>>()
 
   _state = reactive({
     isProcessing: false,
@@ -30,6 +34,8 @@ export class Executor {
       this._state.currentNodeId = -1
 
       await this._execute(entryNodes)
+      this._cache = this._cacheNew
+      this._cacheNew = new Map()
     } catch (error) {
       throw new Error(String(error), { cause: error })
     } finally {
@@ -87,9 +93,17 @@ export class Executor {
 
     this._state.currentNodeId = node.id
 
-    // for debug
-    await sleep(100)
-    await node.onProcess?.(node)
+    const prevData = this._cache.get(node.id)
+    const currentData = node.getAllData()
+    const isTheSameData = isEqual(currentData, prevData)
+
+    if (!isTheSameData) {
+      // for debug
+      await sleep(100)
+      await node.onProcess?.(node)
+    }
+
+    this._cacheNew.set(node.id, node.getAllData())
 
     this.processed.add(node)
 

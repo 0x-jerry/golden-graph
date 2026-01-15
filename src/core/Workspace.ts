@@ -202,19 +202,24 @@ export class Workspace implements IPersistent<IWorkspace> {
     edge.setStart(start)
     edge.setEnd(end)
 
-    if (!start.multiple) {
-      const edges = this.queryEdges(start.loc)
-      this.removeNodeByIds(...edges.map((e) => e.id))
-    }
-
-    if (!end.multiple) {
-      const edges = this.queryEdges(end.loc)
-      this.removeNodeByIds(...edges.map((e) => e.id))
-    }
+    this.removeConnectedEdgesByHandle(start)
+    this.removeConnectedEdgesByHandle(end)
 
     this._edges.push(edge)
 
     return edge
+  }
+
+  removeConnectedEdgesByHandle(handle: NodeHandle) {
+    if (handle.isRight) {
+      return
+    }
+    if (handle.multiple) {
+      return
+    }
+
+    const edges = this.queryEdges(handle.loc)
+    this.removeEdgeByIds(...edges.map((e) => e.id))
   }
 
   removeEdgeByIds(...ids: number[]) {

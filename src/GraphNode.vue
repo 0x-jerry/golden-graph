@@ -24,6 +24,20 @@ const ContextMenus = [
       ws.removeNodeByIds(props.nodeId)
     },
   },
+  {
+    label: 'Copy Node',
+    action: () => {
+      const data = node.value.getAllData()
+
+      ws.addNode(node.value.type, {
+        data,
+        pos: {
+          x: node.value.pos.x + 20,
+          y: node.value.pos.y + 20,
+        }
+      })
+    },
+  }
 ]
 
 const classes = computed(() => {

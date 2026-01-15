@@ -29,6 +29,7 @@
   "devDependencies": {
     "@0x-jerry/x-release": "^2.4.1",
     "@biomejs/biome": "^2.3.11",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^25.0.8",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/coverage-v8": "^4.0.17",
@@ -46,6 +47,7 @@
     "@0x-jerry/vue-kit": "^2.3.1",
     "@floating-ui/vue": "^1.1.9",
     "@vueuse/core": "^14.1.0",
+    "lodash-es": "^4.17.22",
     "vue": "^3.5.26"
   }
 }

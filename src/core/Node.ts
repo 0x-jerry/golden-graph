@@ -1,5 +1,5 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
-import { shallowReactive } from 'vue'
+import { shallowReactive, toRaw } from 'vue'
 import type { HandlePosition } from './HandlePosition'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
@@ -7,9 +7,7 @@ import type { INode, IVec2, ObjectAny } from './types'
 import type { Workspace } from './Workspace'
 
 export interface NodeBaseUpdateOptions {
-  name?: string
   pos?: IVec2
-  description?: string
   data?: ObjectAny
 }
 
@@ -59,8 +57,21 @@ export class Node implements IPersistent<INode> {
     return this._handles as readonly NodeHandle[]
   }
 
+  /**
+   * Get data of the node by key.
+   * @param key The key of the data.
+   * @returns The value by the key.
+   */
   getData<T>(key: string): T | undefined {
     return this._data[key] as T | undefined
+  }
+
+  /**
+   * Get all data of the node.
+   * @returns A deep clone of the node data.
+   */
+  getAllData() {
+    return structuredClone(toRaw(this._data))
   }
 
   setData(key: string, value: unknown) {
@@ -76,14 +87,6 @@ export class Node implements IPersistent<INode> {
   }
 
   updateByOption<T extends NodeBaseUpdateOptions>(opt: T) {
-    if (opt.name) {
-      this.name = opt.name
-    }
-
-    if (opt.description) {
-      this.description = opt.description
-    }
-
     if (opt.data) {
       Object.assign(this._data, opt.data)
     }
