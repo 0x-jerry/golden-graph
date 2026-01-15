@@ -123,7 +123,7 @@ function handlePointerMove(evt: MouseEvent) {
 </script>
 
 <template>
-  <div ref="el" class="coord-system" @wheel="handleZoom" @pointermove="handlePointerMove">
+  <div ref="el" class="coord-system" @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.setActiveId(null)">
     <GridPattern />
     <div class="coord-content" :style="coord.getCoordStyle({ x: 0, y: 0 })">
       <slot></slot>
@@ -138,7 +138,7 @@ function handlePointerMove(evt: MouseEvent) {
   width: 100%;
   height: 100%;
 
-  border: 1px solid gray;
+  border: 1px solid var(--gr-color-border, gray);
 
   user-select: none;
 }

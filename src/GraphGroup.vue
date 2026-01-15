@@ -35,6 +35,15 @@ const style = computed(() => {
 const headerEl = useTemplateRef('header-el')
 const groupNodeEl = useTemplateRef('group-node')
 
+const ContextMenus = [
+  {
+    label: 'Delete Group',
+    action: () => {
+      ws.removeGroup(props.groupId)
+    },
+  },
+]
+
 useDraggable(headerEl, {
   exact: true,
   onStart() {
@@ -64,19 +73,13 @@ function handleResize(evt: Event) {
 }
 
 function handleContextMenu(evt: MouseEvent) {
-  ws.showContextMenus(evt, [
-    {
-      label: 'Delete Group',
-      action: () => {
-        ws.deleteGroup(props.groupId)
-      },
-    },
-  ])
+  ws.showContextMenus(evt, ContextMenus)
 }
 </script>
 
 <template>
-  <div class="group-node" ref="group-node" :style="style" @resize="handleResize" @contextmenu="handleContextMenu">
+  <div class="group-node" :class="{'group-node-active': ws.state.activeId === group.id}" ref="group-node" :style="style" @resize="handleResize" @contextmenu="handleContextMenu"
+    @pointerdown.stop="ws.setActiveId(group.id)">
     <div ref="header-el" class="group-header">
       {{ group.name }}
     </div>
@@ -95,13 +98,18 @@ function handleContextMenu(evt: MouseEvent) {
   width: var(--width);
   height: var(--height);
 
-  border: 1px solid rgb(176, 176, 176);
-  background: #d5d5d5aa;
+  border: 1px solid var(--gr-color-border, rgb(176, 176, 176));
+  background: var(--gr-color-surface, #d5d5d5aa);
   pointer-events: auto;
+  color: var(--gr-color-text-primary, #000000);
 
   .group-header {
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--gr-color-surface-header, rgba(0, 0, 0, 0.15));
     padding: 8px;
   }
+}
+
+.group-node-active {
+  border-color: var(--gr-color-accent, #007acc);
 }
 </style>

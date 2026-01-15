@@ -36,8 +36,8 @@ const d = computed(() => {
 
 <style lang="less" scoped>
 .curve-path {
-  stroke: rgb(239, 70, 70);
-  stroke-width: 3px;
+  stroke: var(--gr-color-accent, rgb(239, 70, 70));
+  stroke-width: var(--gr-size-connection-width, 3px);
   fill: transparent;
 }
 </style>

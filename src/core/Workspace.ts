@@ -1,5 +1,5 @@
 import { nanoid, remove } from '@0x-jerry/utils'
-import { shallowReactive, shallowRef } from 'vue'
+import { reactive, shallowReactive, shallowRef } from 'vue'
 import type { ContextMenuItem } from '../components/ContextMenu.vue'
 import { RectBox } from '../utils/RectBox'
 import { ContextMenuHelper } from './ContextMenu'
@@ -34,6 +34,14 @@ export class Workspace implements IPersistent<IWorkspace> {
   _ctxMenuHelper = new ContextMenuHelper()
 
   readonly coord = new CoordSystem()
+
+  _state = reactive({
+    activeId: null as number | null,
+  })
+
+  get state() {
+    return this._state
+  }
 
   get nodes() {
     return this._nodes
@@ -94,6 +102,8 @@ export class Workspace implements IPersistent<IWorkspace> {
     const headerHeight = 50
 
     const g = new Group()
+    g.id = this.nextId()
+
     g.setWorkspace(this)
     g.pos.x = rect.left - padding
     g.pos.y = rect.top - padding - headerHeight
@@ -106,7 +116,7 @@ export class Workspace implements IPersistent<IWorkspace> {
     this._groups.push(g)
   }
 
-  deleteGroup(groupId: number) {
+  removeGroup(groupId: number) {
     return remove(this._groups, (g) => g.id === groupId)
   }
 
@@ -162,7 +172,9 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   removeNodeByIds(...ids: number[]) {
-    return remove(this._edges, (e) => ids.includes(e.id))
+    this.removeEdgeByNodeIds(...ids)
+
+    return remove(this._nodes, (e) => ids.includes(e.id))
   }
 
   getNode(id: number) {
@@ -209,12 +221,23 @@ export class Workspace implements IPersistent<IWorkspace> {
     remove(this._edges, (e) => ids.includes(e.id))
   }
 
+  removeEdgeByNodeIds(...ids: number[]) {
+    return remove(
+      this._edges,
+      (e) => ids.includes(e.start.node.id) || ids.includes(e.end.node.id),
+    )
+  }
+
   queryEdges(loc: INodeHandleLoc) {
     const filtered = this._edges.filter((edge) => {
       return edge.start.is(loc) || edge.end.is(loc)
     })
 
     return filtered
+  }
+
+  setActiveId(id: number | null) {
+    this.state.activeId = id
   }
 
   nextId() {

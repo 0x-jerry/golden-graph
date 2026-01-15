@@ -223,11 +223,14 @@ const handleSubMenuClick = (item: ContextMenuItem) => {
   z-index: 10000;
   min-width: 180px;
   padding: 4px;
-  background: #1e1e1e;
-  border: 1px solid #333;
+  background: var(--gr-color-context-menu-bg, #1e1e1e);
+  border: 1px solid var(--gr-color-context-menu-border, #333);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  color: #e0e0e0;
+  box-shadow: var(
+    --gr-color-context-menu-shadow,
+    0 4px 12px rgba(0, 0, 0, 0.3)
+  );
+  color: var(--gr-color-context-menu-text, #e0e0e0);
   font-size: 13px;
   user-select: none;
 
@@ -242,9 +245,8 @@ const handleSubMenuClick = (item: ContextMenuItem) => {
 
     &:hover,
     &.active {
-      /* Also highlight if submenu is open */
-      background-color: #007acc;
-      color: white;
+      background-color: var(--gr-color-context-menu-item-hover-bg, #007acc);
+      color: var(--gr-color-context-menu-item-hover-text, #ffffff);
     }
 
     &.disabled {
@@ -278,7 +280,7 @@ const handleSubMenuClick = (item: ContextMenuItem) => {
     .shortcut {
       margin-left: 16px;
       font-size: 11px;
-      opacity: 0.7;
+      color: var(--gr-color-context-menu-shortcut, rgba(224, 224, 224, 0.7));
     }
 
     .arrow {

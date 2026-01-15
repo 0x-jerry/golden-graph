@@ -36,10 +36,12 @@ defineExpose({
 </template>
 
 <style lang="less">
+@import './style/theme.css';
+
 .r-renderer {
   width: 100%;
   height: 100%;
-
   user-select: none;
+  background-color: var(--gr-color-bg, transparent);
 }
 </style>

@@ -67,7 +67,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
 <style lang="less">
 .r-joint {
   position: relative;
-  --size: 10px;
+  --size: var(--gr-size-handle-joint, 10px);
 
   left: calc(-1 * var(--size) / 2);
 
@@ -75,7 +75,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
   height: var(--size);
   border-radius: var(--size);
 
-  background: red;
+  background: var(--gr-color-accent, red);
 
   pointer-events: auto;
 }
@@ -85,7 +85,7 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
 }
 
 .r-joint-ring {
-  box-shadow: 0 0 10px 2px red;
+  box-shadow: 0 0 10px 2px var(--gr-color-accent, red);
 }
 
 .r-handle-content {

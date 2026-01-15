@@ -20,7 +20,7 @@ const options = useHandleOptions<TextHandleOptions>()
 .handle-content {
   width: 100%;
   text-align: center;
-  color: #666;
+  color: var(--gr-color-text-muted, #666);
   margin: 8px 0;
 }
 </style>

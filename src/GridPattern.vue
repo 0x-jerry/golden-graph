@@ -14,9 +14,9 @@ const coord = useCoordSystem()!
   height: 100%;
   pointer-events: none;
 
-  --color: #eee;
+  --color: var(--gr-color-border, #eee);
 
-  --size: calc(80px * var(--scale));
+  --size: calc(var(--gr-size-grid-cell, 80px) * var(--scale));
 
   background-position: var(--x) var(--y);
 
