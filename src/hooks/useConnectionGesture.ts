@@ -65,10 +65,6 @@ export const useConnectionGesture = defineContext(
           return handle
         }
 
-        if (handle.multiple) {
-          return handle
-        }
-
         const [edge] = ws.queryEdges(handle.loc)
         if (!edge) {
           return handle

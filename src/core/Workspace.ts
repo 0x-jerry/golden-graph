@@ -201,9 +201,6 @@ export class Workspace implements IPersistent<IWorkspace> {
     if (handle.isRight) {
       return
     }
-    if (handle.multiple) {
-      return
-    }
 
     const edges = this.queryEdges(handle.loc)
     this.removeEdgeByIds(...edges.map((e) => e.id))

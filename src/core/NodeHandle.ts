@@ -23,11 +23,6 @@ export interface INodeHandleConfig {
 
   position?: HandlePosition
 
-  /**
-   * Accept multiple connections, only for left handle
-   */
-  multiple?: boolean
-
   options?: INodeHandleConfigOptions
 }
 
@@ -39,11 +34,6 @@ export class NodeHandle {
   name = 'Default Handle'
 
   position = HandlePosition.None
-
-  /**
-   * Accept multiple connections, only for left handle
-   */
-  multiple = false
 
   _options: ObjectAny = {}
 
