@@ -31,6 +31,8 @@ export class Node implements IPersistent<INode> {
 
   _data: Record<string, unknown> = shallowReactive({})
 
+  _connectedData: Record<string, unknown> = shallowReactive({})
+
   readonly pos = shallowReactive({ x: 0, y: 0 })
 
   _handles: NodeHandle[] = shallowReactive([])
@@ -80,6 +82,23 @@ export class Node implements IPersistent<INode> {
     }
 
     this._data[key] = value
+  }
+
+  /**
+   * @internal
+   */
+  setConnectedData(key: string, value: unknown) {
+    this._connectedData[key] = value
+  }
+
+  isHandleConnected(key: string) {
+    const handle = this.handles.find(n => n.key === key)
+
+    if (!handle?.isLeft) {
+      return false
+    }
+
+    return !!this.workspace.queryEdges(handle.loc).length
   }
 
   setNodeType(t: NodeType) {
