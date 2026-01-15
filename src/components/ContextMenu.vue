@@ -55,19 +55,21 @@ const reference = computed(() => {
     return props.parentElement;
   }
 
+  const boundingRect = {
+    width: 0,
+    height: 0,
+    x: props.x,
+    y: props.y,
+    top: props.y,
+    left: props.x,
+    right: props.x,
+    bottom: props.y,
+  }
+
   // Virtual element for root
   return {
     getBoundingClientRect() {
-      return {
-        width: 0,
-        height: 0,
-        x: props.x,
-        y: props.y,
-        top: props.y,
-        left: props.x,
-        right: props.x,
-        bottom: props.y,
-      };
+      return boundingRect;
     },
   };
 });
@@ -106,7 +108,7 @@ if (!props.parentElement) {
     floating,
     () => {
       if (props.visible) {
-        emit("close");
+        handleClose()
       }
     },
     {
@@ -119,21 +121,21 @@ const activeIndex = ref<number | null>(null);
 const itemRefs = ref<HTMLElement[]>([]);
 
 // Handle hover for submenus
-const handleMouseEnter = (index: number) => {
+function handleMouseEnter(index: number) {
   if (props.items[index].disabled) return;
   activeIndex.value = index;
-};
+}
 
-const handleMouseLeave = () => {
+function handleMouseLeave() {
   // We might want a delay here, but for simplicity, keep it simple for now.
   // If we close immediately, moving to submenu might fail if there's a gap.
   // But our offset is small.
   // Usually, we only close if we hover another item.
   // But if we leave the menu entirely?
   // For now, let's not auto-close on simple mouseleave of the item unless we enter another.
-};
+}
 
-const handleClick = (item: ContextMenuItem) => {
+function handleClick(item: ContextMenuItem) {
   if (item.disabled) return;
 
   if (item.children?.length) {
@@ -144,20 +146,24 @@ const handleClick = (item: ContextMenuItem) => {
 
   item.action?.();
   emit("click", item);
-  emit("close");
-};
 
-const handleSubMenuClose = () => {
+  handleClose();
+}
+
+function handleClose() {
   activeIndex.value = null;
-};
-
-const handleSubMenuClick = (item: ContextMenuItem) => {
-  emit("click", item);
   emit("close");
-};
+}
 
-// Close when clicking outside is handled by the parent usage usually,
-// but for submenus, we rely on the root closing.
+function handleSubMenuClose() {
+  activeIndex.value = null;
+}
+
+function handleSubMenuClick(item: ContextMenuItem) {
+  emit("click", item);
+
+  handleClose();
+}
 </script>
 
 <template>
@@ -223,14 +229,14 @@ const handleSubMenuClick = (item: ContextMenuItem) => {
   z-index: 10000;
   min-width: 180px;
   padding: 4px;
-  background: var(--gr-color-context-menu-bg, #1e1e1e);
-  border: 1px solid var(--gr-color-context-menu-border, #333);
+  background: var(--gr-color-surface, #1e1e1e);
+  border: 1px solid var(--gr-color-border, #333);
   border-radius: 6px;
   box-shadow: var(
     --gr-color-context-menu-shadow,
     0 4px 12px rgba(0, 0, 0, 0.3)
   );
-  color: var(--gr-color-context-menu-text, #e0e0e0);
+  color: var(--gr-color-text-primary, #e0e0e0);
   font-size: 13px;
   user-select: none;
 
@@ -245,8 +251,8 @@ const handleSubMenuClick = (item: ContextMenuItem) => {
 
     &:hover,
     &.active {
-      background-color: var(--gr-color-context-menu-item-hover-bg, #007acc);
-      color: var(--gr-color-context-menu-item-hover-text, #ffffff);
+      background-color: var(--gr-color-accent, #007acc);
+      color: #ffffff;
     }
 
     &.disabled {
@@ -280,7 +286,7 @@ const handleSubMenuClick = (item: ContextMenuItem) => {
     .shortcut {
       margin-left: 16px;
       font-size: 11px;
-      color: var(--gr-color-context-menu-shortcut, rgba(224, 224, 224, 0.7));
+      color: var(--gr-color-text-muted, rgba(224, 224, 224, 0.7));
     }
 
     .arrow {
