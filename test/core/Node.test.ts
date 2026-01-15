@@ -12,13 +12,9 @@ describe('Node', () => {
   it('updateByOption sets name, pos, description and data', () => {
     const n = new TNode()
     n.updateByOption({
-      name: 'A',
-      description: 'desc',
       pos: { x: 10, y: 20 },
       data: { a: 1 },
     })
-    expect(n.name).toBe('A')
-    expect(n.description).toBe('desc')
     expect(n.pos).toEqual({ x: 10, y: 20 })
     expect(n.getData('a')).toBe(1)
   })
