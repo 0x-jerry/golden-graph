@@ -14,11 +14,27 @@ function setup(ws: Workspace) {
 
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
+  let isPending = false
+
   events.forEach(event => {
     ws.events.on(event, () => {
-      ws.execute()
+      execute()
     })
   })
+
+  async function execute() {
+    if (ws.executorState.isProcessing) {
+      isPending = true
+      return
+    }
+
+    await ws.execute()
+
+    if (isPending) {
+      isPending = false
+      execute()
+    }
+  }
 }
 
 function save() {
