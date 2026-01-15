@@ -75,6 +75,10 @@ export class Node implements IPersistent<INode> {
   }
 
   setData(key: string, value: unknown) {
+    if (this._data[key] === value) {
+      return
+    }
+
     this._data[key] = value
   }
 

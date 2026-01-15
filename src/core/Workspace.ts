@@ -1,10 +1,9 @@
-import { nanoid, remove } from '@0x-jerry/utils'
-import { reactive, shallowReactive, shallowRef } from 'vue'
+import { EventEmitter, nanoid, remove } from '@0x-jerry/utils'
+import { reactive, shallowReactive } from 'vue'
 import type { ContextMenuItem } from '../components/ContextMenu.vue'
-import { RectBox } from '../utils/RectBox'
 import { ContextMenuHelper } from './ContextMenu'
 import { CoordSystem } from './CoordSystem'
-import { getNodeDom } from './dom'
+import { getNodesBounding } from './dom'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
 import { Group } from './Group'
@@ -15,9 +14,24 @@ import type { IPersistent } from './Persistent'
 import { Register } from './Register'
 import type { INodeHandleLoc, IWorkspace } from './types'
 
+export interface WorkspaceEvents {
+  'node:added': [node: Node]
+  'node:removed': [node: Node]
+
+  /**
+   * Node handle value updated.
+   */
+  'handle:updated': [handle: NodeHandle]
+
+  'edge:added': [edge: Edge]
+  'edge:removed': [edge: Edge]
+}
+
 export class Workspace implements IPersistent<IWorkspace> {
-  version = '1.0.0'
-  id = nanoid()
+  readonly version = '1.0.0'
+  readonly id = nanoid()
+  readonly events = new EventEmitter<WorkspaceEvents>()
+  readonly coord = new CoordSystem()
 
   _nodes: Node[] = shallowReactive([])
   _edges: Edge[] = shallowReactive([])
@@ -29,13 +43,13 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   _executor = new Executor(this)
 
-  _disabled = shallowRef(false)
-
   _ctxMenuHelper = new ContextMenuHelper()
 
-  readonly coord = new CoordSystem()
-
   _state = reactive({
+    disabled: false,
+    /**
+     * Current selected item, maybe it is node, edge, or group.
+     */
     activeId: null as number | null,
   })
 
@@ -56,7 +70,7 @@ export class Workspace implements IPersistent<IWorkspace> {
   }
 
   get disabled() {
-    return this._disabled.value || this._executor.state.isProcessing
+    return this._state.disabled || this._executor.state.isProcessing
   }
 
   get executorState() {
@@ -88,7 +102,29 @@ export class Workspace implements IPersistent<IWorkspace> {
     }
 
     this._nodes.push(node)
+    this.events.emit('node:added', node)
     return node
+  }
+
+  queryNodes(...ids: number[]) {
+    return this.nodes.filter((n) => ids.includes(n.id))
+  }
+
+  removeNodeByIds(...ids: number[]) {
+    const edges = this.queryConnectedEdges(...ids)
+    this.removeEdgeByIds(...edges.map((e) => e.id))
+
+    const nodes = remove(this._nodes, (e) => ids.includes(e.id))
+
+    for (const node of nodes) {
+      this.events.emit('node:removed', node)
+    }
+
+    return nodes
+  }
+
+  getNode(id: number) {
+    return this.nodes.find((n) => n.id === id)
   }
 
   addGroup(nodeIds: number[]) {
@@ -96,7 +132,8 @@ export class Workspace implements IPersistent<IWorkspace> {
       return
     }
 
-    const rect = this.getNodesBounding(...nodeIds)
+    const nodes = this.queryNodes(...nodeIds)
+    const rect = getNodesBounding(nodes)
 
     const padding = 40
     const headerHeight = 50
@@ -130,57 +167,6 @@ export class Workspace implements IPersistent<IWorkspace> {
     this._ctxMenuHelper.hide()
   }
 
-  getNodesBounding(...nodeIds: number[]) {
-    const nodes = this.queryNodes(...nodeIds)
-
-    let updated = false
-
-    const rect = new RectBox()
-
-    for (const node of nodes) {
-      const r = getNodeDom(this.id, node.id)
-
-      if (!r) {
-        throw new Error(`Can not find node dom by id: ${node.id}`)
-      }
-
-      const left = node.pos.x
-      const top = node.pos.y
-      const right = left + r.clientWidth
-      const bottom = top + r.clientHeight
-
-      if (updated) {
-        rect.left = Math.min(rect.left, left)
-        rect.top = Math.min(rect.top, top)
-        rect.right = Math.max(rect.right, right)
-        rect.bottom = Math.max(rect.bottom, bottom)
-      } else {
-        rect.left = left
-        rect.top = top
-        rect.right = right
-        rect.bottom = bottom
-
-        updated = true
-      }
-    }
-
-    return rect
-  }
-
-  queryNodes(...ids: number[]) {
-    return this.nodes.filter((n) => ids.includes(n.id))
-  }
-
-  removeNodeByIds(...ids: number[]) {
-    this.removeEdgeByNodeIds(...ids)
-
-    return remove(this._nodes, (e) => ids.includes(e.id))
-  }
-
-  getNode(id: number) {
-    return this.nodes.find((n) => n.id === id)
-  }
-
   canConnect(start: NodeHandle, end: NodeHandle) {
     if (start.position === end.position) {
       return
@@ -206,6 +192,7 @@ export class Workspace implements IPersistent<IWorkspace> {
     this.removeConnectedEdgesByHandle(end)
 
     this._edges.push(edge)
+    this.events.emit('edge:added', edge)
 
     return edge
   }
@@ -222,15 +209,19 @@ export class Workspace implements IPersistent<IWorkspace> {
     this.removeEdgeByIds(...edges.map((e) => e.id))
   }
 
-  removeEdgeByIds(...ids: number[]) {
-    remove(this._edges, (e) => ids.includes(e.id))
-  }
+  queryConnectedEdges(...nodeIds: number[]) {
+    const handles = nodeIds.flatMap((id) => {
+      const node = this.getNode(id)
+      if (!node) {
+        return []
+      }
 
-  removeEdgeByNodeIds(...ids: number[]) {
-    return remove(
-      this._edges,
-      (e) => ids.includes(e.start.node.id) || ids.includes(e.end.node.id),
-    )
+      return node.handles
+    })
+
+    const edges = handles.flatMap((handle) => this.queryEdges(handle.loc))
+
+    return edges
   }
 
   queryEdges(loc: INodeHandleLoc) {
@@ -239,6 +230,15 @@ export class Workspace implements IPersistent<IWorkspace> {
     })
 
     return filtered
+  }
+
+  removeEdgeByIds(...ids: number[]) {
+    const edges = remove(this._edges, (e) => ids.includes(e.id))
+    for (const edge of edges) {
+      this.events.emit('edge:removed', edge)
+    }
+
+    return edges
   }
 
   setActiveId(id: number | null) {

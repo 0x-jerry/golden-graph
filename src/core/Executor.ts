@@ -1,4 +1,3 @@
-import { sleep } from '@0x-jerry/utils'
 import { isEqual } from 'lodash-es'
 import { reactive } from 'vue'
 import { HandlePosition } from './HandlePosition'
@@ -98,8 +97,6 @@ export class Executor {
     const isTheSameData = isEqual(currentData, prevData)
 
     if (!isTheSameData) {
-      // for debug
-      await sleep(100)
       await node.onProcess?.(node)
     }
 
@@ -118,7 +115,7 @@ export class Executor {
         const otherHandle = edge.start === outputHandle ? edge.end : edge.start
         const connectedNode = otherHandle.node
 
-        otherHandle.setValue(outputHandle.getValue())
+        otherHandle.setValue(outputHandle.getValue(), { skipEvent: true })
 
         nextProcessNodes.push(connectedNode)
       }

@@ -1,13 +1,25 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef } from 'vue';
-import { GraphRenderer } from '../../src'
-import { setup } from './editor'
+import { GraphRenderer, Workspace } from '../../src'
+import { setup as _setup } from './editor'
 
 const instance = useTemplateRef<InstanceType<typeof GraphRenderer>>('renderer')
 
 const cacheKey = 'graph-save-data'
 
 const workspace = computed(() => instance.value?.workspace);
+
+function setup(ws: Workspace) {
+  _setup(ws)
+
+  const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
+
+  events.forEach(event => {
+    ws.events.on(event, () => {
+      ws.execute()
+    })
+  })
+}
 
 function save() {
   const ws = workspace.value

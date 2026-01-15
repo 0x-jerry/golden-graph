@@ -89,8 +89,12 @@ export class NodeHandle {
     return this.node.getData(this.key)
   }
 
-  setValue(value: unknown) {
+  setValue(value: unknown, opt: { skipEvent?: boolean } = {}) {
     this.node.setData(this.key, value)
+
+    if (!opt.skipEvent) {
+      this.node.workspace.events.emit('handle:updated', this)
+    }
   }
 
   getDom() {
