@@ -96,7 +96,7 @@ export class NodeHandle {
    */
   getValue<T>(): T | undefined {
     if (this.isLeft && this.connectedHandle) {
-      return this.connectedHandle.getValue<T>()
+      return this.connectedHandle.getValue() as T
     }
 
     return this._value.value as T
