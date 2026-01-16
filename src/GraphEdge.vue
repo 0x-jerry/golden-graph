@@ -46,7 +46,7 @@ const pathProps = computed(() => {
 </script>
 
 <template>
-  <CubicBezier v-if="pathProps" v-bind="pathProps" :data-start="`${edge.start.node.id}-${edge.start.key}`"
+  <CubicBezier v-if="pathProps" v-bind="pathProps" :data-edge-id="edge.id" :data-start="`${edge.start.node.id}-${edge.start.key}`"
     :data-end="`${edge.end.node.id}-${edge.end.key}`" />
 </template>
 

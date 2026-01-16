@@ -72,7 +72,7 @@ export class Node implements IPersistent<INode> {
       throw new Error(`Can not find handle by key: ${key}`)
     }
 
-    return handle.getValue<T>()
+    return handle.getValue() as T
   }
 
   /**

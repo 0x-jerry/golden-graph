@@ -212,14 +212,14 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
       return
     }
 
+    const inputHandle = start.isLeft ? start : end
+    this.removeConnectedEdgesByHandle(inputHandle)
+
     const edge = new Edge()
     edge.setWorkspace(this)
     edge.id = this.nextId()
 
     edge.setEndpoints(start, end)
-
-    this.removeConnectedEdgesByHandle(start)
-    this.removeConnectedEdgesByHandle(end)
 
     this._edges.push(edge)
     this.events.emit('edge:added', edge)
@@ -228,10 +228,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   removeConnectedEdgesByHandle(handle: NodeHandle) {
-    if (handle.isRight) {
-      return
-    }
-
     const edges = this.queryEdges(handle.loc)
     this.removeEdgeByIds(...edges.map((e) => e.id))
   }
@@ -329,7 +325,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     await this._executor.execute(nodes)
   }
 
-  setDebug(enabled: boolean ) {
+  setDebug(enabled: boolean) {
     this._state.debug = enabled
   }
 

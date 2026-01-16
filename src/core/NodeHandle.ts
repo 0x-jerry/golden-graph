@@ -94,12 +94,12 @@ export class NodeHandle {
    * If handle is left, return value of connected handle.
    * @returns
    */
-  getValue<T>(): T | undefined {
+  getValue(): unknown {
     if (this.isLeft && this.connectedHandle) {
-      return this.connectedHandle.getValue() as T
+      return this.connectedHandle.getValue()
     }
 
-    return this._value.value as T
+    return this._value.value
   }
 
   /**

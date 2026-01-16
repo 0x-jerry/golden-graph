@@ -1,15 +1,17 @@
-import { computed } from 'vue'
+import { computed, type WritableComputedRef } from 'vue'
 import { useNodeHandle } from '../hooks'
 
 export function useNodeHandleValue<T>() {
   const handle = useNodeHandle()!
 
-  return computed({
+  const value = computed({
     get() {
-      return handle.value.getValue<T>()
+      return handle.value.getValue()
     },
     set(value) {
       handle.value.setValue(value)
     },
   })
+
+  return value as WritableComputedRef<T>
 }

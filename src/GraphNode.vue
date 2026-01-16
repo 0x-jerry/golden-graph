@@ -86,7 +86,10 @@ function handleContextMenu(evt: MouseEvent) {
   @contextmenu.stop="handleContextMenu"
   >
     <div class="r-node-header" ref="draggableEl">
-      <div class="r-node-name">{{ node.name }}</div>
+      <div class="r-node-name">
+        {{ node.name }}
+        <template v-if="ws.state.debug">({{ node.id }})</template>
+      </div>
     </div>
 
     <GraphHandle v-for="handle in node.handles" :key="handle.key" :handle-key="handle.key" />

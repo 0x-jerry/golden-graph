@@ -1,3 +1,4 @@
+import { sleep } from '@0x-jerry/utils'
 import { isEqual } from 'lodash-es'
 import { reactive } from 'vue'
 import { HandlePosition } from './HandlePosition'
@@ -98,6 +99,10 @@ export class Executor {
     const isTheSameData = isEqual(currentData, prevData)
 
     if (!isTheSameData) {
+      if (this.ws.state.debug) {
+        await sleep(100)
+      }
+
       await node.onProcess?.(node)
     }
 
