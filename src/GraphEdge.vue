@@ -2,6 +2,7 @@
 import { useMounted } from "@vueuse/core";
 import { computed } from "vue";
 import CubicBezier from "./CubicBezier.vue";
+import { getHandleJointDom, getHandleJointDomPosition } from "./core/domHelper";
 import { useEdge } from "./hooks";
 
 export interface GraphEdgeProps {
@@ -27,16 +28,15 @@ const pathProps = computed(() => {
     endHandle = edge.value.start;
   }
 
-  const startDom = startHandle.getJointDom();
-  const endDom = endHandle.getJointDom();
+  const startDom = getHandleJointDom(startHandle);
+  const endDom = getHandleJointDom(endHandle);
 
   if (!startDom || !endDom) {
     return false;
   }
 
-  const start = startHandle.getJointDomPosition();
-
-  const end = endHandle.getJointDomPosition();
+  const start = getHandleJointDomPosition(startHandle);
+  const end = getHandleJointDomPosition(endHandle);
 
   return {
     start: start,

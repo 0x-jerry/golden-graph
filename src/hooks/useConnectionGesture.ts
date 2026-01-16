@@ -2,6 +2,7 @@ import { defineContext } from '@0x-jerry/vue-kit'
 import { useEventListener } from '@vueuse/core'
 import { reactive, shallowRef } from 'vue'
 import type { IVec2, NodeHandle, Workspace } from '../core'
+import { getHandleJointDomPosition } from '../core/domHelper'
 
 export interface UseGestureOptions {
   workspace: Workspace
@@ -43,13 +44,13 @@ export const useConnectionGesture = defineContext(
       state.handle = getStartHandle()
       state.isConnectingHandle = true
 
-      const pos = handle.getJointDomPosition()
+      const pos = getHandleJointDomPosition(handle)
 
       state.start = { ...pos }
       state.end = { ...pos }
 
       if (state.handle !== handle) {
-        const newPos = state.handle.getJointDomPosition()
+        const newPos = getHandleJointDomPosition(state.handle)
 
         if (handle.isLeft) {
           state.end = newPos

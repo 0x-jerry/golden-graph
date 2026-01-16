@@ -1,5 +1,3 @@
-import type { Optional } from '@0x-jerry/utils'
-import { getNodeHandleDom } from './dom'
 import { HandlePosition } from './HandlePosition'
 import { isIntersected, toReadonly } from './helper'
 import type { Node } from './Node'
@@ -85,36 +83,6 @@ export class NodeHandle {
     if (!opt.skipEvent) {
       this.node.workspace.events.emit('handle:updated', this)
     }
-  }
-
-  getDom() {
-    const nodeId = this.node.id
-    const wsId = this.node.workspace.id
-
-    return getNodeHandleDom(wsId, nodeId, this.key)
-  }
-
-  getJointDom() {
-    return this.getDom()?.querySelector(
-      `[role="handle-joint"]`,
-    ) as Optional<HTMLElement>
-  }
-
-  /**
-   * Absolute position
-   */
-  getJointDomPosition() {
-    const dom = this.getJointDom()
-    if (!dom) {
-      throw new Error('Can not find joint dom element!')
-    }
-
-    const pos = {
-      x: this.node.pos.x + dom.offsetLeft + dom.clientWidth / 2,
-      y: this.node.pos.y + dom.offsetTop + dom.clientHeight / 2,
-    }
-
-    return pos
   }
 
   setNode(node: Node) {

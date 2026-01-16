@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { HandlePosition, Node, NodeType, Workspace } from '../../src/core'
-import { getNodesBounding } from '../../src/core/dom'
+import { getNodesBounding } from '../../src/core/domHelper'
 
 class SourceNode extends Node {
   constructor() {

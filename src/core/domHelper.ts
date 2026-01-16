@@ -1,6 +1,7 @@
 import type { Optional } from '@0x-jerry/utils'
 import { RectBox } from '../utils/RectBox'
 import type { Node } from './Node'
+import type { NodeHandle } from './NodeHandle'
 
 export function getWorkspaceDom(workspaceId: string) {
   return document.querySelector(
@@ -57,4 +58,34 @@ export function getNodesBounding(nodes: Node[]) {
   }
 
   return rect
+}
+
+/**
+ * Get Handle joint dom element
+ * @param handle
+ * @returns
+ */
+export function getHandleJointDom(handle: NodeHandle) {
+  const nodeId = handle.node.id
+  const wsId = handle.node.workspace.id
+
+  const el = getNodeHandleDom(wsId, nodeId, handle.key)
+  return el?.querySelector(`[role="handle-joint"]`) as Optional<HTMLElement>
+}
+
+/**
+ * Absolute position
+ */
+export function getHandleJointDomPosition(handle: NodeHandle) {
+  const dom = getHandleJointDom(handle)
+  if (!dom) {
+    throw new Error('Can not find joint dom element!')
+  }
+
+  const pos = {
+    x: handle.node.pos.x + dom.offsetLeft + dom.clientWidth / 2,
+    y: handle.node.pos.y + dom.offsetTop + dom.clientHeight / 2,
+  }
+
+  return pos
 }
