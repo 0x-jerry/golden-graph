@@ -11,6 +11,7 @@ const workspace = computed(() => instance.value?.workspace);
 
 function setup(ws: Workspace) {
   _setup(ws)
+  ws.setDebug(true)
 
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
@@ -63,8 +64,6 @@ async function load() {
 
   await nextTick()
   ws.fromJSON(JSON.parse(data))
-
-  console.log(ws)
 }
 
 function clear() {
