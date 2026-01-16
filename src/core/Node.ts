@@ -1,5 +1,5 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
-import { shallowReactive, toRaw } from 'vue'
+import { reactive, shallowReactive, toRaw } from 'vue'
 import type { HandlePosition } from './HandlePosition'
 import { toReadonly } from './helper'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
@@ -27,8 +27,6 @@ export class Node implements IPersistent<INode> {
   name = 'Node'
   description?: string
 
-  readonly pos = shallowReactive({ x: 0, y: 0 })
-
   _type = 'DefaultNode'
   _nodeType = NodeType.None
 
@@ -38,6 +36,13 @@ export class Node implements IPersistent<INode> {
 
   _handles: NodeHandle[] = shallowReactive([])
 
+  _state = reactive({
+    pos: {
+      x: 0,
+      y: 0,
+    },
+  })
+
   _workspace?: Workspace
 
   get type() {
@@ -46,6 +51,10 @@ export class Node implements IPersistent<INode> {
 
   get nodeType() {
     return this._nodeType
+  }
+
+  get pos() {
+    return toReadonly(this._state.pos)
   }
 
   get workspace() {
@@ -147,13 +156,13 @@ export class Node implements IPersistent<INode> {
   onProcess?: (instance: this) => unknown
 
   move(x: number, y: number) {
-    this.pos.x += x
-    this.pos.y += y
+    this._state.pos.x += x
+    this._state.pos.y += y
   }
 
   moveTo(x: number, y: number) {
-    this.pos.x = x
-    this.pos.y = y
+    this._state.pos.x = x
+    this._state.pos.y = y
   }
 
   toJSON(): INode {
@@ -162,16 +171,16 @@ export class Node implements IPersistent<INode> {
       type: this._type,
       data: this._data,
       pos: {
-        x: this.pos.x,
-        y: this.pos.y,
+        x: this._state.pos.x,
+        y: this._state.pos.y,
       },
     }
   }
 
   fromJSON(data: INode): void {
     this.id = data.id
-    this.pos.x = data.pos.x
-    this.pos.y = data.pos.y
+    this._state.pos.x = data.pos.x
+    this._state.pos.y = data.pos.y
 
     Object.assign(this._data, data.data)
   }

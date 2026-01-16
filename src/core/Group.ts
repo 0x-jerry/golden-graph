@@ -9,28 +9,34 @@ export class Group implements IPersistent<IGroup> {
 
   _workspace?: Workspace
 
-  readonly pos = shallowReactive({
-    x: 0,
-    y: 0,
-  })
-
-  readonly size = shallowReactive({
-    x: 0,
-    y: 0,
-  })
-
   readonly nodes = shallowReactive<number[]>([])
 
   _state = reactive({
     name: 'Untitled',
+    pos: {
+      x: 0,
+      y: 0,
+    },
+    size: {
+      x: 0,
+      y: 0,
+    },
   })
+
+  get pos() {
+    return toReadonly(this._state.pos)
+  }
+
+  get size() {
+    return toReadonly(this._state.size)
+  }
 
   get workspace() {
     if (!this._workspace) {
       throw new Error('Workspace is not set!')
     }
 
-    return this._workspace
+    return toReadonly(this._workspace)
   }
 
   get name() {
@@ -49,9 +55,19 @@ export class Group implements IPersistent<IGroup> {
     this._state.name = name
   }
 
+  setPos(pos: IVec2) {
+    this._state.pos.x = pos.x
+    this._state.pos.y = pos.y
+  }
+
+  setSize(size: IVec2) {
+    this._state.size.x = size.x
+    this._state.size.y = size.y
+  }
+
   move(dPos: IVec2) {
-    this.pos.x += dPos.x
-    this.pos.y += dPos.y
+    this._state.pos.x += dPos.x
+    this._state.pos.y += dPos.y
 
     this.workspace.nodes.forEach((item) => {
       if (this.nodes.includes(item.id)) {
@@ -74,11 +90,11 @@ export class Group implements IPersistent<IGroup> {
     this.id = data.id
     this._state.name = data.name
 
-    this.pos.x = data.pos.x
-    this.pos.y = data.pos.y
+    this._state.pos.x = data.pos.x
+    this._state.pos.y = data.pos.y
 
-    this.size.x = data.size.x
-    this.size.y = data.size.y
+    this._state.size.x = data.size.x
+    this._state.size.y = data.size.y
 
     this.nodes.splice(0)
     this.nodes.push(...data.nodes)

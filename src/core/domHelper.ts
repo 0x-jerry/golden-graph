@@ -37,21 +37,25 @@ export function getNodesBounding(nodes: Node[]) {
       throw new Error(`Can not find node dom by id: ${node.id}`)
     }
 
-    const left = node.pos.x
-    const top = node.pos.y
-    const right = left + r.clientWidth
-    const bottom = top + r.clientHeight
+    const x = node.pos.x
+    const y = node.pos.y
+    const w = r.clientWidth
+    const h = r.clientHeight
 
     if (updated) {
-      rect.left = Math.min(rect.left, left)
-      rect.top = Math.min(rect.top, top)
-      rect.right = Math.max(rect.right, right)
-      rect.bottom = Math.max(rect.bottom, bottom)
+      const _left = Math.min(rect.left, x)
+      const _top = Math.min(rect.top, y)
+      const _right = Math.max(rect.right, x + w)
+      const _bottom = Math.max(rect.bottom, y + h)
+      rect.x = _left
+      rect.y = _top
+      rect.width = _right - _left
+      rect.height = _bottom - _top
     } else {
-      rect.left = left
-      rect.top = top
-      rect.right = right
-      rect.bottom = bottom
+      rect.x = x
+      rect.y = y
+      rect.width = w
+      rect.height = h
 
       updated = true
     }

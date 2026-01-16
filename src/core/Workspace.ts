@@ -169,11 +169,14 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     g.id = this.nextId()
 
     g.setWorkspace(this)
-    g.pos.x = rect.left - padding
-    g.pos.y = rect.top - padding - headerHeight
-
-    g.size.x = rect.right - rect.left + padding * 2
-    g.size.y = rect.bottom - rect.top + padding * 2 + headerHeight
+    g.setPos({
+      x: rect.x - padding,
+      y: rect.y - padding - headerHeight,
+    })
+    g.setSize({
+      x: rect.width + padding * 2,
+      y: rect.height + padding * 2 + headerHeight,
+    })
 
     g.nodes.push(...nodeIds)
 

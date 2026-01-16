@@ -109,7 +109,8 @@ function handlePointerMove(evt: MouseEvent) {
 </script>
 
 <template>
-  <div ref="el" class="coord-system" @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.clearActiveIds()">
+  <div ref="el" class="coord-system"  :data-scale="coord.scale" :data-origin="`${coord.origin.x} ${coord.origin.y}`"
+        @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.clearActiveIds()">
     <GridPattern />
     <div class="coord-content" :style="coord.getCoordStyle({ x: 0, y: 0 })">
       <slot></slot>

@@ -5,13 +5,6 @@ export interface IRect {
   height: number
 }
 
-export interface IRectBox {
-  left: number
-  top: number
-  right: number
-  bottom: number
-}
-
 export class RectBox {
   x: number
   y: number
@@ -22,32 +15,16 @@ export class RectBox {
     return this.x
   }
 
-  set left(value) {
-    this.x = value
-  }
-
   get top() {
     return this.y
-  }
-
-  set top(value) {
-    this.y = value
   }
 
   get right() {
     return this.x + this.width
   }
 
-  set right(value) {
-    this.width = value - this.x
-  }
-
   get bottom() {
     return this.y + this.height
-  }
-
-  set bottom(value) {
-    this.height = value - this.y
   }
 
   constructor(x = 0, y = 0, width = 0, height = 0) {
