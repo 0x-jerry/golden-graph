@@ -8,7 +8,7 @@ export function useNodeHandleValue<T>() {
     get() {
       return handle.value.getValue<T>()
     },
-    set(value: T) {
+    set(value) {
       handle.value.setValue(value)
     },
   })

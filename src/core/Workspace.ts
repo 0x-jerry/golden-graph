@@ -215,8 +215,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     edge.setWorkspace(this)
     edge.id = this.nextId()
 
-    edge.setStart(start)
-    edge.setEnd(end)
+    edge.setEndpoints(start, end)
 
     this.removeConnectedEdgesByHandle(start)
     this.removeConnectedEdgesByHandle(end)
@@ -262,6 +261,8 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   removeEdgeByIds(...ids: number[]) {
     const edges = remove(this._edges, (e) => ids.includes(e.id))
     for (const edge of edges) {
+      edge.clearEndpoints()
+
       this.events.emit('edge:removed', edge)
     }
 

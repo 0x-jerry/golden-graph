@@ -1,5 +1,5 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
-import { reactive, shallowReactive, toRaw } from 'vue'
+import { reactive, shallowReactive } from 'vue'
 import type { HandlePosition } from './HandlePosition'
 import { toReadonly } from './helper'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
@@ -17,11 +17,6 @@ export enum NodeType {
   Entry = 1,
 }
 
-export interface INodeHandleOptions extends Omit<INodeHandleConfig, 'type'> {
-  value?: any
-  type?: Arrayable<string>
-}
-
 export class Node implements IPersistent<INode> {
   id = 0
   name = 'Node'
@@ -29,10 +24,6 @@ export class Node implements IPersistent<INode> {
 
   _type = 'DefaultNode'
   _nodeType = NodeType.None
-
-  _data: Record<string, unknown> = shallowReactive({})
-
-  _connectedData: Record<string, unknown> = shallowReactive({})
 
   _handles: NodeHandle[] = shallowReactive([])
 
@@ -75,7 +66,13 @@ export class Node implements IPersistent<INode> {
    * @returns The value by the key.
    */
   getData<T>(key: string): T | undefined {
-    return this._data[key] as T | undefined
+    const handle = this.getHandle(key)
+
+    if (!handle) {
+      throw new Error(`Can not find handle by key: ${key}`)
+    }
+
+    return handle.getValue<T>()
   }
 
   /**
@@ -83,26 +80,32 @@ export class Node implements IPersistent<INode> {
    * @returns A deep clone of the node data.
    */
   getAllData() {
-    return structuredClone(toRaw(this._data))
+    const data: Record<string, unknown> = {}
+    for (const handle of this.handles) {
+      data[handle.key] = this.getData(handle.key)
+    }
+
+    return structuredClone(data)
   }
 
   setData(key: string, value: unknown) {
-    if (this._data[key] === value) {
-      return
+    const handle = this.getHandle(key)
+
+    if (!handle) {
+      throw new Error(`Can not find handle by key: ${key}`)
     }
 
-    this._data[key] = value
+    handle.setValue(value)
   }
 
-  /**
-   * @internal
-   */
-  setConnectedData(key: string, value: unknown) {
-    this._connectedData[key] = value
+  setAllData(data: ObjectAny) {
+    for (const key in data) {
+      this.setData(key, data[key])
+    }
   }
 
   isHandleConnected(key: string) {
-    const handle = this.handles.find((n) => n.key === key)
+    const handle = this.getHandle(key)
 
     if (!handle?.isLeft) {
       return false
@@ -121,7 +124,7 @@ export class Node implements IPersistent<INode> {
 
   updateByOption<T extends NodeBaseUpdateOptions>(opt: T) {
     if (opt.data) {
-      Object.assign(this._data, opt.data)
+      this.setAllData(opt.data)
     }
 
     if (opt.pos) {
@@ -129,7 +132,7 @@ export class Node implements IPersistent<INode> {
     }
   }
 
-  addHandle(conf: INodeHandleOptions) {
+  addHandle(conf: INodeHandleConfig) {
     const handle = new NodeHandle()
     handle.setNode(this)
 
@@ -137,10 +140,6 @@ export class Node implements IPersistent<INode> {
       ...conf,
       type: ensureArray(conf.type),
     })
-
-    if (conf.value !== undefined) {
-      this.setData(handle.key, conf.value)
-    }
 
     this._handles.push(handle)
   }
@@ -169,7 +168,7 @@ export class Node implements IPersistent<INode> {
     return {
       id: this.id,
       type: this._type,
-      data: this._data,
+      data: this.getAllData(),
       pos: {
         x: this._state.pos.x,
         y: this._state.pos.y,
@@ -182,6 +181,6 @@ export class Node implements IPersistent<INode> {
     this._state.pos.x = data.pos.x
     this._state.pos.y = data.pos.y
 
-    Object.assign(this._data, data.data)
+    this.setAllData(data.data || {})
   }
 }

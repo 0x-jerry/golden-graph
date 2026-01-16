@@ -1,3 +1,5 @@
+import { type Arrayable, ensureArray } from '@0x-jerry/utils'
+import { shallowRef } from 'vue'
 import { HandlePosition } from './HandlePosition'
 import { isIntersected, toReadonly } from './helper'
 import type { Node } from './Node'
@@ -15,11 +17,13 @@ export interface INodeHandleConfigOptions {
 
 export interface INodeHandleConfig {
   key?: string
-  type?: string[]
+  type?: Arrayable<string>
 
   name?: string
 
   position?: HandlePosition
+
+  value?: any
 
   options?: INodeHandleConfigOptions
 }
@@ -37,7 +41,19 @@ export class NodeHandle {
 
   _node?: Node
 
-  get loc(): INodeHandleLoc {
+  _connectedHandle = shallowRef<NodeHandle>()
+
+  _value = shallowRef<unknown>()
+
+  get connectedHandle() {
+    return toReadonly(this._connectedHandle.value)
+  }
+
+  get isConnected() {
+    return !!this._connectedHandle.value
+  }
+
+  get loc() {
     return toReadonly({
       id: this.node.id,
       key: this.key,
@@ -74,15 +90,31 @@ export class NodeHandle {
   }
 
   getValue<T>(): T | undefined {
-    return this.node.getData(this.key)
+    if (this.isLeft && this.connectedHandle) {
+      return this.connectedHandle.getValue<T>()
+    }
+
+    return this._value.value as T
   }
 
-  setValue(value: unknown, opt: { skipEvent?: boolean } = {}) {
-    this.node.setData(this.key, value)
-
-    if (!opt.skipEvent) {
-      this.node.workspace.events.emit('handle:updated', this)
+  setValue(value: unknown) {
+    if (this._value.value === value) {
+      return
     }
+
+    this._value.value = value
+
+    this.node.workspace.events.emit('handle:updated', this)
+  }
+
+  /**
+   * Set value directly without emitting event.
+   * @internal
+   *
+   * @param value
+   */
+  setInitialValue(value: unknown) {
+    this._value.value = value
   }
 
   setNode(node: Node) {
@@ -105,11 +137,16 @@ export class NodeHandle {
     return isIntersected(this.types, handle.types)
   }
 
+  setConnectedHandle(handle?: NodeHandle) {
+    this._connectedHandle.value = handle
+  }
+
   fromConfig(data: INodeHandleConfig): void {
     this.key = data.key ?? ''
     this.name = data.name ?? ''
-    this.types = data.type ?? []
+    this.types = ensureArray(data.type)
     this.position = data.position ?? HandlePosition.None
+    this._value.value = data.value
 
     Object.assign(this._options, data.options)
   }

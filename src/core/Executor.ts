@@ -116,8 +116,6 @@ export class Executor {
         const otherHandle = edge.start === outputHandle ? edge.end : edge.start
         const connectedNode = otherHandle.node
 
-        otherHandle.setValue(outputHandle.getValue(), { skipEvent: true })
-
         nextProcessNodes.push(connectedNode)
       }
     }

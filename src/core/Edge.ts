@@ -34,12 +34,16 @@ export class Edge implements IPersistent<IEdge> {
     this._workspace = workspace
   }
 
-  setStart(start: NodeHandle) {
+  setEndpoints(start: NodeHandle, end: NodeHandle) {
     this._start.value = start
+    this._end.value = end
+    start.setConnectedHandle(end)
+    end.setConnectedHandle(start)
   }
 
-  setEnd(end: NodeHandle) {
-    this._end.value = end
+  clearEndpoints() {
+    this._start.value?.setConnectedHandle()
+    this._end.value?.setConnectedHandle()
   }
 
   toJSON(): IEdge {
@@ -61,8 +65,10 @@ export class Edge implements IPersistent<IEdge> {
     this.id = data.id
     this.type = data.type
 
-    this.setStart(this._getHandleInstance(data.start))
-    this.setEnd(this._getHandleInstance(data.end))
+    const start = this._getHandleInstance(data.start)
+    const end = this._getHandleInstance(data.end)
+
+    this.setEndpoints(start, end)
   }
 
   _getHandleInstance(handleLoc: INodeHandleLoc) {
