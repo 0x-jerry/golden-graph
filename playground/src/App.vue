@@ -87,6 +87,7 @@ async function run() {
       <button @click="clear">Clear</button>
       <button @click="save">Save</button>
       <button @click="load">Load</button>
+      <button @click="workspace?.setDebug(!workspace?.state.debug)">Debug: {{ workspace?.state.debug }}</button>
       <button :disabled="workspace?.executorState.isProcessing" @click="run">Run</button>
     </div>
 

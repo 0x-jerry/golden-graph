@@ -89,6 +89,11 @@ export class NodeHandle {
     return this._options as Readonly<T>
   }
 
+  /**
+   * Get value of handle.
+   * If handle is left, return value of connected handle.
+   * @returns
+   */
   getValue<T>(): T | undefined {
     if (this.isLeft && this.connectedHandle) {
       return this.connectedHandle.getValue<T>()
@@ -97,6 +102,11 @@ export class NodeHandle {
     return this._value.value as T
   }
 
+  /**
+   * Set real value of handle.
+   * @param value
+   * @returns
+   */
   setValue(value: unknown) {
     if (this._value.value === value) {
       return
@@ -115,6 +125,16 @@ export class NodeHandle {
    */
   setInitialValue(value: unknown) {
     this._value.value = value
+  }
+
+  /**
+   * Get real value of handle.
+   * @internal
+   *
+   * @returns
+   */
+  getRealValue() {
+    return this._value.value
   }
 
   setNode(node: Node) {

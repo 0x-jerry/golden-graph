@@ -1,4 +1,4 @@
-import { type Arrayable, ensureArray } from '@0x-jerry/utils'
+import { ensureArray } from '@0x-jerry/utils'
 import { reactive, shallowReactive } from 'vue'
 import type { HandlePosition } from './HandlePosition'
 import { toReadonly } from './helper'
@@ -76,7 +76,7 @@ export class Node implements IPersistent<INode> {
   }
 
   /**
-   * Get all data of the node.
+   * Get all value of the node handles.
    * @returns A deep clone of the node data.
    */
   getAllData() {
@@ -165,10 +165,19 @@ export class Node implements IPersistent<INode> {
   }
 
   toJSON(): INode {
+    const getAllRealData = () => {
+      const data: Record<string, unknown> = {}
+      for (const handle of this.handles) {
+        data[handle.key] = handle.getRealValue()
+      }
+
+      return structuredClone(data)
+    }
+
     return {
       id: this.id,
       type: this._type,
-      data: this.getAllData(),
+      data: getAllRealData(),
       pos: {
         x: this._state.pos.x,
         y: this._state.pos.y,

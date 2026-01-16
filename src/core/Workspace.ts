@@ -61,6 +61,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   _ctxMenuHelper = new ContextMenuHelper()
 
   _state = reactive({
+    debug: false,
     disabled: false,
     /**
      * Current selected item, maybe it is node, edge, or group.
@@ -326,6 +327,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     const nodes = this.nodes.filter((n) => n.nodeType === NodeType.Entry)
 
     await this._executor.execute(nodes)
+  }
+
+  setDebug(enabled: boolean ) {
+    this._state.debug = enabled
   }
 
   dispose() {
