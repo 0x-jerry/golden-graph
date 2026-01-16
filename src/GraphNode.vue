@@ -29,13 +29,13 @@ const ContextMenus: ContextMenuItem[] = [
   {
     label: 'Copy Node',
     action: () => {
-      const data = node.value.getAllData()
+      const data = node.value.toJSON()
 
-      ws.addNode(node.value.type, {
-        data,
+      ws.addNode(data.type, {
+        data: data.data,
         pos: {
-          x: node.value.pos.x + 20,
-          y: node.value.pos.y + 20,
+          x: data.pos.x + 20,
+          y: data.pos.y + 20,
         }
       })
     },

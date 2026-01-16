@@ -76,8 +76,24 @@ export class Node implements IPersistent<INode> {
   }
 
   /**
+   *
+   * Get all real value of the node handles.
+   *
+   * @internal
+   * @returns A deep clone of the node handles data.
+   */
+  getAllRealData() {
+    const data: Record<string, unknown> = {}
+    for (const handle of this.handles) {
+      data[handle.key] = handle.getRealValue()
+    }
+
+    return structuredClone(data)
+  }
+
+  /**
    * Get all value of the node handles.
-   * @returns A deep clone of the node data.
+   * @returns A deep clone of the node handles data.
    */
   getAllData() {
     const data: Record<string, unknown> = {}
@@ -165,19 +181,10 @@ export class Node implements IPersistent<INode> {
   }
 
   toJSON(): INode {
-    const getAllRealData = () => {
-      const data: Record<string, unknown> = {}
-      for (const handle of this.handles) {
-        data[handle.key] = handle.getRealValue()
-      }
-
-      return structuredClone(data)
-    }
-
     return {
       id: this.id,
       type: this._type,
-      data: getAllRealData(),
+      data: this.getAllRealData(),
       pos: {
         x: this._state.pos.x,
         y: this._state.pos.y,
