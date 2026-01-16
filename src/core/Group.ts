@@ -1,4 +1,5 @@
 import { reactive, shallowReactive } from 'vue'
+import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
 import type { IGroup, IVec2 } from './types'
 import type { Workspace } from './Workspace'
@@ -37,7 +38,7 @@ export class Group implements IPersistent<IGroup> {
   }
 
   get state() {
-    return this._state
+    return toReadonly(this._state)
   }
 
   setWorkspace(workspace: Workspace) {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useDraggable } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
+import type { ContextMenuItem } from './components/ContextMenu.vue'
+import { ActiveType } from './core'
 import GraphHandle from './GraphHandle.vue'
 import { useCoordSystem, useNode, useWorkspace } from './hooks'
 
@@ -17,7 +19,7 @@ const coord = useCoordSystem()!
 
 const draggableEl = useTemplateRef('draggableEl')
 
-const ContextMenus = [
+const ContextMenus: ContextMenuItem[] = [
   {
     label: 'Delete Node',
     action: () => {
@@ -37,6 +39,12 @@ const ContextMenus = [
         }
       })
     },
+  },
+  {
+    label: 'Create Group',
+    action: () => {
+      ws.addGroup(ws.state.activeIds)
+    }
   }
 ]
 
@@ -44,7 +52,7 @@ const classes = computed(() => {
   const clx:string[] =[]
   const executorState = ws.executorState
 
-  if (ws.state.activeId === node.value.id) {
+  if (ws.isActive(node.value.id)) {
     clx.push('r-node-active')
   }
 
@@ -62,7 +70,7 @@ useDraggable(draggableEl, {
     const x = evt.movementX / coord.scale
     const y = evt.movementY / coord.scale
 
-    node.value.move(x, y)
+    ws.moveActiveNodes({ x, y })
   },
 })
 
@@ -74,7 +82,7 @@ function handleContextMenu(evt: MouseEvent) {
 
 <template>
   <div class="r-node" :class="classes" :style="{ '--x': node.pos.x + 'px', '--y': node.pos.y + 'px' }" :node-id="node.id"
-  @pointerdown.stop="ws.setActiveId(node.id)"
+  @pointerdown.stop="ws.setActiveIds(ActiveType.Node, node.id)"
   @contextmenu.stop="handleContextMenu"
   >
     <div class="r-node-header" ref="draggableEl">

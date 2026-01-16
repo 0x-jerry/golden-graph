@@ -1,4 +1,10 @@
-import { EventEmitter, nanoid, remove } from '@0x-jerry/utils'
+import {
+  type Arrayable,
+  EventEmitter,
+  ensureArray,
+  nanoid,
+  remove,
+} from '@0x-jerry/utils'
 import { reactive, shallowReactive } from 'vue'
 import type { ContextMenuItem } from '../components/ContextMenu.vue'
 import { ContextMenuHelper } from './ContextMenu'
@@ -7,12 +13,13 @@ import { getNodesBounding } from './dom'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
 import { Group } from './Group'
-import { createIncrementIdGenerator, type Factory } from './helper'
+import { createIncrementIdGenerator, type Factory, toReadonly } from './helper'
+import { Interactive } from './Interactive'
 import { type Node, type NodeBaseUpdateOptions, NodeType } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
-import type { INodeHandleLoc, IWorkspace } from './types'
+import type { IDisposable, INodeHandleLoc, IVec2, IWorkspace } from './types'
 
 export interface WorkspaceEvents {
   'node:added': [node: Node]
@@ -27,11 +34,19 @@ export interface WorkspaceEvents {
   'edge:removed': [edge: Edge]
 }
 
-export class Workspace implements IPersistent<IWorkspace> {
+export enum ActiveType {
+  None = 0,
+  Node = 1,
+  Group = 2,
+  Edge = 3,
+}
+
+export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   readonly version = '1.0.0'
   readonly id = nanoid()
   readonly events = new EventEmitter<WorkspaceEvents>()
   readonly coord = new CoordSystem()
+  readonly interactive = new Interactive(this)
 
   _nodes: Node[] = shallowReactive([])
   _edges: Edge[] = shallowReactive([])
@@ -50,23 +65,24 @@ export class Workspace implements IPersistent<IWorkspace> {
     /**
      * Current selected item, maybe it is node, edge, or group.
      */
-    activeId: null as number | null,
+    activeIds: [] as number[],
+    activeType: ActiveType.None,
   })
 
   get state() {
-    return this._state
+    return toReadonly(this._state)
   }
 
   get nodes() {
-    return this._nodes
+    return toReadonly(this._nodes)
   }
 
   get edges() {
-    return this._edges
+    return toReadonly(this._edges)
   }
 
   get groups() {
-    return this._groups
+    return toReadonly(this._groups)
   }
 
   get disabled() {
@@ -83,6 +99,17 @@ export class Workspace implements IPersistent<IWorkspace> {
 
   registerNode<T extends Node>(type: string, node: Factory<T>) {
     this._nodeRegister.set(type, node)
+  }
+
+  moveActiveNodes(delta: IVec2) {
+    if (this.state.activeType !== ActiveType.Node) {
+      return
+    }
+
+    const items = this.queryNodes(...this.state.activeIds)
+    for (const item of items) {
+      item.move(delta.x, delta.y)
+    }
   }
 
   addNode<T extends NodeBaseUpdateOptions>(type: string, opt?: T) {
@@ -238,8 +265,45 @@ export class Workspace implements IPersistent<IWorkspace> {
     return edges
   }
 
-  setActiveId(id: number | null) {
-    this.state.activeId = id
+  setActiveIds(type: ActiveType, ids: Arrayable<number>) {
+    const _ids = ensureArray(ids)
+    const isShift = this.interactive.state.shift
+
+    if (isShift) {
+      const activeIds = [...this._state.activeIds]
+
+      for (const id of _ids) {
+        const idx = activeIds.indexOf(id)
+        if (idx !== -1) {
+          activeIds.splice(idx, 1)
+        } else {
+          activeIds.push(id)
+        }
+      }
+
+      this._state.activeIds = activeIds
+      this._state.activeType = type
+      return
+    }
+
+    const alreadyIncluded = _ids.length
+      ? _ids.every((id) => this._state.activeIds.includes(id))
+      : false
+
+    if (alreadyIncluded) {
+      return
+    }
+
+    this._state.activeIds = _ids
+    this._state.activeType = type
+  }
+
+  isActive(id: number) {
+    return this._state.activeIds.includes(id)
+  }
+
+  clearActiveIds() {
+    this.setActiveIds(ActiveType.None, [])
   }
 
   nextId() {
@@ -258,6 +322,11 @@ export class Workspace implements IPersistent<IWorkspace> {
     const nodes = this.nodes.filter((n) => n.nodeType === NodeType.Entry)
 
     await this._executor.execute(nodes)
+  }
+
+  dispose() {
+    this.events.off()
+    this.interactive.dispose()
   }
 
   toJSON(): IWorkspace {

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useDraggable } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
-import type { IVec2 } from './core'
+import { ActiveType, type IVec2 } from './core'
 import { useCoordSystem, useGroup, useWorkspace } from './hooks'
 
 export interface GroupNodeProps {
@@ -78,8 +78,8 @@ function handleContextMenu(evt: MouseEvent) {
 </script>
 
 <template>
-  <div class="group-node" :class="{'group-node-active': ws.state.activeId === group.id}" ref="group-node" :style="style" @resize="handleResize" @contextmenu="handleContextMenu"
-    @pointerdown.stop="ws.setActiveId(group.id)">
+  <div class="group-node" :class="{'group-node-active': ws.isActive(group.id)}" ref="group-node" :style="style" @resize="handleResize" @contextmenu="handleContextMenu"
+    @pointerdown.stop="ws.setActiveIds(ActiveType.Group, group.id)">
     <div ref="header-el" class="group-header">
       {{ group.name }}
     </div>
@@ -100,10 +100,10 @@ function handleContextMenu(evt: MouseEvent) {
 
   border: 1px solid var(--gr-color-border, rgb(176, 176, 176));
   background: var(--gr-color-surface, #d5d5d5aa);
-  pointer-events: auto;
   color: var(--gr-color-text-primary, #000000);
 
   .group-header {
+    pointer-events: auto;
     background: var(--gr-color-surface-header, rgba(0, 0, 0, 0.15));
     padding: 8px;
   }

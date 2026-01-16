@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { clamp } from '@0x-jerry/utils'
-import { useDraggable, useEventListener, useMouseInElement } from '@vueuse/core'
-import { reactive, useTemplateRef } from 'vue'
+import { useDraggable, useMouseInElement } from '@vueuse/core'
+import { useTemplateRef } from 'vue'
+import { ActiveType } from './core'
+import { getNodesBounding } from './core/dom'
 import GridPattern from './GridPattern.vue'
-import { useConnectionGesture, useCoordSystem, useSelection, useWorkspace } from './hooks'
+import { useConnectionGesture, useCoordSystem, useEvents, useWorkspace } from './hooks'
 import { RectBox } from './utils/RectBox'
 
 const ws = useWorkspace()!
@@ -15,27 +17,14 @@ const el = useTemplateRef('el')
 
 const mouseInElement = useMouseInElement(el)
 
-const state = reactive({
-  shift: false,
+const data = {
   selected: [] as number[],
-})
-
-useEventListener('keydown', (evt) => {
-  if (evt.key === 'Shift' || evt.shiftKey) {
-    state.shift = true
-  }
-})
-
-useEventListener('keyup', (evt) => {
-  if (evt.key === 'Shift' || evt.shiftKey) {
-    state.shift = false
-  }
-})
+}
 
 useDraggable(el, {
   exact: true,
   onStart() {
-    if (state.shift) {
+    if (ws.interactive.state.shift) {
       return false
     }
   },
@@ -44,14 +33,11 @@ useDraggable(el, {
   },
 })
 
-useSelection({
-  disabled() {
-    return !state.shift
+useEvents(ws.interactive.events, {
+  'selection:start': () => {
+    data.selected = []
   },
-  onStart() {
-    state.selected = []
-  },
-  onMove(rect) {
+  'selection:move': (rect) => {
     const coordRect = el.value?.getBoundingClientRect()
     if (!coordRect) {
       return
@@ -68,14 +54,14 @@ useSelection({
     })
 
     const converted = RectBox.fromRectBox(tl.x, tl.y, rb.x, rb.y)
-    state.selected = queryNodesByBounding(converted)
+    data.selected = queryNodesByBounding(converted)
   },
-  onEnd() {
-    const selected = state.selected
+  'selection:end': () => {
+    const selected = data.selected
 
-    ws.addGroup(selected)
+    ws.setActiveIds(ActiveType.Node, selected)
 
-    state.selected = []
+    data.selected = []
   },
 })
 
@@ -83,7 +69,7 @@ function queryNodesByBounding(rect: RectBox) {
   const ids: number[] = []
 
   for (const node of ws.nodes) {
-    const r = ws.getNodesBounding(node.id)
+    const r = getNodesBounding([node])
     if (rect.includes(r)) {
       ids.push(node.id)
     }
@@ -123,7 +109,7 @@ function handlePointerMove(evt: MouseEvent) {
 </script>
 
 <template>
-  <div ref="el" class="coord-system" @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.setActiveId(null)">
+  <div ref="el" class="coord-system" @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.clearActiveIds()">
     <GridPattern />
     <div class="coord-content" :style="coord.getCoordStyle({ x: 0, y: 0 })">
       <slot></slot>

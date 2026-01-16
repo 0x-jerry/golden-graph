@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
 import type { ICoordinate, IVec2 } from './types'
 
@@ -13,10 +14,10 @@ export class CoordSystem implements IPersistent<ICoordinate> {
   })
 
   get origin() {
-    return {
+    return toReadonly({
       x: this._state.x,
       y: this._state.y,
-    }
+    })
   }
 
   get scale() {

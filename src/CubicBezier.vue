@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { clamp } from "@0x-jerry/utils";
 import { computed } from "vue";
 import type { IVec2 } from "./core";
 
@@ -22,7 +23,7 @@ const d = computed(() => {
     y: end.y,
   };
 
-  const handleOffset = 150;
+  const handleOffset = clamp(Math.abs(s.x - e.x) / 2, 10, 200);
 
   return `M ${s.x} ${s.y} C ${s.x - handleOffset} ${s.y}, ${
     e.x + handleOffset
@@ -39,5 +40,6 @@ const d = computed(() => {
   stroke: var(--gr-color-accent, rgb(239, 70, 70));
   stroke-width: var(--gr-size-connection-width, 3px);
   fill: transparent;
+  transform: translateY(calc(var(--gr-size-connection-width, 3px) / 2));
 }
 </style>

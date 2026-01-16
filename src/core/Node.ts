@@ -1,6 +1,7 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
 import { shallowReactive, toRaw } from 'vue'
 import type { HandlePosition } from './HandlePosition'
+import { toReadonly } from './helper'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import type { INode, IVec2, ObjectAny } from './types'
@@ -22,18 +23,18 @@ export interface INodeHandleOptions extends Omit<INodeHandleConfig, 'type'> {
 }
 
 export class Node implements IPersistent<INode> {
-  _type = 'DefaultNode'
-  _nodeType = NodeType.None
-
   id = 0
   name = 'Node'
   description?: string
 
+  readonly pos = shallowReactive({ x: 0, y: 0 })
+
+  _type = 'DefaultNode'
+  _nodeType = NodeType.None
+
   _data: Record<string, unknown> = shallowReactive({})
 
   _connectedData: Record<string, unknown> = shallowReactive({})
-
-  readonly pos = shallowReactive({ x: 0, y: 0 })
 
   _handles: NodeHandle[] = shallowReactive([])
 
@@ -52,11 +53,11 @@ export class Node implements IPersistent<INode> {
       throw new Error('Workspace is not set!')
     }
 
-    return this._workspace
+    return toReadonly(this._workspace)
   }
 
   get handles() {
-    return this._handles as readonly NodeHandle[]
+    return toReadonly(this._handles)
   }
 
   /**
@@ -92,7 +93,7 @@ export class Node implements IPersistent<INode> {
   }
 
   isHandleConnected(key: string) {
-    const handle = this.handles.find(n => n.key === key)
+    const handle = this.handles.find((n) => n.key === key)
 
     if (!handle?.isLeft) {
       return false

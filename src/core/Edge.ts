@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import { toReadonly } from './helper'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import type { IEdge, INodeHandleLoc } from './types'
@@ -15,18 +16,18 @@ export class Edge implements IPersistent<IEdge> {
   _workspace?: Workspace
 
   get start() {
-    return this._start.value as NodeHandle
+    return toReadonly(this._start.value!)
   }
 
   get end() {
-    return this._end.value as NodeHandle
+    return toReadonly(this._end.value!)
   }
 
   get workspace() {
     if (!this._workspace) {
       throw new Error('Workspace is not set!')
     }
-    return this._workspace
+    return toReadonly(this._workspace)
   }
 
   setWorkspace(workspace: Workspace) {

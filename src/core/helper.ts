@@ -25,3 +25,10 @@ export function isIntersected<T>(
 ) {
   return arr1.some((a) => arr2.some((b) => isEqual(a, b)))
 }
+
+/**
+ * Convert an object to readonly, only for type check
+ * @param obj
+ * @returns
+ */
+export const toReadonly = <T>(obj: T) => obj as Readonly<T>

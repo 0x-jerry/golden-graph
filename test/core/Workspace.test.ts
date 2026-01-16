@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { HandlePosition, Node, NodeType, Workspace } from '../../src/core'
+import { getNodesBounding } from '../../src/core/dom'
 
 class SourceNode extends Node {
   constructor() {
@@ -57,7 +58,7 @@ describe('Workspace', () => {
     class A extends Node { constructor() { super(); this._type = 'A'; } }
     ws.registerNode('A', A)
     const a = ws.addNode('A', { pos: { x: 10, y: 20 } })
-    expect(() => ws.getNodesBounding(a.id)).toThrow()
+    expect(() => getNodesBounding([a])).toThrow()
   })
 
   it('execute processes graph and propagates values', async () => {

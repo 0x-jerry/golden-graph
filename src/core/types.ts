@@ -67,3 +67,7 @@ export interface IWorkspace {
 }
 
 export type ObjectAny = Record<string, any>
+
+export interface IDisposable {
+  dispose(): void
+}

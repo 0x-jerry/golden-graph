@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import type { ContextMenuItem } from '../components/ContextMenu.vue'
+import { toReadonly } from './helper'
 
 export class ContextMenuHelper {
   _state = reactive({
@@ -10,7 +11,7 @@ export class ContextMenuHelper {
   })
 
   get state() {
-    return this._state
+    return toReadonly(this._state)
   }
 
   show(x: number, y: number, menus: ContextMenuItem[]) {

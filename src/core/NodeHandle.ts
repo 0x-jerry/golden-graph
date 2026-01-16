@@ -1,7 +1,7 @@
 import type { Optional } from '@0x-jerry/utils'
 import { getNodeHandleDom } from './dom'
 import { HandlePosition } from './HandlePosition'
-import { isIntersected } from './helper'
+import { isIntersected, toReadonly } from './helper'
 import type { Node } from './Node'
 import type { INodeHandleLoc, ObjectAny } from './types'
 
@@ -40,10 +40,10 @@ export class NodeHandle {
   _node?: Node
 
   get loc(): INodeHandleLoc {
-    return {
+    return toReadonly({
       id: this.node.id,
       key: this.key,
-    }
+    })
   }
 
   get isRight() {
