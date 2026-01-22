@@ -47,7 +47,7 @@
     "@0x-jerry/vue-kit": "^2.3.1",
     "@floating-ui/vue": "^1.1.9",
     "@vueuse/core": "^14.1.0",
-    "lodash-es": "^4.17.22",
+    "lodash-es": "^4.17.23",
     "vue": "^3.5.26"
   }
 }
