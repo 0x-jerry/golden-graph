@@ -5,6 +5,7 @@ import {
   nanoid,
   remove,
 } from '@0x-jerry/utils'
+import { uniq } from 'lodash-es'
 import { reactive, shallowReactive } from 'vue'
 import type { ContextMenuItem } from '../components/ContextMenu.vue'
 import { ContextMenuHelper } from './ContextMenu'
@@ -34,8 +35,6 @@ export interface WorkspaceEvents {
 
   'edge:added': [edge: Edge]
   'edge:removed': [edge: Edge]
-
-  'subgraph:open': [subGraphId: number]
 }
 
 export enum ActiveType {
@@ -43,6 +42,11 @@ export enum ActiveType {
   Node = 1,
   Group = 2,
   Edge = 3,
+}
+
+interface IWorkspaceData {
+  subGraphId: number
+  data: IWorkspace
 }
 
 export class Workspace implements IPersistent<IWorkspace>, IDisposable {
@@ -64,6 +68,8 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   _executor = new Executor(this)
 
   _ctxMenuHelper = new ContextMenuHelper()
+
+  _workspaceDataStack: IWorkspaceData[] = []
 
   _state = reactive({
     debug: false,
@@ -105,6 +111,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   get contextMenuState() {
     return this._ctxMenuHelper.state
+  }
+
+  get isActiveSubGraph() {
+    return this._workspaceDataStack.length > 0
   }
 
   registerNode<T extends Node>(type: string, node: Factory<T>) {
@@ -208,7 +218,98 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   covertGroupToSubGraph(groupId: number) {
     const subGraph = convertGroupToSubGraph(this, groupId)
 
+    this.addSubGraph(subGraph)
+  }
+
+  addSubGraph(subGraph: SubGraph) {
+    if (this.subGraphs.find((g) => g.id === subGraph.id)) {
+      throw new Error(`SubGraph [${subGraph.id}] is already added!`)
+    }
+
     this._subGraphs.push(subGraph)
+  }
+
+  removeSubGraph(subGraphId: number) {
+    return remove(this._subGraphs, (g) => g.id === subGraphId)
+  }
+
+  enterSubGraph(subGraphId: number) {
+    const subGraph = this.subGraphs.find((g) => g.id === subGraphId)
+    if (!subGraph) {
+      return
+    }
+
+    this._workspaceDataStack.push({
+      subGraphId: subGraphId,
+      data: this.toJSON(),
+    })
+
+    const data = subGraph.workspace.toJSON()
+    this.fromJSON(data)
+  }
+
+  exitSubGraph() {
+    const prevData = this._workspaceDataStack.pop()
+    if (!prevData) {
+      throw new Error('Current workspace is not a Sub Graph')
+    }
+
+    const subGraphWorkspaceData = this.toJSON()
+
+    this.fromJSON(prevData.data)
+
+    const subGraph = this._subGraphs.find((n) => n.id === prevData.subGraphId)
+    if (!subGraph) {
+      throw new Error(`Can not find subGraph by id ${prevData.subGraphId}`)
+    }
+
+    subGraph.workspace.fromJSON(subGraphWorkspaceData)
+
+    // remove old sub graph node and rebuild new sub graph node
+
+    const oldSubGraphNode = this.nodes.find((n) => n.subGraphId === subGraph.id)
+    if (!oldSubGraphNode) {
+      throw new Error(`Can not find sub graph node by id ${subGraph.id}`)
+    }
+
+    const newSubGraphNode = subGraph.buildNode()
+    newSubGraphNode.setWorkspace(this)
+    newSubGraphNode.fromJSON({
+      ...oldSubGraphNode.toJSON(),
+      data: {},
+    })
+
+    const edges = this.queryConnectedEdges(oldSubGraphNode.id)
+
+    const connections = edges.map((edge) => {
+      const isStart = edge.start.node.id === oldSubGraphNode.id
+      const myHandle = isStart ? edge.start : edge.end
+      const otherHandle = isStart ? edge.end : edge.start
+
+      const isOtherOnOldNode = otherHandle.node.id === oldSubGraphNode.id
+
+      return {
+        myHandleKey: myHandle.key,
+        otherHandle,
+        otherHandleKey: otherHandle.key,
+        isOtherOnOldNode,
+      }
+    })
+
+    this.removeNodeByIds(oldSubGraphNode.id)
+    this.addRawNode(newSubGraphNode)
+
+    for (const conn of connections) {
+      const newHandle = newSubGraphNode.getHandle(conn.myHandleKey)
+
+      const targetHandle = conn.isOtherOnOldNode
+        ? newSubGraphNode.getHandle(conn.otherHandleKey)
+        : conn.otherHandle
+
+      if (newHandle && targetHandle) {
+        this.connect(targetHandle, newHandle)
+      }
+    }
   }
 
   showContextMenus(evt: MouseEvent, menus: ContextMenuItem[]) {
@@ -267,7 +368,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
     const edges = handles.flatMap((handle) => this.queryEdges(handle.loc))
 
-    return edges
+    return uniq(edges)
   }
 
   queryEdges(loc: INodeHandleLoc) {
@@ -338,6 +439,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     this._groups.splice(0)
     this._edges.splice(0)
     this._nodes.splice(0)
+    this._subGraphs.splice(0)
 
     this._idGenerator.reset(0)
   }
@@ -362,9 +464,22 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
    */
   clone() {
     const w = new Workspace()
+
     for (const [name, factory] of this._nodeRegister) {
       w.registerNode(name, factory)
     }
+
+    w.fromJSON({
+      version: this.version,
+      coordinate: this.coord.toJSON(),
+      nodes: [],
+      edges: [],
+      groups: [],
+      subGraphs: [],
+      extra: {
+        incrementID: this._idGenerator.current(),
+      },
+    })
 
     return w
   }
@@ -384,13 +499,17 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   fromJSON(data: IWorkspace): void {
+    this.clear()
+
     this._idGenerator.reset(data.extra.incrementID)
+
+    this.coord.fromJSON(data.coordinate)
 
     for (const subGraph of data.subGraphs) {
       const g = new SubGraph(this)
       g.fromJSON(subGraph)
 
-      this._subGraphs.push(g)
+      this.addSubGraph(g)
     }
 
     for (const node of data.nodes) {

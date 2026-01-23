@@ -2,6 +2,7 @@
 import { clamp } from '@0x-jerry/utils'
 import { useDraggable, useMouseInElement } from '@vueuse/core'
 import { useTemplateRef } from 'vue'
+import type { ContextMenuItem } from './components/ContextMenu.vue'
 import { ActiveType } from './core'
 import { getNodesBounding } from './core/domHelper'
 import GridPattern from './GridPattern.vue'
@@ -20,6 +21,16 @@ const mouseInElement = useMouseInElement(el)
 const data = {
   selected: [] as number[],
 }
+
+const ContextMenus: ContextMenuItem[] = [
+  {
+    label: 'Exit SubGraph',
+    visible: () => !!ws.isActiveSubGraph,
+    action: () => {
+      ws.exitSubGraph()
+    },
+  },
+]
 
 useDraggable(el, {
   exact: true,
@@ -106,11 +117,17 @@ function handlePointerMove(evt: MouseEvent) {
 
   connectionGesture.moveConnection(coord.convertScreenCoord({ x, y }))
 }
+
+function handleContextMenu(evt: MouseEvent) {
+  ws.showContextMenus(evt, ContextMenus)
+}
 </script>
 
 <template>
   <div ref="el" class="coord-system"  :data-scale="coord.scale" :data-origin="`${coord.origin.x} ${coord.origin.y}`"
-        @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.clearActiveIds()">
+        @wheel="handleZoom" @pointermove="handlePointerMove" @pointerdown.self="ws.clearActiveIds()"
+        @contextmenu.stop="handleContextMenu"
+        >
     <GridPattern />
     <div class="coord-content" :style="coord.getCoordStyle({ x: 0, y: 0 })">
       <slot></slot>

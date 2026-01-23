@@ -7,9 +7,12 @@ import type { IPersistent } from './Persistent'
 import type { ISubGraph } from './types'
 import type { Workspace } from './Workspace'
 
-class InputNode extends Node {
+export class SubGraphInputNode extends Node {
+  static type = 'subgraph.input'
+
   constructor() {
     super()
+    this._type = SubGraphInputNode.type
     this.name = 'Input'
     this.setNodeType(NodeType.Entry)
 
@@ -61,9 +64,12 @@ class InputNode extends Node {
   }
 }
 
-class OutputNode extends Node {
+export class SubGraphOutputNode extends Node {
+  static type = 'subgraph.output'
+
   constructor() {
     super()
+    this._type = SubGraphOutputNode.type
     this.name = 'Output'
 
     this.addHandle({
@@ -110,9 +116,7 @@ class OutputNode extends Node {
 export class SubGraph implements IPersistent<ISubGraph> {
   id = 0
 
-  workspace: Workspace
-
-  _parentWorkspace: Workspace
+  _workspace: Workspace
 
   _node?: Node
 
@@ -120,29 +124,32 @@ export class SubGraph implements IPersistent<ISubGraph> {
     return toReadonly(this._node)
   }
 
-  get parentWorkspace() {
-    return toReadonly(this._parentWorkspace)
+  get workspace() {
+    return toReadonly(this._workspace)
   }
 
   constructor(parentWorkspace: Workspace) {
-    this._parentWorkspace = parentWorkspace
 
-    this.workspace = parentWorkspace.clone()
+    this._workspace = parentWorkspace.clone()
 
-    this.workspace.registerNode('subgraph.input', InputNode)
-    this.workspace.registerNode('subgraph.output', OutputNode)
+    // todo, mark this workspace as a virtual workspace
+    this.workspace.dispose()
+
+    this.workspace.registerNode(SubGraphInputNode.type, SubGraphInputNode)
+    this.workspace.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)
   }
 
   buildNode(): Node {
     const inputs = this.workspace.nodes.filter(
-      (node) => node instanceof InputNode,
+      (node) => node instanceof SubGraphInputNode,
     )
 
     const outputs = this.workspace.nodes.filter(
-      (node) => node instanceof OutputNode,
+      (node) => node instanceof SubGraphOutputNode,
     )
 
     const node = new Node()
+    node.setSubGraphId(this.id)
 
     for (const output of outputs) {
       node.addHandle(output.toHandleConfig())
@@ -193,7 +200,6 @@ export class SubGraph implements IPersistent<ISubGraph> {
 
   fromJSON(data: ISubGraph): void {
     this.id = data.id
-    this.workspace.clear()
     this.workspace.fromJSON(data.workspace)
   }
 

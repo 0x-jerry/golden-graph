@@ -1,4 +1,3 @@
-import { remove } from '@0x-jerry/utils'
 import type { Edge } from './Edge'
 import type { Node } from './Node'
 import type { NodeHandle } from './NodeHandle'
@@ -79,9 +78,7 @@ function createSubGraph(ctx: ConversionContext) {
 
 function classifyElements(ctx: ConversionContext, groupNodeIds: number[]) {
   ctx.groupNodes = ctx.workspace.queryNodes(...groupNodeIds)
-  const allEdges = Array.from(
-    new Set(ctx.workspace.queryConnectedEdges(...groupNodeIds)),
-  )
+  const allEdges = ctx.workspace.queryConnectedEdges(...groupNodeIds)
 
   for (const edge of allEdges) {
     const isStartIn = groupNodeIds.includes(edge.start.node.id)
@@ -230,7 +227,6 @@ function createSubGraphNode(
   pos: { x: number; y: number },
 ) {
   const subGraphNode = subGraph.buildNode()
-  subGraphNode.setSubGraphId(subGraph.id)
 
   const group = validateAndGetGroup(ctx)
   subGraphNode.name = group.name

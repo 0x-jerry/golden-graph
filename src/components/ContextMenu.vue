@@ -98,16 +98,6 @@ const middleware = computed(() => {
   ];
 });
 
-const visibleItems = computed(() => {
-  return props.items.filter((item) => {
-    if (item.visible) {
-      return toValue(item.visible);
-    }
-
-    return true;
-  });
-});
-
 const { floatingStyles } = useFloating(reference, floating, {
   placement: () => (props.parentElement ? "right-start" : "bottom-start"),
   whileElementsMounted: autoUpdate,
@@ -133,7 +123,7 @@ const itemRefs = ref<HTMLElement[]>([]);
 
 // Handle hover for submenus
 function handleMouseEnter(index: number) {
-  if (visibleItems.value[index].disabled) return;
+  if (props.items[index].disabled) return;
   activeIndex.value = index;
 }
 
@@ -187,7 +177,7 @@ function handleSubMenuClick(item: ContextMenuItem) {
       @contextmenu.prevent
     >
       <div
-        v-for="(item, index) in visibleItems"
+        v-for="(item, index) in items"
         :key="item.key ?? index"
         ref="itemRefs"
         class="context-menu-item"

@@ -47,14 +47,14 @@ const ContextMenus: ContextMenuItem[] = [
     }
   },
   {
-    label: 'Open SubGraph',
+    label: 'Enter SubGraph',
     visible: () => !!node.value.subGraphId,
     action: () => {
       if (!node.value.subGraphId) {
         return
       }
 
-      ws.events.emit('subgraph:open', node.value.subGraphId)
+      ws.enterSubGraph(node.value.subGraphId)
     },
   },
 ]

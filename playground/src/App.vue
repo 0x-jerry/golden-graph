@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef } from 'vue';
-import { GraphRenderer, Workspace } from '../../src'
+import { GraphRenderer, SubGraphInputNode, SubGraphOutputNode, Workspace } from '../../src'
 import { setup as _setup } from './editor'
 
 const instance = useTemplateRef<InstanceType<typeof GraphRenderer>>('renderer')
@@ -12,6 +12,9 @@ const workspace = computed(() => instance.value?.workspace);
 function setup(ws: Workspace) {
   _setup(ws)
   ws.setDebug(true)
+
+  ws.registerNode(SubGraphInputNode.type, SubGraphInputNode)
+  ws.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)
 
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
@@ -42,6 +45,10 @@ function save() {
   const ws = workspace.value
   if (!ws) {
     return
+  }
+
+  while (ws.isActiveSubGraph) {
+    ws.exitSubGraph()
   }
 
   const data = ws.toJSON()
@@ -78,6 +85,22 @@ async function run() {
 
   await ws.execute()
 }
+
+async function loadFromJSON() {
+  const ws = workspace.value
+  if (!ws) {
+    return
+  }
+
+  const json = window.prompt('Input JSON String')
+
+  const data = JSON.parse(json || '')
+
+  ws.clear()
+
+  await nextTick()
+  ws.fromJSON(data)
+}
 </script>
 
 <template>
@@ -86,6 +109,7 @@ async function run() {
       <button @click="clear">Clear</button>
       <button @click="save">Save</button>
       <button @click="load">Load</button>
+      <button @click="loadFromJSON">Load From JSON</button>
       <button @click="workspace?.setDebug(!workspace?.state.debug)">Debug: {{ workspace?.state.debug }}</button>
       <button :disabled="workspace?.executorState.isProcessing" @click="run">Run</button>
     </div>
