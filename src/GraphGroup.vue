@@ -42,6 +42,12 @@ const ContextMenus = [
       ws.removeGroup(props.groupId)
     },
   },
+  {
+    label: 'Create Sub-Graph',
+    action: () => {
+      ws.covertGroupToSubGraph(props.groupId)
+    },
+  }
 ]
 
 useDraggable(headerEl, {

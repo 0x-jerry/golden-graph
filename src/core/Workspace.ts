@@ -13,12 +13,14 @@ import { getNodesBounding } from './domHelper'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
 import { Group } from './Group'
+import { convertGroupToSubGraph } from './GroupToSubGraph'
 import { createIncrementIdGenerator, type Factory, toReadonly } from './helper'
 import { Interactive } from './Interactive'
 import { type Node, type NodeBaseUpdateOptions, NodeType } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
+import { SubGraph } from './SubGraph'
 import type { IDisposable, INodeHandleLoc, IVec2, IWorkspace } from './types'
 
 export interface WorkspaceEvents {
@@ -32,6 +34,8 @@ export interface WorkspaceEvents {
 
   'edge:added': [edge: Edge]
   'edge:removed': [edge: Edge]
+
+  'subgraph:open': [subGraphId: number]
 }
 
 export enum ActiveType {
@@ -51,6 +55,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   _nodes: Node[] = shallowReactive([])
   _edges: Edge[] = shallowReactive([])
   _groups: Group[] = shallowReactive([])
+  _subGraphs: SubGraph[] = shallowReactive([])
 
   _idGenerator = createIncrementIdGenerator()
 
@@ -84,6 +89,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   get groups() {
     return toReadonly(this._groups)
+  }
+
+  get subGraphs() {
+    return toReadonly(this._subGraphs)
   }
 
   get disabled() {
@@ -132,6 +141,14 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     this._nodes.push(node)
     this.events.emit('node:added', node)
     return node
+  }
+
+  addRawNode(node: Node) {
+    node.setWorkspace(this)
+    node.id = this.nextId()
+
+    this._nodes.push(node)
+    this.events.emit('node:added', node)
   }
 
   queryNodes(...ids: number[]) {
@@ -186,6 +203,12 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   removeGroup(groupId: number) {
     return remove(this._groups, (g) => g.id === groupId)
+  }
+
+  covertGroupToSubGraph(groupId: number) {
+    const subGraph = convertGroupToSubGraph(this, groupId)
+
+    this._subGraphs.push(subGraph)
   }
 
   showContextMenus(evt: MouseEvent, menus: ContextMenuItem[]) {
@@ -334,6 +357,18 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     this.interactive.dispose()
   }
 
+  /**
+   * Return a new fresh workspace
+   */
+  clone() {
+    const w = new Workspace()
+    for (const [name, factory] of this._nodeRegister) {
+      w.registerNode(name, factory)
+    }
+
+    return w
+  }
+
   toJSON(): IWorkspace {
     return {
       version: this.version,
@@ -341,6 +376,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
       nodes: this.nodes.map((n) => n.toJSON()),
       edges: this.edges.map((n) => n.toJSON()),
       groups: this.groups.map((n) => n.toJSON()),
+      subGraphs: this.subGraphs.map((n) => n.toJSON()),
       extra: {
         incrementID: this._idGenerator.current(),
       },
@@ -350,10 +386,29 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   fromJSON(data: IWorkspace): void {
     this._idGenerator.reset(data.extra.incrementID)
 
-    for (const node of data.nodes) {
-      const n = this.addNode(node.type)
+    for (const subGraph of data.subGraphs) {
+      const g = new SubGraph(this)
+      g.fromJSON(subGraph)
 
-      n.fromJSON(node)
+      this._subGraphs.push(g)
+    }
+
+    for (const node of data.nodes) {
+      if (node.subGraphId) {
+        const subGraph = this._subGraphs.find((g) => g.id === node.subGraphId)
+        if (!subGraph) {
+          throw new Error(`Can not find SubGraph by id ${node.subGraphId}`)
+        }
+
+        const subGraphNode = subGraph.buildNode()
+        this.addRawNode(subGraphNode)
+
+        subGraphNode.fromJSON(node)
+      } else {
+        const n = this.addNode(node.type)
+
+        n.fromJSON(node)
+      }
     }
 
     for (const edgeData of data.edges) {

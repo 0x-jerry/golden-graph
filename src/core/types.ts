@@ -20,6 +20,8 @@ export interface INode {
 
   data?: Record<string, unknown>
 
+  subGraphId?: number
+
   pos: IVec2
 }
 
@@ -64,6 +66,13 @@ export interface IWorkspace {
   nodes: INode[]
   edges: IEdge[]
   groups: IGroup[]
+
+  subGraphs: ISubGraph[]
+}
+
+export interface ISubGraph {
+  id: number
+  workspace: IWorkspace
 }
 
 export type ObjectAny = Record<string, any>

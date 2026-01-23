@@ -1,6 +1,7 @@
 import { reactive, shallowReactive } from 'vue'
 import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
+import { SubGraph } from './SubGraph'
 import type { IGroup, IVec2 } from './types'
 import type { Workspace } from './Workspace'
 

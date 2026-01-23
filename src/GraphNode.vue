@@ -45,7 +45,18 @@ const ContextMenus: ContextMenuItem[] = [
     action: () => {
       ws.addGroup(ws.state.activeIds)
     }
-  }
+  },
+  {
+    label: 'Open SubGraph',
+    visible: () => !!node.value.subGraphId,
+    action: () => {
+      if (!node.value.subGraphId) {
+        return
+      }
+
+      ws.events.emit('subgraph:open', node.value.subGraphId)
+    },
+  },
 ]
 
 const classes = computed(() => {
@@ -88,7 +99,12 @@ function handleContextMenu(evt: MouseEvent) {
     <div class="r-node-header" ref="draggableEl">
       <div class="r-node-name">
         {{ node.name }}
-        <template v-if="ws.state.debug">({{ node.id }})</template>
+        <template v-if="ws.state.debug">
+          ({{ node.id }})
+          <template v-if="node.subGraphId">
+            [SG: {{ node.subGraphId }}]
+          </template>
+        </template>
       </div>
     </div>
 

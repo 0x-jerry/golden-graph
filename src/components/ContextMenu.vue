@@ -2,7 +2,7 @@
 import type { Placement } from "@floating-ui/vue";
 import { autoUpdate, flip, offset, shift, useFloating } from "@floating-ui/vue";
 import { onClickOutside } from "@vueuse/core";
-import { type Component, computed, ref } from "vue";
+import { type Component, computed, type MaybeRefOrGetter, ref, toValue } from "vue";
 
 export interface ContextMenuItem {
   key?: string | number;
@@ -13,6 +13,7 @@ export interface ContextMenuItem {
    * Keyboard shortcut
    */
   shortcut?: string;
+  visible?: MaybeRefOrGetter<boolean>
   action?: () => void;
   children?: ContextMenuItem[];
 }
@@ -97,6 +98,16 @@ const middleware = computed(() => {
   ];
 });
 
+const visibleItems = computed(() => {
+  return props.items.filter((item) => {
+    if (item.visible) {
+      return toValue(item.visible);
+    }
+
+    return true;
+  });
+});
+
 const { floatingStyles } = useFloating(reference, floating, {
   placement: () => (props.parentElement ? "right-start" : "bottom-start"),
   whileElementsMounted: autoUpdate,
@@ -122,7 +133,7 @@ const itemRefs = ref<HTMLElement[]>([]);
 
 // Handle hover for submenus
 function handleMouseEnter(index: number) {
-  if (props.items[index].disabled) return;
+  if (visibleItems.value[index].disabled) return;
   activeIndex.value = index;
 }
 
@@ -176,7 +187,7 @@ function handleSubMenuClick(item: ContextMenuItem) {
       @contextmenu.prevent
     >
       <div
-        v-for="(item, index) in items"
+        v-for="(item, index) in visibleItems"
         :key="item.key ?? index"
         ref="itemRefs"
         class="context-menu-item"
