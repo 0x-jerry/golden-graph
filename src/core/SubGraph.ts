@@ -5,7 +5,7 @@ import { Node, NodeType } from './Node'
 import type { INodeHandleConfig } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import type { ISubGraph } from './types'
-import type { Workspace } from './Workspace'
+import { Workspace } from './Workspace'
 
 export class SubGraphInputNode extends Node {
   static type = 'subgraph.input'
@@ -113,6 +113,34 @@ export class SubGraphOutputNode extends Node {
   }
 }
 
+/**
+ * A virtual workspace used by SubGraph
+ */
+class VirtualWorkspace extends Workspace {
+  constructor(ws: Workspace) {
+    super()
+
+    for (const [name, factory] of ws.nodeRegister) {
+      this.registerNode(name, factory)
+    }
+
+    this.fromJSON({
+      version: ws.version,
+      coordinate: ws.coord.toJSON(),
+      nodes: [],
+      edges: [],
+      groups: [],
+      subGraphs: [],
+      extra: {
+        incrementID: ws._idGenerator.current(),
+      },
+    })
+
+    // Do no need interactive helpers
+    this.interactive.dispose()
+  }
+}
+
 export class SubGraph implements IPersistent<ISubGraph> {
   id = 0
 
@@ -129,11 +157,7 @@ export class SubGraph implements IPersistent<ISubGraph> {
   }
 
   constructor(parentWorkspace: Workspace) {
-
-    this._workspace = parentWorkspace.clone()
-
-    // todo, mark this workspace as a virtual workspace
-    this.workspace.dispose()
+    this._workspace = new VirtualWorkspace(parentWorkspace)
 
     this.workspace.registerNode(SubGraphInputNode.type, SubGraphInputNode)
     this.workspace.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)

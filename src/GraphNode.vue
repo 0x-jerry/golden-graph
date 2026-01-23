@@ -31,13 +31,18 @@ const ContextMenus: ContextMenuItem[] = [
     action: () => {
       const data = node.value.toJSON()
 
-      ws.addNode(data.type, {
-        data: data.data,
-        pos: {
-          x: data.pos.x + 20,
-          y: data.pos.y + 20,
-        }
-      })
+      if (data.subGraphId) {
+        const newNode = ws.copySubGraphNode(data.subGraphId)
+        newNode.moveTo(data.pos.x + 20, data.pos.y + 20)
+      } else {
+        ws.addNode(data.type, {
+          data: data.data,
+          pos: {
+            x: data.pos.x + 20,
+            y: data.pos.y + 20,
+          }
+        })
+      }
     },
   },
   {

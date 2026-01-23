@@ -117,6 +117,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     return this._workspaceDataStack.length > 0
   }
 
+  get nodeRegister() {
+    return toReadonly(this._nodeRegister)
+  }
+
   registerNode<T extends Node>(type: string, node: Factory<T>) {
     this._nodeRegister.set(type, node)
   }
@@ -312,6 +316,20 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     }
   }
 
+  copySubGraphNode(subGraphId: number) {
+    const subGraph = this._subGraphs.find((n) => n.id === subGraphId)
+
+    if (!subGraph) {
+      throw new Error(`Can not find subGraph by id ${subGraphId}`)
+    }
+
+    const node = subGraph.buildNode()
+
+    this.addRawNode(node)
+
+    return node
+  }
+
   showContextMenus(evt: MouseEvent, menus: ContextMenuItem[]) {
     evt.preventDefault()
 
@@ -457,31 +475,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   dispose() {
     this.events.off()
     this.interactive.dispose()
-  }
-
-  /**
-   * Return a new fresh workspace
-   */
-  clone() {
-    const w = new Workspace()
-
-    for (const [name, factory] of this._nodeRegister) {
-      w.registerNode(name, factory)
-    }
-
-    w.fromJSON({
-      version: this.version,
-      coordinate: this.coord.toJSON(),
-      nodes: [],
-      edges: [],
-      groups: [],
-      subGraphs: [],
-      extra: {
-        incrementID: this._idGenerator.current(),
-      },
-    })
-
-    return w
   }
 
   toJSON(): IWorkspace {
