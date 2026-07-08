@@ -1,5 +1,5 @@
 import Konva from 'konva'
-import type { Workspace } from '../core'
+import type { Edge, Group, Node, NodeHandle, Workspace } from '../core'
 import type { IRenderer } from '../core'
 import { ActiveType, HandlePosition } from '../core'
 import { createCoordLayer } from './CoordLayer'
@@ -7,10 +7,16 @@ import { createEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
 import { createNode, updateNode, destroyNode } from './NodeRenderer'
+import { updateHandle } from './HandleRenderer'
 import {
-  updateHandle,
-} from './HandleRenderer'
-import { COLORS, LAYOUT, SEL, ATTR, LAYER_NAME, NODE_BODY_PADDING, EXECUTOR_SHADOW_BLUR } from './constants'
+  COLORS,
+  LAYOUT,
+  SEL,
+  ATTR,
+  LAYER_NAME,
+  NODE_BODY_PADDING,
+  EXECUTOR_SHADOW_BLUR,
+} from './constants'
 
 export class KonvaGraphRenderer implements IRenderer {
   _stage: Konva.Stage
@@ -72,7 +78,12 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- IRenderer implementation ---
 
-  getNodesBounding(nodeIds: number[]): { x: number; y: number; width: number; height: number } {
+  getNodesBounding(nodeIds: number[]): {
+    x: number
+    y: number
+    width: number
+    height: number
+  } {
     let left = Infinity
     let top = Infinity
     let right = -Infinity
@@ -85,7 +96,10 @@ export class KonvaGraphRenderer implements IRenderer {
       const node = this._ws.getNode(id)
       if (!node) continue
 
-      const height = LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING
+      const height =
+        LAYOUT.HEADER_HEIGHT +
+        node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT +
+        NODE_BODY_PADDING
 
       left = Math.min(left, node.pos.x)
       top = Math.min(top, node.pos.y)
@@ -207,7 +221,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Node ---
 
-  _onNodeAdded(node: import('../core').Node) {
+  _onNodeAdded(node: Node) {
     const group = createNode(node)
     group.setAttr(ATTR.NODE_ID, node.id)
 
@@ -215,7 +229,7 @@ export class KonvaGraphRenderer implements IRenderer {
     this._nodeLayer.add(group)
   }
 
-  _onNodeRemoved(node: import('../core').Node) {
+  _onNodeRemoved(node: Node) {
     const group = this._nodeGroups.get(node.id)
     if (group) {
       destroyNode(group, node)
@@ -223,7 +237,7 @@ export class KonvaGraphRenderer implements IRenderer {
     }
   }
 
-  _onNodeChanged(node: import('../core').Node) {
+  _onNodeChanged(node: Node) {
     const group = this._nodeGroups.get(node.id)
     if (group) {
       updateNode(group, node)
@@ -233,7 +247,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Edge ---
 
-  _addEdgeLine(edge: import('../core').Edge) {
+  _addEdgeLine(edge: Edge) {
     try {
       const line = createEdge(edge)
       this._edgeLines.set(edge.id, line)
@@ -277,7 +291,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Group ---
 
-  _onGroupAdded(group: import('../core').Group) {
+  _onGroupAdded(group: Group) {
     const konvaGroup = createGroup(group)
     konvaGroup.setAttr(ATTR.GROUP_ID, group.id)
 
@@ -285,7 +299,7 @@ export class KonvaGraphRenderer implements IRenderer {
     this._groupLayer.add(konvaGroup)
   }
 
-  _onGroupRemoved(group: import('../core').Group) {
+  _onGroupRemoved(group: Group) {
     const konvaGroup = this._groupGroups.get(group.id)
     if (konvaGroup) {
       destroyGroup(konvaGroup)
@@ -293,7 +307,7 @@ export class KonvaGraphRenderer implements IRenderer {
     }
   }
 
-  _onGroupChanged(group: import('../core').Group) {
+  _onGroupChanged(group: Group) {
     const konvaGroup = this._groupGroups.get(group.id)
     if (konvaGroup) {
       updateGroup(konvaGroup, group)
@@ -303,8 +317,10 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Handle ---
 
-  _onHandleUpdated(handle: import('../core').NodeHandle) {
-    const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
+  _onHandleUpdated(handle: NodeHandle) {
+    const handles = handle.node.handles.filter(
+      (h) => h.position !== HandlePosition.None,
+    )
     const index = handles.indexOf(handle)
     if (index >= 0) {
       updateHandle(handle, index)
@@ -312,8 +328,10 @@ export class KonvaGraphRenderer implements IRenderer {
     this._nodeLayer.batchDraw()
   }
 
-  _onHandleConnectionChanged(handle: import('../core').NodeHandle) {
-    const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
+  _onHandleConnectionChanged(handle: NodeHandle) {
+    const handles = handle.node.handles.filter(
+      (h) => h.position !== HandlePosition.None,
+    )
     const index = handles.indexOf(handle)
     if (index >= 0) {
       updateHandle(handle, index)
@@ -365,7 +383,10 @@ export class KonvaGraphRenderer implements IRenderer {
     for (const [nodeId, group] of this._nodeGroups) {
       const body = group.findOne(SEL.BODY) as Konva.Rect
       if (body) {
-        if (executorState.isProcessing && executorState.currentNodeId === nodeId) {
+        if (
+          executorState.isProcessing &&
+          executorState.currentNodeId === nodeId
+        ) {
           body.shadowColor(COLORS.ACCENT_SOFT)
           body.shadowBlur(EXECUTOR_SHADOW_BLUR)
           body.shadowOffset({ x: 0, y: 0 })

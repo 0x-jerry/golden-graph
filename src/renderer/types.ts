@@ -1,15 +1,17 @@
+import type Konva from 'konva'
+
 export interface KonvaNodeEntry {
-  group: import('konva').default.Group
+  group: Konva.Group
   nodeId: number
 }
 
 export interface KonvaEdgeEntry {
-  line: import('konva').default.Line
+  line: Konva.Line
   edgeId: number
 }
 
 export interface KonvaGroupEntry {
-  group: import('konva').default.Group
+  group: Konva.Group
   groupId: number
 }
 
