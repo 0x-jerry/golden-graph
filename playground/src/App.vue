@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef } from 'vue';
-import { GraphRenderer, SubGraphInputNode, SubGraphOutputNode, Workspace } from '../../src'
+import { KonvaRenderer, SubGraphInputNode, SubGraphOutputNode, Workspace } from '../../src'
 import { setup as _setup } from './editor'
 
-const instance = useTemplateRef<InstanceType<typeof GraphRenderer>>('renderer')
+const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
 
 const cacheKey = 'graph-save-data'
 
@@ -115,7 +115,7 @@ async function loadFromJSON() {
     </div>
 
     <div class="graph-render-content">
-      <GraphRenderer ref="renderer" :setup="setup" />
+      <KonvaRenderer ref="renderer" :setup="setup" />
     </div>
   </div>
 </template>

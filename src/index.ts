@@ -1,6 +1,7 @@
 export * from './core'
 
 import GraphRenderer from './GraphRenderer.vue'
+import KonvaRenderer from './KonvaRenderer.vue'
 
-export { GraphRenderer }
+export { GraphRenderer, KonvaRenderer }
 export { KonvaGraphRenderer } from './renderer'
