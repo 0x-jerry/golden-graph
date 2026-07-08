@@ -16,19 +16,13 @@ function getJointPos(
   return { x: handle.node.pos.x, y }
 }
 
-export function computeBezierPoints(
+export function bezierOffset(
   startPos: { x: number; y: number },
   endPos: { x: number; y: number },
-): number[] {
+): { handleOffset: number } {
   const dx = Math.abs(startPos.x - endPos.x)
   const handleOffset = Math.max(BEZIER_MIN_OFFSET, Math.min(dx / 2, BEZIER_MAX_OFFSET))
-
-  return [
-    startPos.x, startPos.y,
-    startPos.x + handleOffset, startPos.y,
-    endPos.x - handleOffset, endPos.y,
-    endPos.x, endPos.y,
-  ]
+  return { handleOffset }
 }
 
 export function createEdge(edge: Edge): Konva.Line {
@@ -43,7 +37,14 @@ export function createEdge(edge: Edge): Konva.Line {
   const startPos = getJointPos(startHandle)
   const endPos = getJointPos(endHandle)
 
-  const points = computeBezierPoints(startPos, endPos)
+  const { handleOffset } = bezierOffset(startPos, endPos)
+
+  const points = [
+    startPos.x, startPos.y,
+    startPos.x - handleOffset, startPos.y,
+    endPos.x + handleOffset, endPos.y,
+    endPos.x, endPos.y,
+  ]
 
   const line = new Konva.Line({
     points,
