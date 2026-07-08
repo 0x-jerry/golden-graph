@@ -177,6 +177,7 @@ export class Node implements IPersistent<INode> {
     })
 
     this._handles.push(handle)
+    this._workspace?.events.emit('node:changed', this)
   }
 
   getHandle(key: string) {
@@ -192,11 +193,13 @@ export class Node implements IPersistent<INode> {
   move(x: number, y: number) {
     this._state.pos.x += x
     this._state.pos.y += y
+    this._workspace?.events.emit('node:changed', this)
   }
 
   moveTo(x: number, y: number) {
     this._state.pos.x = x
     this._state.pos.y = y
+    this._workspace?.events.emit('node:changed', this)
   }
 
   toJSON(): INode {

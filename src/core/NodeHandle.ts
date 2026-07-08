@@ -188,6 +188,7 @@ export class NodeHandle {
 
   setConnectedHandle(handle?: NodeHandle) {
     this._connectedHandle.value = handle
+    this.node.workspace.events.emit('handle:connection-changed', this)
   }
 
   fromConfig(data: INodeHandleConfig): void {

@@ -57,7 +57,6 @@ export function convertGroupToSubGraph(
   reconnectExternalEdges(context, subGraphNode)
 
   workspace.removeGroup(groupId)
-  workspace.events.emit('node:added', subGraphNode)
 
   return subGraph
 }

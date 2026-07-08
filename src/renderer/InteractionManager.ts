@@ -1,0 +1,457 @@
+import Konva from 'konva'
+import { clamp } from '@0x-jerry/utils'
+import type { NodeHandle, Workspace } from '../core'
+import { ActiveType, HandlePosition } from '../core'
+import { ConnectionLine } from './ConnectionLine'
+import { COLORS, LAYOUT } from './types'
+import { getHandleIndex } from './NodeRenderer'
+
+export class InteractionManager {
+  private _stage: Konva.Stage
+  private _ws: Workspace
+  private _connectionLine: ConnectionLine
+
+  private _isDragging = false
+  private _dragType: 'node' | 'group' | 'canvas' | 'selection' | null = null
+  private _dragNodeId = 0
+  private _dragGroupId = 0
+  private _dragLastPos = { x: 0, y: 0 }
+
+  private _isConnecting = false
+  private _connectHandle: NodeHandle | null = null
+
+  private _selectionStarted = false
+  private _selectionX1 = 0
+  private _selectionY1 = 0
+  private _selectionRect: Konva.Rect | null = null
+
+  private _disposers: (() => void)[] = []
+
+  constructor(
+    stage: Konva.Stage,
+    ws: Workspace,
+    edgeLayer: Konva.Layer,
+    private _getNodeGroup: (id: number) => Konva.Group | undefined,
+    private _getGroupGroup: (id: number) => Konva.Group | undefined,
+    private _onNodeSelect: (id: number) => void,
+  ) {
+    this._stage = stage
+    this._ws = ws
+    this._connectionLine = new ConnectionLine(edgeLayer)
+    this._setupStageEvents()
+    this._setupKeyboardEvents()
+  }
+
+  private _setupStageEvents() {
+    const stage = this._stage
+
+    stage.on('pointerdown', (e) => {
+      this._onPointerDown(e)
+    })
+
+    stage.on('pointermove', (e) => {
+      this._onPointerMove(e)
+    })
+
+    stage.on('pointerup', () => {
+      this._onPointerUp()
+    })
+
+    stage.on('wheel', (e) => {
+      this._onWheel(e)
+    })
+
+    stage.on('contextmenu', (e) => {
+      e.evt.preventDefault()
+    })
+  }
+
+  private _setupKeyboardEvents() {
+    const onKeyDown = (e: KeyboardEvent) => {
+      this._ws.interactive._state.shift = e.shiftKey
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      this._ws.interactive._state.shift = e.shiftKey
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keyup', onKeyUp)
+
+    this._disposers.push(() => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keyup', onKeyUp)
+    })
+  }
+
+  private _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
+    const target = e.target
+    const targetName = target.name()
+
+    if (targetName.startsWith('joint-')) {
+      this._startConnecting(targetName, e)
+      return
+    }
+
+    const nodeGroup = target.findAncestor('.node-group') as Konva.Group | undefined
+    if (nodeGroup) {
+      const nodeId = Number(nodeGroup.getAttr('nodeId'))
+      if (nodeId) {
+        this._onNodeSelect(nodeId)
+        this._startNodeDrag(nodeId, e)
+        return
+      }
+    }
+
+    const groupGroup = target.findAncestor('.group-group') as Konva.Group | undefined
+    if (groupGroup) {
+      const groupId = Number(groupGroup.getAttr('groupId'))
+      if (groupId) {
+        this._startGroupDrag(groupId, e)
+        return
+      }
+    }
+
+    if (e.evt.shiftKey) {
+      this._startSelection(e)
+    } else {
+      this._startCanvasDrag(e)
+      this._ws.clearActiveIds()
+    }
+  }
+
+  private _onPointerMove(e: Konva.KonvaEventObject<PointerEvent>) {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    if (this._isConnecting) {
+      this._handleConnectingMove(pos)
+      return
+    }
+
+    if (this._dragType === 'node') {
+      this._handleNodeDrag(pos)
+      return
+    }
+
+    if (this._dragType === 'group') {
+      this._handleGroupDrag(pos)
+      return
+    }
+
+    if (this._dragType === 'canvas') {
+      this._handleCanvasDrag(pos)
+      return
+    }
+
+    if (this._dragType === 'selection') {
+      this._handleSelectionDrag(pos)
+      return
+    }
+  }
+
+  private _onPointerUp() {
+    if (this._isConnecting) {
+      this._endConnecting()
+    }
+
+    if (this._dragType === 'selection') {
+      this._endSelection()
+    }
+
+    this._isDragging = false
+    this._dragType = null
+  }
+
+  // -- Connecting ---
+
+  private _startConnecting(targetName: string, e: Konva.KonvaEventObject<PointerEvent>) {
+    const match = targetName.match(/^joint-(\d+)-(.+)$/)
+    if (!match) return
+
+    const nodeId = Number(match[1])
+    const handleKey = match[2]
+
+    const node = this._ws.getNode(nodeId)
+    if (!node) return
+
+    const handle = node.getHandle(handleKey)
+    if (!handle) return
+
+    let startHandle = handle
+    if (!handle.isRight) {
+      const [edge] = this._ws.queryEdges(handle.loc)
+      if (edge) {
+        this._ws.removeEdgeByIds(edge.id)
+        startHandle = edge.start === handle ? edge.end : edge.start
+      }
+    }
+
+    this._connectHandle = startHandle
+    this._isConnecting = true
+
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    const wsPos = this._ws.coord.convertScreenCoord(pos)
+    const jointPos = this._getHandlePos(startHandle)
+
+    if (startHandle.isRight) {
+      this._connectionLine.show(jointPos, wsPos)
+    } else {
+      this._connectionLine.show(jointPos, wsPos)
+    }
+  }
+
+  private _handleConnectingMove(screenPos: { x: number; y: number }) {
+    if (!this._connectHandle) return
+
+    const wsPos = this._ws.coord.convertScreenCoord(screenPos)
+    const jointPos = this._getHandlePos(this._connectHandle)
+
+    if (this._connectHandle.isRight) {
+      this._connectionLine.update(jointPos, wsPos)
+    } else {
+      this._connectionLine.update(jointPos, wsPos)
+    }
+  }
+
+  private _endConnecting() {
+    this._isConnecting = false
+    this._connectionLine.hide()
+
+    if (!this._connectHandle) return
+
+    const pos = this._stage.getPointerPosition()
+    if (!pos) {
+      this._connectHandle = null
+      return
+    }
+
+    const target = this._stage.getIntersection(pos)
+    if (!target) {
+      this._connectHandle = null
+      return
+    }
+
+    const targetName = target.name()
+    if (!targetName || !targetName.startsWith('joint-')) {
+      this._connectHandle = null
+      return
+    }
+
+    const match = targetName.match(/^joint-(\d+)-(.+)$/)
+    if (!match) {
+      this._connectHandle = null
+      return
+    }
+
+    const targetNodeId = Number(match[1])
+    const targetKey = match[2]
+
+    const targetNode = this._ws.getNode(targetNodeId)
+    if (!targetNode) {
+      this._connectHandle = null
+      return
+    }
+
+    const targetHandle = targetNode.getHandle(targetKey)
+    if (!targetHandle) {
+      this._connectHandle = null
+      return
+    }
+
+    if (this._connectHandle.node.id !== targetHandle.node.id) {
+      this._ws.connect(this._connectHandle, targetHandle)
+    }
+
+    this._connectHandle = null
+  }
+
+  // --- Node Drag ---
+
+  private _startNodeDrag(nodeId: number, _e: Konva.KonvaEventObject<PointerEvent>) {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    this._isDragging = true
+    this._dragType = 'node'
+    this._dragNodeId = nodeId
+    this._dragLastPos = { x: pos.x, y: pos.y }
+  }
+
+  private _handleNodeDrag(screenPos: { x: number; y: number }) {
+    const dx = screenPos.x - this._dragLastPos.x
+    const dy = screenPos.y - this._dragLastPos.y
+
+    this._dragLastPos = { x: screenPos.x, y: screenPos.y }
+
+    const wsDelta = {
+      x: dx / this._ws.coord.scale,
+      y: dy / this._ws.coord.scale,
+    }
+
+    if (this._ws.state.activeType === ActiveType.Node && this._ws.state.activeIds.length > 1) {
+      this._ws.moveActiveNodes(wsDelta)
+    } else {
+      const node = this._ws.getNode(this._dragNodeId)
+      if (node) {
+        node.move(wsDelta.x, wsDelta.y)
+      }
+    }
+  }
+
+  // --- Group Drag ---
+
+  private _startGroupDrag(groupId: number, e: Konva.KonvaEventObject<PointerEvent>) {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    const group = this._ws.groups.find((g) => g.id === groupId)
+    if (!group) return
+
+    this._isDragging = true
+    this._dragType = 'group'
+    this._dragGroupId = groupId
+    this._dragLastPos = { x: pos.x, y: pos.y }
+
+    this._ws.setActiveIds(ActiveType.Group, [groupId])
+  }
+
+  private _handleGroupDrag(screenPos: { x: number; y: number }) {
+    const dx = screenPos.x - this._dragLastPos.x
+    const dy = screenPos.y - this._dragLastPos.y
+
+    this._dragLastPos = { x: screenPos.x, y: screenPos.y }
+
+    const group = this._ws.groups.find((g) => g.id === this._dragGroupId)
+    if (group) {
+      group.move({
+        x: dx / this._ws.coord.scale,
+        y: dy / this._ws.coord.scale,
+      })
+    }
+  }
+
+  // --- Canvas Pan ---
+
+  private _startCanvasDrag(e: Konva.KonvaEventObject<PointerEvent>) {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    this._isDragging = true
+    this._dragType = 'canvas'
+    this._dragLastPos = { x: pos.x, y: pos.y }
+  }
+
+  private _handleCanvasDrag(screenPos: { x: number; y: number }) {
+    const dx = screenPos.x - this._dragLastPos.x
+    const dy = screenPos.y - this._dragLastPos.y
+
+    this._dragLastPos = { x: screenPos.x, y: screenPos.y }
+
+    this._ws.coord.move(dx, dy)
+  }
+
+  // --- Rubber-band Selection ---
+
+  private _startSelection(e: Konva.KonvaEventObject<PointerEvent>) {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    this._dragType = 'selection'
+    this._selectionStarted = true
+    this._selectionX1 = pos.x
+    this._selectionY1 = pos.y
+
+    if (!this._selectionRect) {
+      this._selectionRect = new Konva.Rect({
+        fill: COLORS.SELECTION_FILL,
+        stroke: COLORS.SELECTION_BORDER,
+        strokeWidth: 1,
+        listening: false,
+        visible: false,
+      })
+      this._stage.getLayers()![0].add(this._selectionRect)
+    }
+  }
+
+  private _handleSelectionDrag(screenPos: { x: number; y: number }) {
+    if (!this._selectionRect) return
+
+    const x = Math.min(this._selectionX1, screenPos.x)
+    const y = Math.min(this._selectionY1, screenPos.y)
+    const w = Math.abs(this._selectionX1 - screenPos.x)
+    const h = Math.abs(this._selectionY1 - screenPos.y)
+
+    this._selectionRect.x(x)
+    this._selectionRect.y(y)
+    this._selectionRect.width(w)
+    this._selectionRect.height(h)
+    this._selectionRect.visible(true)
+    this._selectionRect.getLayer()?.batchDraw()
+  }
+
+  private _endSelection() {
+    if (!this._selectionRect || !this._selectionStarted) return
+
+    this._selectionStarted = false
+    this._selectionRect.visible(false)
+    this._selectionRect.getLayer()?.batchDraw()
+
+    const selRect = this._selectionRect
+    const coord = this._ws.coord
+    const tl = coord.convertScreenCoord({ x: selRect.x(), y: selRect.y() })
+    const br = coord.convertScreenCoord({
+      x: selRect.x() + selRect.width(),
+      y: selRect.y() + selRect.height(),
+    })
+
+    const selectedNodeIds: number[] = []
+    for (const node of this._ws.nodes) {
+      if (
+        node.pos.x >= tl.x &&
+        node.pos.y >= tl.y &&
+        node.pos.x + LAYOUT.NODE_WIDTH <= br.x &&
+        node.pos.y + LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + 8 <= br.y
+      ) {
+        selectedNodeIds.push(node.id)
+      }
+    }
+
+    this._ws.setActiveIds(ActiveType.Node, selectedNodeIds)
+  }
+
+  // --- Zoom ---
+
+  private _onWheel(e: Konva.KonvaEventObject<WheelEvent>) {
+    e.evt.preventDefault()
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    const coord = this._ws.coord
+    const scaleStep = coord.scale > 1 ? 0.05 : coord.scale > 0.1 ? 0.025 : 0.01
+    let scale = coord.scale + (e.evt.deltaY < 0 ? 1 : -1) * scaleStep
+    scale = clamp(scale, 0.01, 2)
+
+    coord.zoomAt(pos, scale)
+  }
+
+  // --- Helpers ---
+
+  private _getHandlePos(handle: NodeHandle): { x: number; y: number } {
+    const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
+    const index = handles.indexOf(handle)
+    const y = handle.node.pos.y + LAYOUT.HEADER_HEIGHT + index * LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2
+
+    if (handle.isRight) {
+      return { x: handle.node.pos.x + LAYOUT.NODE_WIDTH, y }
+    }
+    return { x: handle.node.pos.x, y }
+  }
+
+  dispose() {
+    this._stage.off()
+    this._connectionLine.destroy()
+    this._disposers.forEach((d) => d())
+    this._disposers = []
+  }
+}

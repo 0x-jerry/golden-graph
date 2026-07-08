@@ -10,7 +10,6 @@ import { reactive, shallowReactive } from 'vue'
 import type { ContextMenuItem } from '../components/ContextMenu.vue'
 import { ContextMenuHelper } from './ContextMenu'
 import { CoordSystem } from './CoordSystem'
-import { getNodesBounding } from './domHelper'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
 import { Group } from './Group'
@@ -27,19 +26,36 @@ import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
 import { SubGraph } from './SubGraph'
-import type { IDisposable, INodeHandleLoc, IVec2, IWorkspace } from './types'
+import type { IDisposable, INodeHandleLoc, IRenderer, IVec2, IWorkspace } from './types'
 
 export interface WorkspaceEvents {
   'node:added': [node: Node]
   'node:removed': [node: Node]
+  'node:changed': [node: Node]
 
   /**
    * Node handle value updated.
    */
   'handle:updated': [handle: NodeHandle]
+  'handle:connection-changed': [handle: NodeHandle]
 
   'edge:added': [edge: Edge]
   'edge:removed': [edge: Edge]
+
+  'group:added': [group: Group]
+  'group:removed': [group: Group]
+  'group:changed': [group: Group]
+
+  'subgraph:added': [subgraph: SubGraph]
+  'subgraph:removed': [subgraph: SubGraph]
+
+  'coord:changed': [coord: CoordSystem]
+
+  'state:changed': [state: { debug: boolean; disabled: boolean; activeIds: number[]; activeType: ActiveType }]
+
+  'executor:changed': [state: { isProcessing: boolean; currentNodeId: number }]
+
+  'contextmenu:changed': [state: { visible: boolean; x: number; y: number; menus: ContextMenuItem[] }]
 }
 
 export enum ActiveType {
@@ -57,8 +73,10 @@ interface IWorkspaceData {
 export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   readonly version = '1.0.0'
   readonly id = nanoid()
+  _renderer?: IRenderer
+
   readonly events = new EventEmitter<WorkspaceEvents>()
-  readonly coord = new CoordSystem()
+  readonly coord = new CoordSystem(this)
   readonly interactive = new Interactive(this)
 
   _nodes: Node[] = shallowReactive([])
@@ -72,7 +90,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   _executor = new Executor(this)
 
-  _ctxMenuHelper = new ContextMenuHelper()
+  _ctxMenuHelper = new ContextMenuHelper(this)
 
   _workspaceDataStack: IWorkspaceData[] = []
 
@@ -124,6 +142,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   get nodeRegister() {
     return toReadonly(this._nodeRegister)
+  }
+
+  setRenderer(renderer: IRenderer) {
+    this._renderer = renderer
   }
 
   registerNode<T extends Node>(type: string, node: Factory<T>) {
@@ -196,8 +218,11 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
       return
     }
 
-    const nodes = this.queryNodes(...nodeIds)
-    const rect = getNodesBounding(nodes)
+    if (!this._renderer) {
+      throw new Error('Renderer not set. Call workspace.setRenderer() before addGroup().')
+    }
+
+    const rect = this._renderer.getNodesBounding(nodeIds)
 
     const padding = 40
     const headerHeight = 50
@@ -218,10 +243,15 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     g.nodes.push(...nodeIds)
 
     this._groups.push(g)
+    this.events.emit('group:added', g)
   }
 
   removeGroup(groupId: number) {
-    return remove(this._groups, (g) => g.id === groupId)
+    const groups = remove(this._groups, (g) => g.id === groupId)
+    for (const g of groups) {
+      this.events.emit('group:removed', g)
+    }
+    return groups
   }
 
   covertGroupToSubGraph(groupId: number) {
@@ -236,10 +266,15 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     }
 
     this._subGraphs.push(subGraph)
+    this.events.emit('subgraph:added', subGraph)
   }
 
   removeSubGraph(subGraphId: number) {
-    return remove(this._subGraphs, (g) => g.id === subGraphId)
+    const removed = remove(this._subGraphs, (g) => g.id === subGraphId)
+    for (const s of removed) {
+      this.events.emit('subgraph:removed', s)
+    }
+    return removed
   }
 
   enterSubGraph(subGraphId: number) {
@@ -444,6 +479,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
     this._state.activeIds = _ids
     this._state.activeType = type
+    this.events.emit('state:changed', this._state)
   }
 
   isActive(id: number) {
@@ -475,6 +511,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   setDebug(enabled: boolean) {
     this._state.debug = enabled
+    this.events.emit('state:changed', this._state)
   }
 
   dispose() {

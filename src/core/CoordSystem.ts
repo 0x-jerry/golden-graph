@@ -2,8 +2,11 @@ import { reactive } from 'vue'
 import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
 import type { ICoordinate, IVec2 } from './types'
+import type { Workspace } from './Workspace'
 
 export class CoordSystem implements IPersistent<ICoordinate> {
+  _workspace?: Workspace
+
   /**
    * Coord system _state position
    */
@@ -12,6 +15,10 @@ export class CoordSystem implements IPersistent<ICoordinate> {
     y: 0,
     scale: 1,
   })
+
+  constructor(workspace?: Workspace) {
+    this._workspace = workspace
+  }
 
   get origin() {
     return toReadonly({
@@ -32,17 +39,20 @@ export class CoordSystem implements IPersistent<ICoordinate> {
     this._state.y += dy
 
     this._state.scale = scale
+    this._workspace?.events.emit('coord:changed', this)
   }
 
   reset() {
     this._state.x = 0
     this._state.y = 0
     this._state.scale = 1
+    this._workspace?.events.emit('coord:changed', this)
   }
 
   move(x: number, y: number) {
     this._state.x += x / this.scale
     this._state.y += y / this.scale
+    this._workspace?.events.emit('coord:changed', this)
   }
 
   /**
@@ -89,5 +99,6 @@ export class CoordSystem implements IPersistent<ICoordinate> {
     this._state.x = data.origin.x
     this._state.y = data.origin.y
     this._state.scale = data.scale
+    this._workspace?.events.emit('coord:changed', this)
   }
 }

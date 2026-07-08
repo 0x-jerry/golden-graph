@@ -54,16 +54,19 @@ export class Group implements IPersistent<IGroup> {
 
   setName(name: string) {
     this._state.name = name
+    this._workspace?.events.emit('group:changed', this)
   }
 
   setPos(pos: IVec2) {
     this._state.pos.x = pos.x
     this._state.pos.y = pos.y
+    this._workspace?.events.emit('group:changed', this)
   }
 
   setSize(size: IVec2) {
     this._state.size.x = size.x
     this._state.size.y = size.y
+    this._workspace?.events.emit('group:changed', this)
   }
 
   move(dPos: IVec2) {
@@ -75,6 +78,8 @@ export class Group implements IPersistent<IGroup> {
         item.move(dPos.x, dPos.y)
       }
     })
+
+    this._workspace?.events.emit('group:changed', this)
   }
 
   toJSON(): IGroup {

@@ -33,6 +33,7 @@ export class Executor {
     try {
       this._state.isProcessing = true
       this._state.currentNodeId = -1
+      this.ws.events.emit('executor:changed', this._state)
 
       await this._execute(entryNodes)
       this._cache = this._cacheNew
@@ -42,6 +43,7 @@ export class Executor {
     } finally {
       this._state.isProcessing = false
       this._state.currentNodeId = -1
+      this.ws.events.emit('executor:changed', this._state)
     }
   }
 
@@ -93,6 +95,7 @@ export class Executor {
     }
 
     this._state.currentNodeId = node.id
+    this.ws.events.emit('executor:changed', this._state)
 
     const prevData = this._cache.get(node.id)
     const currentData = node.getAllData()

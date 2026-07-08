@@ -80,3 +80,7 @@ export type ObjectAny = Record<string, any>
 export interface IDisposable {
   dispose(): void
 }
+
+export interface IRenderer {
+  getNodesBounding(nodeIds: number[]): { x: number; y: number; width: number; height: number }
+}
