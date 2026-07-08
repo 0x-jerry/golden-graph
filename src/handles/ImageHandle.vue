@@ -29,9 +29,7 @@ async function onChooseImage() {
   <div class="handle-content">
     <template v-if="handle.getValue()">
       <img :src="handle.getValue() as string" class="handle-image" />
-      <button class="handle-choose-btn" @click="onChooseImage">
-        Change
-      </button>
+      <button class="handle-choose-btn" @click="onChooseImage">Change</button>
     </template>
     <div v-else class="handle-placeholder" @click="onChooseImage">
       {{ options.placeholder ?? 'Click to choose image' }}

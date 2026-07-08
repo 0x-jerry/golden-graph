@@ -3,7 +3,18 @@ import { clamp } from '@0x-jerry/utils'
 import type { NodeHandle, Workspace } from '../core'
 import { ActiveType, HandlePosition } from '../core'
 import { ConnectionLine } from './ConnectionLine'
-import { COLORS, LAYOUT, NODE_PREFIX, GROUP_PREFIX, JOINT_PREFIX, JOINT_REGEX, DRAG_TYPE, NODE_BODY_PADDING, ZOOM_MIN, ZOOM_MAX } from './constants'
+import {
+  COLORS,
+  LAYOUT,
+  NODE_PREFIX,
+  GROUP_PREFIX,
+  JOINT_PREFIX,
+  JOINT_REGEX,
+  DRAG_TYPE,
+  NODE_BODY_PADDING,
+  ZOOM_MIN,
+  ZOOM_MAX,
+} from './constants'
 
 export interface InteractionManagerOptions {
   stage: Konva.Stage
@@ -92,7 +103,9 @@ export class InteractionManager {
       return
     }
 
-    const nodeGroup = target.findAncestor((n: Konva.Node) => n.name().startsWith(NODE_PREFIX)) as Konva.Group | undefined
+    const nodeGroup = target.findAncestor((n: Konva.Node) =>
+      n.name().startsWith(NODE_PREFIX),
+    ) as Konva.Group | undefined
     if (nodeGroup) {
       const nodeId = Number(nodeGroup.getAttr('nodeId'))
       if (nodeId) {
@@ -102,7 +115,9 @@ export class InteractionManager {
       }
     }
 
-    const groupGroup = target.findAncestor((n: Konva.Node) => n.name().startsWith(GROUP_PREFIX)) as Konva.Group | undefined
+    const groupGroup = target.findAncestor((n: Konva.Node) =>
+      n.name().startsWith(GROUP_PREFIX),
+    ) as Konva.Group | undefined
     if (groupGroup) {
       const groupId = Number(groupGroup.getAttr('groupId'))
       if (groupId) {
@@ -280,7 +295,10 @@ export class InteractionManager {
       y: dy / this._ws.coord.scale,
     }
 
-    if (this._ws.state.activeType === ActiveType.Node && this._ws.state.activeIds.length > 1) {
+    if (
+      this._ws.state.activeType === ActiveType.Node &&
+      this._ws.state.activeIds.length > 1
+    ) {
       this._ws.moveActiveNodes(wsDelta)
     } else {
       const node = this._ws.getNode(this._dragNodeId)
@@ -409,7 +427,11 @@ export class InteractionManager {
         node.pos.x >= tl.x &&
         node.pos.y >= tl.y &&
         node.pos.x + LAYOUT.NODE_WIDTH <= br.x &&
-        node.pos.y + LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING <= br.y
+        node.pos.y +
+          LAYOUT.HEADER_HEIGHT +
+          node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT +
+          NODE_BODY_PADDING <=
+          br.y
       ) {
         selectedNodeIds.push(node.id)
       }
@@ -436,9 +458,15 @@ export class InteractionManager {
   // --- Helpers ---
 
   _getHandlePos(handle: NodeHandle): { x: number; y: number } {
-    const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
+    const handles = handle.node.handles.filter(
+      (h) => h.position !== HandlePosition.None,
+    )
     const index = handles.indexOf(handle)
-    const y = handle.node.pos.y + LAYOUT.HEADER_HEIGHT + index * LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2
+    const y =
+      handle.node.pos.y +
+      LAYOUT.HEADER_HEIGHT +
+      index * LAYOUT.HANDLE_ROW_HEIGHT +
+      LAYOUT.HANDLE_ROW_HEIGHT / 2
 
     if (handle.isRight) {
       return { x: handle.node.pos.x + LAYOUT.NODE_WIDTH, y }

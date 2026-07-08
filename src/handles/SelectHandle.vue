@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { INodeHandleConfigOptions } from '../core';
-import { useHandleOptions } from './useHandleOptions';
-import { useNodeHandleValue } from './useNodeHandleValue';
+import type { INodeHandleConfigOptions } from '../core'
+import { useHandleOptions } from './useHandleOptions'
+import { useNodeHandleValue } from './useNodeHandleValue'
 
 export interface SelectHandleOptions extends INodeHandleConfigOptions {
-  options: string[];
+  options: string[]
 }
 
 const options = useHandleOptions<SelectHandleOptions>()
@@ -14,13 +14,16 @@ const value = useNodeHandleValue<string>()
 <template>
   <div class="handle-content">
     <select v-model="value">
-      <option v-for="(option, index) in options.options" :key="index" :value="option">
+      <option
+        v-for="(option, index) in options.options"
+        :key="index"
+        :value="option"
+      >
         {{ option }}
       </option>
     </select>
   </div>
 </template>
-
 
 <style scoped>
 .handle-content {

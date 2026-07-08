@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import CoordSystem from './CoordSystem.vue';
-import ContextMenu from './components/ContextMenu.vue';
-import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
-import type { Workspace } from './core';
+import CoordSystem from './CoordSystem.vue'
+import ContextMenu from './components/ContextMenu.vue'
+import WorkspaceToolbar from './components/WorkspaceToolbar.vue'
+import type { Workspace } from './core'
 import GraphWorkspace from './GraphWorkspace.vue'
-import { useWorkspace } from './hooks';
-import { useConnectionGesture } from './hooks/useConnectionGesture';
+import { useWorkspace } from './hooks'
+import { useConnectionGesture } from './hooks/useConnectionGesture'
 
 export interface GraphRendererProps {
   setup?: (workspace: Workspace) => void
@@ -32,8 +32,13 @@ defineExpose({
       <GraphWorkspace></GraphWorkspace>
     </CoordSystem>
     <WorkspaceToolbar />
-    <ContextMenu :visible="ws.contextMenuState.visible" :x="ws.contextMenuState.x" :y="ws.contextMenuState.y"
-      :items="ws.contextMenuState.menus" @close="ws.hideContextMenus()" />
+    <ContextMenu
+      :visible="ws.contextMenuState.visible"
+      :x="ws.contextMenuState.x"
+      :y="ws.contextMenuState.y"
+      :items="ws.contextMenuState.menus"
+      @close="ws.hideContextMenus()"
+    />
   </div>
 </template>
 

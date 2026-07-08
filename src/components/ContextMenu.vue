@@ -1,44 +1,44 @@
 <script setup lang="ts">
-import type { Placement } from "@floating-ui/vue";
-import { autoUpdate, flip, offset, shift, useFloating } from "@floating-ui/vue";
-import { onClickOutside } from "@vueuse/core";
-import { type Component, computed, type MaybeRefOrGetter, ref } from "vue";
+import type { Placement } from '@floating-ui/vue'
+import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue'
+import { onClickOutside } from '@vueuse/core'
+import { type Component, computed, type MaybeRefOrGetter, ref } from 'vue'
 
 export interface ContextMenuItem {
-  key?: string | number;
-  label: string;
-  icon?: string | Component;
-  disabled?: boolean;
+  key?: string | number
+  label: string
+  icon?: string | Component
+  disabled?: boolean
   /**
    * Keyboard shortcut
    */
-  shortcut?: string;
+  shortcut?: string
   visible?: MaybeRefOrGetter<boolean>
-  action?: () => void;
-  children?: ContextMenuItem[];
+  action?: () => void
+  children?: ContextMenuItem[]
 }
 
 export interface ContextMenuProps {
-  items?: ContextMenuItem[];
+  items?: ContextMenuItem[]
   /**
    * The x coordinate for the root menu
    */
-  x?: number;
+  x?: number
   /**
    * The y coordinate for the root menu
    */
-  y?: number;
+  y?: number
   /**
    * The reference element for submenus
    */
-  parentElement?: HTMLElement | null;
-  visible?: boolean;
-  placement?: Placement;
+  parentElement?: HTMLElement | null
+  visible?: boolean
+  placement?: Placement
 }
 
 export interface ContextMenuEmits {
-  (e: "close"): void;
-  (e: "click", item: ContextMenuItem): void;
+  (e: 'close'): void
+  (e: 'click', item: ContextMenuItem): void
 }
 
 const props = withDefaults(defineProps<ContextMenuProps>(), {
@@ -46,14 +46,14 @@ const props = withDefaults(defineProps<ContextMenuProps>(), {
   x: 0,
   y: 0,
   visible: false,
-  placement: "right-start",
-});
+  placement: 'right-start',
+})
 
-const emit = defineEmits<ContextMenuEmits>();
+const emit = defineEmits<ContextMenuEmits>()
 
 const reference = computed(() => {
   if (props.parentElement) {
-    return props.parentElement;
+    return props.parentElement
   }
 
   const boundingRect = {
@@ -70,17 +70,17 @@ const reference = computed(() => {
   // Virtual element for root
   return {
     getBoundingClientRect() {
-      return boundingRect;
+      return boundingRect
     },
-  };
-});
+  }
+})
 
-const floating = ref<HTMLElement>();
+const floating = ref<HTMLElement>()
 
 const middleware = computed(() => {
   if (props.parentElement) {
     // Submenu settings
-    return [offset(4), flip(), shift({ padding: 10 })];
+    return [offset(4), flip(), shift({ padding: 10 })]
   }
 
   // Root menu settings
@@ -88,21 +88,21 @@ const middleware = computed(() => {
     offset(4),
     flip({
       fallbackPlacements: [
-        "bottom-start",
-        "top-start",
-        "right-start",
-        "left-start",
+        'bottom-start',
+        'top-start',
+        'right-start',
+        'left-start',
       ],
     }),
     shift({ padding: 10 }),
-  ];
-});
+  ]
+})
 
 const { floatingStyles } = useFloating(reference, floating, {
-  placement: () => (props.parentElement ? "right-start" : "bottom-start"),
+  placement: () => (props.parentElement ? 'right-start' : 'bottom-start'),
   whileElementsMounted: autoUpdate,
   middleware,
-});
+})
 
 if (!props.parentElement) {
   onClickOutside(
@@ -113,18 +113,18 @@ if (!props.parentElement) {
       }
     },
     {
-      ignore: [".context-menu"],
-    }
-  );
+      ignore: ['.context-menu'],
+    },
+  )
 }
 
-const activeIndex = ref<number | null>(null);
-const itemRefs = ref<HTMLElement[]>([]);
+const activeIndex = ref<number | null>(null)
+const itemRefs = ref<HTMLElement[]>([])
 
 // Handle hover for submenus
 function handleMouseEnter(index: number) {
-  if (props.items[index]?.disabled) return;
-  activeIndex.value = index;
+  if (props.items[index]?.disabled) return
+  activeIndex.value = index
 }
 
 function handleMouseLeave() {
@@ -137,33 +137,33 @@ function handleMouseLeave() {
 }
 
 function handleClick(item: ContextMenuItem) {
-  if (item.disabled) return;
+  if (item.disabled) return
 
   if (item.children?.length) {
     // Usually clicking a submenu parent just opens it (which hover already does)
     // or does nothing.
-    return;
+    return
   }
 
-  item.action?.();
-  emit("click", item);
+  item.action?.()
+  emit('click', item)
 
-  handleClose();
+  handleClose()
 }
 
 function handleClose() {
-  activeIndex.value = null;
-  emit("close");
+  activeIndex.value = null
+  emit('close')
 }
 
 function handleSubMenuClose() {
-  activeIndex.value = null;
+  activeIndex.value = null
 }
 
 function handleSubMenuClick(item: ContextMenuItem) {
-  emit("click", item);
+  emit('click', item)
 
-  handleClose();
+  handleClose()
 }
 </script>
 

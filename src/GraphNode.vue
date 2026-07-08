@@ -40,7 +40,7 @@ const ContextMenus: ContextMenuItem[] = [
           pos: {
             x: data.pos.x + 20,
             y: data.pos.y + 20,
-          }
+          },
         })
       }
     },
@@ -49,7 +49,7 @@ const ContextMenus: ContextMenuItem[] = [
     label: 'Create Group',
     action: () => {
       ws.addGroup(ws.state.activeIds)
-    }
+    },
   },
   {
     label: 'Enter SubGraph',
@@ -65,7 +65,7 @@ const ContextMenus: ContextMenuItem[] = [
 ]
 
 const classes = computed(() => {
-  const clx:string[] =[]
+  const clx: string[] = []
   const executorState = ws.executorState
 
   if (ws.isActive(node.value.id)) {
@@ -90,16 +90,19 @@ useDraggable(draggableEl, {
   },
 })
 
-
 function handleContextMenu(evt: MouseEvent) {
   ws.showContextMenus(evt, ContextMenus)
 }
 </script>
 
 <template>
-  <div class="r-node" :class="classes" :style="{ '--x': node.pos.x + 'px', '--y': node.pos.y + 'px' }" :node-id="node.id"
-  @pointerdown.stop="ws.setActiveIds(ActiveType.Node, node.id)"
-  @contextmenu.stop="handleContextMenu"
+  <div
+    class="r-node"
+    :class="classes"
+    :style="{ '--x': node.pos.x + 'px', '--y': node.pos.y + 'px' }"
+    :node-id="node.id"
+    @pointerdown.stop="ws.setActiveIds(ActiveType.Node, node.id)"
+    @contextmenu.stop="handleContextMenu"
   >
     <div class="r-node-header" ref="draggableEl">
       <div class="r-node-name">
@@ -113,7 +116,11 @@ function handleContextMenu(evt: MouseEvent) {
       </div>
     </div>
 
-    <GraphHandle v-for="handle in node.handles" :key="handle.key" :handle-key="handle.key" />
+    <GraphHandle
+      v-for="handle in node.handles"
+      :key="handle.key"
+      :handle-key="handle.key"
+    />
   </div>
 </template>
 

@@ -26,20 +26,53 @@ function resetZoom() {
 
 <template>
   <div class="r-workspace-toolbar">
-    <button class="r-workspace-toolbar-btn" title="Zoom out" @pointerdown.stop="zoomOut">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button
+      class="r-workspace-toolbar-btn"
+      title="Zoom out"
+      @pointerdown.stop="zoomOut"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <line x1="5" y1="12" x2="19" y2="12" />
       </svg>
     </button>
     <span class="r-workspace-toolbar-label">{{ zoomPercent }}</span>
-    <button class="r-workspace-toolbar-btn" title="Zoom in" @pointerdown.stop="zoomIn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button
+      class="r-workspace-toolbar-btn"
+      title="Zoom in"
+      @pointerdown.stop="zoomIn"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <line x1="12" y1="5" x2="12" y2="19" />
         <line x1="5" y1="12" x2="19" y2="12" />
       </svg>
     </button>
-    <button class="r-workspace-toolbar-btn" title="Reset view" @pointerdown.stop="resetZoom">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button
+      class="r-workspace-toolbar-btn"
+      title="Reset view"
+      @pointerdown.stop="resetZoom"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <polyline points="1 4 1 10 7 10" />
         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
       </svg>

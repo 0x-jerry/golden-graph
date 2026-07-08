@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { INodeHandleConfigOptions } from '../core';
-import { useHandleOptions } from './useHandleOptions';
+import type { INodeHandleConfigOptions } from '../core'
+import { useHandleOptions } from './useHandleOptions'
 
 export interface TextHandleOptions extends INodeHandleConfigOptions {
-  content?: string;
+  content?: string
 }
 
 const options = useHandleOptions<TextHandleOptions>()
@@ -14,7 +14,6 @@ const options = useHandleOptions<TextHandleOptions>()
     {{ options.content }}
   </div>
 </template>
-
 
 <style scoped>
 .handle-content {

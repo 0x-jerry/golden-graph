@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { useElementHover } from "@vueuse/core";
-import { computed, useTemplateRef } from "vue";
-import { getHandleComponent } from "./handles";
-import { useConnectionGesture, useNodeHandle } from "./hooks";
+import { useElementHover } from '@vueuse/core'
+import { computed, useTemplateRef } from 'vue'
+import { getHandleComponent } from './handles'
+import { useConnectionGesture, useNodeHandle } from './hooks'
 
 export interface GraphHandleProps {
-  handleKey: string;
+  handleKey: string
 }
 
-const props = defineProps<GraphHandleProps>();
+const props = defineProps<GraphHandleProps>()
 
-const handle = useNodeHandle.provide(() => props.handleKey);
+const handle = useNodeHandle.provide(() => props.handleKey)
 
 const gesture = useConnectionGesture()!
 
@@ -20,7 +20,7 @@ const isHovering = useElementHover(jointEl)
 
 const jointProps = computed(() => {
   const props = {
-    class: ['r-joint', ...handle.value.types.map(n => `type-${n}`)],
+    class: ['r-joint', ...handle.value.types.map((n) => `type-${n}`)],
     role: 'handle-joint',
     onPointerdown: () => gesture.startConnection(handle.value),
     onPointerup: () => gesture.endConnection(handle.value),
@@ -55,11 +55,19 @@ const ContentComponent = computed(() => getHandleComponent(options.value.type))
 </script>
 
 <template>
-  <div class="r-handle" :class="[{ 'is-output': handle.isRight }]" :handle-key="handle.key">
+  <div
+    class="r-handle"
+    :class="[{ 'is-output': handle.isRight }]"
+    :handle-key="handle.key"
+  >
     <div ref="joint-el" v-if="!handle.isNone" v-bind="jointProps" />
 
     <div class="r-handle-content">
-      <component v-if="ContentComponent" :is="ContentComponent" v-bind="options" />
+      <component
+        v-if="ContentComponent"
+        :is="ContentComponent"
+        v-bind="options"
+      />
     </div>
   </div>
 </template>

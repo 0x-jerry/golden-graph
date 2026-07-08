@@ -32,8 +32,7 @@ let lastContextMenuPos = { x: 0, y: 0 }
 function buildContextMenus(): ContextMenuItem[] {
   const addNodeItems: ContextMenuItem[] = [...ws.nodeRegister.entries()]
     .filter(([, factory]) => !factory.internal)
-    .map(
-    ([type, factory]) => ({
+    .map(([type, factory]) => ({
       label: factory.nodeName,
       action: () => {
         const wsRect = el.value?.getBoundingClientRect()
@@ -46,8 +45,7 @@ function buildContextMenus(): ContextMenuItem[] {
 
         ws.addNode(type, { pos })
       },
-    }),
-  )
+    }))
 
   const menus: ContextMenuItem[] = [
     {
@@ -98,7 +96,12 @@ useEvents(ws.interactive.events, {
       y: rect.bottom - coordRect.top,
     })
 
-    const converted = RectBox.fromRectBox({ left: tl.x, top: tl.y, right: rb.x, bottom: rb.y })
+    const converted = RectBox.fromRectBox({
+      left: tl.x,
+      top: tl.y,
+      right: rb.x,
+      bottom: rb.y,
+    })
     data.selected = queryNodesByBounding(converted)
   },
   'selection:end': () => {

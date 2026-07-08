@@ -1,7 +1,12 @@
 import Konva from 'konva'
 import { clamp } from '@0x-jerry/utils'
 import type { IVec2 } from '../core'
-import { COLORS, BEZIER_MIN_OFFSET, BEZIER_MAX_OFFSET, DASH_PATTERN } from './constants'
+import {
+  COLORS,
+  BEZIER_MIN_OFFSET,
+  BEZIER_MAX_OFFSET,
+  DASH_PATTERN,
+} from './constants'
 
 export class ConnectionLine {
   _line: Konva.Line | null = null
@@ -39,10 +44,14 @@ export class ConnectionLine {
     const cp2x = start.x <= end.x ? end.x - offset : end.x + offset
 
     this._line.points([
-      start.x, start.y,
-      cp1x, start.y,
-      cp2x, end.y,
-      end.x, end.y,
+      start.x,
+      start.y,
+      cp1x,
+      start.y,
+      cp2x,
+      end.y,
+      end.x,
+      end.y,
     ])
     this._layer.batchDraw()
   }

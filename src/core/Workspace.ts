@@ -26,7 +26,13 @@ import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
 import { SubGraph } from './SubGraph'
-import type { IDisposable, INodeHandleLoc, IRenderer, IVec2, IWorkspace } from './types'
+import type {
+  IDisposable,
+  INodeHandleLoc,
+  IRenderer,
+  IVec2,
+  IWorkspace,
+} from './types'
 
 export interface WorkspaceEvents {
   'node:added': [node: Node]
@@ -51,11 +57,20 @@ export interface WorkspaceEvents {
 
   'coord:changed': [coord: CoordSystem]
 
-  'state:changed': [state: { debug: boolean; disabled: boolean; activeIds: number[]; activeType: ActiveType }]
+  'state:changed': [
+    state: {
+      debug: boolean
+      disabled: boolean
+      activeIds: number[]
+      activeType: ActiveType
+    },
+  ]
 
   'executor:changed': [state: { isProcessing: boolean; currentNodeId: number }]
 
-  'contextmenu:changed': [state: { visible: boolean; x: number; y: number; menus: ContextMenuItem[] }]
+  'contextmenu:changed': [
+    state: { visible: boolean; x: number; y: number; menus: ContextMenuItem[] },
+  ]
 }
 
 export enum ActiveType {
@@ -219,7 +234,9 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     }
 
     if (!this._renderer) {
-      throw new Error('Renderer not set. Call workspace.setRenderer() before addGroup().')
+      throw new Error(
+        'Renderer not set. Call workspace.setRenderer() before addGroup().',
+      )
     }
 
     const rect = this._renderer.getNodesBounding(nodeIds)

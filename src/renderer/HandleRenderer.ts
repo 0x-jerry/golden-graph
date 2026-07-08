@@ -1,14 +1,26 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../core'
 import { HandlePosition } from '../core'
-import { COLORS, LAYOUT, NAME, SHAPE, SEL, HANDLE_CONTENT_X, HANDLE_CONTENT_Y_OFFSET } from './constants'
+import {
+  COLORS,
+  LAYOUT,
+  NAME,
+  SHAPE,
+  SEL,
+  HANDLE_CONTENT_X,
+  HANDLE_CONTENT_Y_OFFSET,
+} from './constants'
 import { getHandleModule } from './handles'
 
 const handleGroupMap = new WeakMap<NodeHandle, Konva.Group>()
 const handleModuleMap = new WeakMap<NodeHandle, string>()
 
 function handleY(index: number): number {
-  return LAYOUT.HEADER_HEIGHT + index * LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2
+  return (
+    LAYOUT.HEADER_HEIGHT +
+    index * LAYOUT.HANDLE_ROW_HEIGHT +
+    LAYOUT.HANDLE_ROW_HEIGHT / 2
+  )
 }
 
 export function renderHandle(handle: NodeHandle, index: number): Konva.Group {

@@ -1,34 +1,34 @@
 <script lang="ts" setup>
-import { clamp } from "@0x-jerry/utils";
-import { computed } from "vue";
-import type { IVec2 } from "./core";
+import { clamp } from '@0x-jerry/utils'
+import { computed } from 'vue'
+import type { IVec2 } from './core'
 
 export interface CubicBezierProps {
-  start: IVec2;
-  end: IVec2;
+  start: IVec2
+  end: IVec2
 }
 
-const props = defineProps<CubicBezierProps>();
+const props = defineProps<CubicBezierProps>()
 
 const d = computed(() => {
-  const { start, end } = props;
+  const { start, end } = props
 
   const s = {
     x: start.x,
     y: start.y,
-  };
+  }
 
   const e = {
     x: end.x,
     y: end.y,
-  };
+  }
 
-  const handleOffset = clamp(Math.abs(s.x - e.x) / 2, 10, 200);
+  const handleOffset = clamp(Math.abs(s.x - e.x) / 2, 10, 200)
 
   return `M ${s.x} ${s.y} C ${s.x - handleOffset} ${s.y}, ${
     e.x + handleOffset
-  } ${e.y}, ${e.x} ${e.y}`;
-});
+  } ${e.y}, ${e.x} ${e.y}`
+})
 </script>
 
 <template>

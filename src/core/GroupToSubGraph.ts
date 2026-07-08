@@ -214,7 +214,9 @@ function createOutputNode({
   name,
   type,
   sourceHandles: targetHandles,
-}: Omit<CreateInterfaceNodeOptions, 'targetHandles'> & { sourceHandles: NodeHandle[] }) {
+}: Omit<CreateInterfaceNodeOptions, 'targetHandles'> & {
+  sourceHandles: NodeHandle[]
+}) {
   const outputNode = subGraph.workspace.addNode('subgraph.output', {
     data: {
       Name: name,

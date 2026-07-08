@@ -47,7 +47,7 @@ const ContextMenus = [
     action: () => {
       ws.covertGroupToSubGraph(props.groupId)
     },
-  }
+  },
 ]
 
 useDraggable(headerEl, {
@@ -84,8 +84,15 @@ function handleContextMenu(evt: MouseEvent) {
 </script>
 
 <template>
-  <div class="group-node" :class="{'group-node-active': ws.isActive(group.id)}" ref="group-node" :style="style" @resize="handleResize" @contextmenu="handleContextMenu"
-    @pointerdown.stop="ws.setActiveIds(ActiveType.Group, group.id)">
+  <div
+    class="group-node"
+    :class="{ 'group-node-active': ws.isActive(group.id) }"
+    ref="group-node"
+    :style="style"
+    @resize="handleResize"
+    @contextmenu="handleContextMenu"
+    @pointerdown.stop="ws.setActiveIds(ActiveType.Group, group.id)"
+  >
     <div ref="header-el" class="group-header">
       {{ group.name }}
     </div>

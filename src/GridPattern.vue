@@ -20,7 +20,8 @@ const coord = useCoordSystem()!
 
   background-position: var(--x) var(--y);
 
-  background-image: linear-gradient(to right, var(--color) 1px, transparent 1px),
+  background-image:
+    linear-gradient(to right, var(--color) 1px, transparent 1px),
     linear-gradient(to bottom, var(--color) 1px, transparent 1px);
 
   background-size: var(--size) var(--size);

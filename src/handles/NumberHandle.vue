@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useNodeHandle } from '../hooks';
-import { useNodeHandleValue } from './useNodeHandleValue';
+import { useNodeHandle } from '../hooks'
+import { useNodeHandleValue } from './useNodeHandleValue'
 
 const handle = useNodeHandle()!
 
@@ -9,13 +9,12 @@ const value = useNodeHandleValue<number>()
 
 <template>
   <div class="handle-content">
-    <input class="number-input" type="number" v-model.number="value">
+    <input class="number-input" type="number" v-model.number="value" />
     <div>
       {{ handle.name }}
     </div>
   </div>
 </template>
-
 
 <style scoped>
 .handle-content {

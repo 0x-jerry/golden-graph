@@ -1,12 +1,23 @@
 import Konva from 'konva'
 import type { Node, NodeHandle } from '../core'
 import { HandlePosition } from '../core'
-import { COLORS, LAYOUT, NAME, SHAPE, SEL, NODE_BODY_PADDING } from './constants'
+import {
+  COLORS,
+  LAYOUT,
+  NAME,
+  SHAPE,
+  SEL,
+  NODE_BODY_PADDING,
+} from './constants'
 import { renderHandle, updateHandle, destroyHandle } from './HandleRenderer'
 
 export function computeNodeHeight(node: Node): number {
   const handleCount = node.handles.length || 1
-  return LAYOUT.HEADER_HEIGHT + handleCount * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING
+  return (
+    LAYOUT.HEADER_HEIGHT +
+    handleCount * LAYOUT.HANDLE_ROW_HEIGHT +
+    NODE_BODY_PADDING
+  )
 }
 
 export function createNode(node: Node): Konva.Group {
@@ -47,7 +58,9 @@ export function createNode(node: Node): Konva.Group {
   g.add(nameText)
 
   const handles = node.handles.filter((h) => h.position !== HandlePosition.None)
-  const noneHandles = node.handles.filter((h) => h.position === HandlePosition.None)
+  const noneHandles = node.handles.filter(
+    (h) => h.position === HandlePosition.None,
+  )
 
   handles.forEach((handle, i) => {
     const hg = renderHandle(handle, i)
@@ -55,7 +68,10 @@ export function createNode(node: Node): Konva.Group {
   })
 
   noneHandles.forEach((handle, i) => {
-    const offsetY = LAYOUT.HEADER_HEIGHT + handles.length * LAYOUT.HANDLE_ROW_HEIGHT + i * LAYOUT.HANDLE_ROW_HEIGHT
+    const offsetY =
+      LAYOUT.HEADER_HEIGHT +
+      handles.length * LAYOUT.HANDLE_ROW_HEIGHT +
+      i * LAYOUT.HANDLE_ROW_HEIGHT
     const label = new Konva.Text({
       text: handle.name,
       fontSize: 12,
@@ -101,5 +117,7 @@ export function destroyNode(group: Konva.Group, node: Node): void {
 }
 
 export function getHandleIndex(node: Node, handle: NodeHandle): number {
-  return node.handles.filter((h) => h.position !== HandlePosition.None).indexOf(handle)
+  return node.handles
+    .filter((h) => h.position !== HandlePosition.None)
+    .indexOf(handle)
 }

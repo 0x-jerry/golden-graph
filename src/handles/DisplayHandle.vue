@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, toRaw } from 'vue';
-import { useNodeHandleValue } from './useNodeHandleValue';
+import { computed, toRaw } from 'vue'
+import { useNodeHandleValue } from './useNodeHandleValue'
 
 const value = useNodeHandleValue()
 
@@ -12,7 +12,6 @@ const str = computed(() => JSON.stringify(toRaw(value.value), null, 2))
     {{ str }}
   </div>
 </template>
-
 
 <style scoped>
 .handle-content {

@@ -82,5 +82,10 @@ export interface IDisposable {
 }
 
 export interface IRenderer {
-  getNodesBounding(nodeIds: number[]): { x: number; y: number; width: number; height: number }
+  getNodesBounding(nodeIds: number[]): {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
 }
