@@ -14,7 +14,7 @@ export function createNode(node: Node): Konva.Group {
   const g = new Konva.Group({
     x: node.pos.x,
     y: node.pos.y,
-    name: `node-${node.id}`,
+    name: `node-group-${node.id}`,
   })
 
   const body = new Konva.Rect({
@@ -85,7 +85,7 @@ export function updateNode(group: Konva.Group, node: Node): void {
     body.height(height)
   }
 
-  node.handles.forEach((handle, i) => {
+  node.handles.forEach((handle) => {
     if (handle.position === HandlePosition.None) return
     const hi = getHandleIndex(node, handle)
     if (hi < 0) return

@@ -27,15 +27,15 @@ export class RectBox {
     return this.y + this.height
   }
 
-  constructor(x = 0, y = 0, width = 0, height = 0) {
-    this.x = x
-    this.y = y
-    this.width = width
-    this.height = height
+  constructor(opts: { x?: number; y?: number; width?: number; height?: number } = {}) {
+    this.x = opts.x ?? 0
+    this.y = opts.y ?? 0
+    this.width = opts.width ?? 0
+    this.height = opts.height ?? 0
   }
 
-  static fromRectBox(left: number, top: number, right: number, bottom: number) {
-    return new RectBox(left, top, right - left, bottom - top)
+  static fromRectBox(opts: { left: number; top: number; right: number; bottom: number }) {
+    return new RectBox({ x: opts.left, y: opts.top, width: opts.right - opts.left, height: opts.bottom - opts.top })
   }
 
   includes(box: RectBox) {

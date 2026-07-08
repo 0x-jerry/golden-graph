@@ -1,36 +1,32 @@
 import Konva from 'konva'
-import { uniq } from 'lodash-es'
 import type { Workspace } from '../core'
 import type { IRenderer } from '../core'
 import { ActiveType, HandlePosition } from '../core'
 import { createCoordLayer } from './CoordLayer'
-import { ConnectionLine } from './ConnectionLine'
-import { createEdge, destroyEdge } from './EdgeRenderer'
+import { createEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
 import { createNode, updateNode, destroyNode } from './NodeRenderer'
 import {
-  getHandleGroup,
   updateHandle,
-  destroyHandle,
 } from './HandleRenderer'
 import { COLORS, LAYOUT } from './types'
 
 export class KonvaGraphRenderer implements IRenderer {
-  private _stage: Konva.Stage
-  private _gridLayer: Konva.Layer
-  private _groupLayer: Konva.Layer
-  private _edgeLayer: Konva.Layer
-  private _nodeLayer: Konva.Layer
-  private _ws: Workspace
+  _stage: Konva.Stage
+  _gridLayer: Konva.Layer
+  _groupLayer: Konva.Layer
+  _edgeLayer: Konva.Layer
+  _nodeLayer: Konva.Layer
+  _ws: Workspace
 
-  private _nodeGroups = new Map<number, Konva.Group>()
-  private _edgeLines = new Map<number, Konva.Line>()
-  private _groupGroups = new Map<number, Konva.Group>()
+  _nodeGroups = new Map<number, Konva.Group>()
+  _edgeLines = new Map<number, Konva.Line>()
+  _groupGroups = new Map<number, Konva.Group>()
 
-  private _interaction: InteractionManager
-  private _resizeObserver: ResizeObserver
-  private _disposed = false
+  _interaction: InteractionManager
+  _resizeObserver: ResizeObserver
+  _disposed = false
 
   constructor(container: HTMLElement, workspace: Workspace) {
     this._ws = workspace
@@ -57,16 +53,14 @@ export class KonvaGraphRenderer implements IRenderer {
 
     this._fullRender()
 
-    this._interaction = new InteractionManager(
-      this._stage,
-      workspace,
-      this._edgeLayer,
-      (id) => this._nodeGroups.get(id),
-      (id) => this._groupGroups.get(id),
-      (id) => {
+    this._interaction = new InteractionManager({
+      stage: this._stage,
+      ws: workspace,
+      edgeLayer: this._edgeLayer,
+      onNodeSelect: (id) => {
         workspace.setActiveIds(ActiveType.Node, [id])
       },
-    )
+    })
 
     this._resizeObserver = new ResizeObserver(() => {
       this._stage.width(container.clientWidth)
@@ -109,7 +103,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Event Subscription ---
 
-  private _subscribe() {
+  _subscribe() {
     const ws = this._ws
 
     ws.events.on('node:added', (node) => {
@@ -183,7 +177,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Full Render ---
 
-  private _fullRender() {
+  _fullRender() {
     this._nodeLayer.destroyChildren()
     this._edgeLayer.destroyChildren()
     this._groupLayer.destroyChildren()
@@ -213,7 +207,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Node ---
 
-  private _onNodeAdded(node: import('../core').Node) {
+  _onNodeAdded(node: import('../core').Node) {
     const group = createNode(node)
     group.setAttr('nodeId', node.id)
 
@@ -221,7 +215,7 @@ export class KonvaGraphRenderer implements IRenderer {
     this._nodeLayer.add(group)
   }
 
-  private _onNodeRemoved(node: import('../core').Node) {
+  _onNodeRemoved(node: import('../core').Node) {
     const group = this._nodeGroups.get(node.id)
     if (group) {
       destroyNode(group, node)
@@ -229,7 +223,7 @@ export class KonvaGraphRenderer implements IRenderer {
     }
   }
 
-  private _onNodeChanged(node: import('../core').Node) {
+  _onNodeChanged(node: import('../core').Node) {
     const group = this._nodeGroups.get(node.id)
     if (group) {
       updateNode(group, node)
@@ -239,7 +233,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Edge ---
 
-  private _addEdgeLine(edge: import('../core').Edge) {
+  _addEdgeLine(edge: import('../core').Edge) {
     try {
       const line = createEdge(edge)
       this._edgeLines.set(edge.id, line)
@@ -249,7 +243,7 @@ export class KonvaGraphRenderer implements IRenderer {
     }
   }
 
-  private _rebuildEdges() {
+  _rebuildEdges() {
     this._edgeLines.forEach((line) => line.destroy())
     this._edgeLines.clear()
 
@@ -260,7 +254,7 @@ export class KonvaGraphRenderer implements IRenderer {
     this._edgeLayer.batchDraw()
   }
 
-  private _rebuildEdgesForNode(nodeId: number) {
+  _rebuildEdgesForNode(nodeId: number) {
     const relatedEdges = this._ws.queryConnectedEdges(nodeId)
 
     const removeIds = new Set<number>()
@@ -283,7 +277,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Group ---
 
-  private _onGroupAdded(group: import('../core').Group) {
+  _onGroupAdded(group: import('../core').Group) {
     const konvaGroup = createGroup(group)
     konvaGroup.setAttr('groupId', group.id)
 
@@ -291,7 +285,7 @@ export class KonvaGraphRenderer implements IRenderer {
     this._groupLayer.add(konvaGroup)
   }
 
-  private _onGroupRemoved(group: import('../core').Group) {
+  _onGroupRemoved(group: import('../core').Group) {
     const konvaGroup = this._groupGroups.get(group.id)
     if (konvaGroup) {
       destroyGroup(konvaGroup)
@@ -299,7 +293,7 @@ export class KonvaGraphRenderer implements IRenderer {
     }
   }
 
-  private _onGroupChanged(group: import('../core').Group) {
+  _onGroupChanged(group: import('../core').Group) {
     const konvaGroup = this._groupGroups.get(group.id)
     if (konvaGroup) {
       updateGroup(konvaGroup, group)
@@ -309,7 +303,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Handle ---
 
-  private _onHandleUpdated(handle: import('../core').NodeHandle) {
+  _onHandleUpdated(handle: import('../core').NodeHandle) {
     const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
     const index = handles.indexOf(handle)
     if (index >= 0) {
@@ -318,7 +312,7 @@ export class KonvaGraphRenderer implements IRenderer {
     this._nodeLayer.batchDraw()
   }
 
-  private _onHandleConnectionChanged(handle: import('../core').NodeHandle) {
+  _onHandleConnectionChanged(handle: import('../core').NodeHandle) {
     const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
     const index = handles.indexOf(handle)
     if (index >= 0) {
@@ -329,7 +323,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Coord ---
 
-  private _syncCoord() {
+  _syncCoord() {
     const { coord } = this._ws
     this._stage.scaleX(coord.scale)
     this._stage.scaleY(coord.scale)
@@ -340,7 +334,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- State ---
 
-  private _syncState() {
+  _syncState() {
     const { state } = this._ws
 
     for (const [nodeId, group] of this._nodeGroups) {
@@ -365,7 +359,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Executor ---
 
-  private _syncExecutor() {
+  _syncExecutor() {
     const { executorState } = this._ws
 
     for (const [nodeId, group] of this._nodeGroups) {

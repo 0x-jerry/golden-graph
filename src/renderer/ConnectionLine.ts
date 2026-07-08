@@ -4,8 +4,8 @@ import type { IVec2 } from '../core'
 import { COLORS } from './types'
 
 export class ConnectionLine {
-  private _line: Konva.Line | null = null
-  private _layer: Konva.Layer
+  _line: Konva.Line | null = null
+  _layer: Konva.Layer
 
   constructor(layer: Konva.Layer) {
     this._layer = layer
@@ -32,12 +32,16 @@ export class ConnectionLine {
   update(start: IVec2, end: IVec2) {
     if (!this._line) return
 
-    const offset = clamp(Math.abs(start.x - end.x) / 2, 10, 200)
+    const dx = Math.abs(start.x - end.x)
+    const offset = clamp(dx / 2, 10, 200)
+
+    const cp1x = start.x <= end.x ? start.x + offset : start.x - offset
+    const cp2x = start.x <= end.x ? end.x - offset : end.x + offset
 
     this._line.points([
       start.x, start.y,
-      start.x - offset, start.y,
-      end.x + offset, end.y,
+      cp1x, start.y,
+      cp2x, end.y,
       end.x, end.y,
     ])
     this._layer.batchDraw()

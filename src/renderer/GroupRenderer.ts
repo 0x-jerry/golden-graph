@@ -6,7 +6,7 @@ export function createGroup(group: Group): Konva.Group {
   const g = new Konva.Group({
     x: group.pos.x,
     y: group.pos.y,
-    name: `group-${group.id}`,
+    name: `group-group-${group.id}`,
   })
 
   const body = new Konva.Rect({

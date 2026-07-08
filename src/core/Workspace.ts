@@ -495,6 +495,20 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   clear() {
+    for (const node of this._nodes) {
+      this.events.emit('node:removed', node)
+    }
+    for (const edge of this._edges) {
+      edge.clearEndpoints()
+      this.events.emit('edge:removed', edge)
+    }
+    for (const group of this._groups) {
+      this.events.emit('group:removed', group)
+    }
+    for (const sub of this._subGraphs) {
+      this.events.emit('subgraph:removed', sub)
+    }
+
     this._groups.splice(0)
     this._edges.splice(0)
     this._nodes.splice(0)
@@ -571,6 +585,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
       edge.fromJSON(edgeData)
       this._edges.push(edge)
+      this.events.emit('edge:added', edge)
     }
 
     for (const group of data.groups) {
@@ -580,6 +595,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
       g.fromJSON(group)
 
       this._groups.push(g)
+      this.events.emit('group:added', g)
     }
   }
 }

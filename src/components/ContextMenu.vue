@@ -123,7 +123,7 @@ const itemRefs = ref<HTMLElement[]>([]);
 
 // Handle hover for submenus
 function handleMouseEnter(index: number) {
-  if (props.items[index].disabled) return;
+  if (props.items[index]?.disabled) return;
   activeIndex.value = index;
 }
 

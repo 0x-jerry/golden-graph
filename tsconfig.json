@@ -1,18 +1,30 @@
 {
   "compilerOptions": {
+    // Environment setup & latest features
+    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
-    "module": "ESNext",
-    "strict": true,
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "types": ["bun"],
+
+    // Bundler mode
     "moduleResolution": "bundler",
-    "verbatimModuleSyntax": true,
-    "forceConsistentCasingInFileNames": true,
     "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
     "noEmit": true,
-    "esModuleInterop": true,
+
+    // Best practices
+    "strict": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "outDir": "dist",
-    "types": ["vitest/globals"]
-  },
-  "include": ["src", "test", "playground/src", "*.ts"]
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": false,
+
+    // Some stricter flags (disabled by default)
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": false
+  }
 }

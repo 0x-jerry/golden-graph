@@ -1,7 +1,7 @@
 import { HandlePosition, Node } from '../../../../src'
 
 export class MathOpNode extends Node {
-  static nodeName = 'Math - Op'
+  static override nodeName = 'Math - Op'
 
   constructor() {
     super()
@@ -41,7 +41,7 @@ export class MathOpNode extends Node {
     })
   }
 
-  onProcess = () => {
+  override onProcess = () => {
     const a = this.getData<number>('a') ?? 0
     const b = this.getData<number>('b') ?? 0
     const op = this.getData<string>('op') ?? '+'

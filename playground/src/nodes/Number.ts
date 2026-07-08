@@ -1,7 +1,7 @@
 import { HandlePosition, Node, NodeType } from '../../../src'
 
 export class NumberNode extends Node {
-  static nodeName = 'Number Input'
+  static override nodeName = 'Number Input'
 
   constructor() {
     super()

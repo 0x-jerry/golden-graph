@@ -1,6 +1,4 @@
 import Konva from 'konva'
-import type { NodeHandle } from '../../core'
-import type { INodeHandleConfigOptions } from '../../core'
 import type { HandleModule } from './types'
 import { COLORS } from '../types'
 

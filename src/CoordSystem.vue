@@ -98,7 +98,7 @@ useEvents(ws.interactive.events, {
       y: rect.bottom - coordRect.top,
     })
 
-    const converted = RectBox.fromRectBox(tl.x, tl.y, rb.x, rb.y)
+    const converted = RectBox.fromRectBox({ left: tl.x, top: tl.y, right: rb.x, bottom: rb.y })
     data.selected = queryNodesByBounding(converted)
   },
   'selection:end': () => {

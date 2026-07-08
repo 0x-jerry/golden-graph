@@ -1,7 +1,7 @@
 import { HandlePosition, Node } from '../../../src'
 
 export class ToStringNode extends Node {
-  static nodeName = 'To String'
+  static override nodeName = 'To String'
 
   constructor() {
     super()
@@ -28,7 +28,7 @@ export class ToStringNode extends Node {
     })
   }
 
-  onProcess = () => {
+  override onProcess = () => {
     const value = this.getData('input')
     this.setData('output', String(value))
   }

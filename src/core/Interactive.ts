@@ -119,7 +119,7 @@ export class Interactive implements IDisposable {
 
     this._areaEl.style.translate = `${x}px ${y}px`
 
-    this.events.emit('selection:move', new RectBox(x, y, w, h))
+    this.events.emit('selection:move', new RectBox({ x, y, width: w, height: h }))
   }
 
   dispose() {

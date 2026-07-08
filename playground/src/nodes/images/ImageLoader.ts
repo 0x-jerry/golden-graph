@@ -1,7 +1,7 @@
 import { HandlePosition, Node, NodeType } from '../../../../src'
 
 export class ImageLoaderNode extends Node {
-  static nodeName = 'Image Loader'
+  static override nodeName = 'Image Loader'
 
   constructor() {
     super()

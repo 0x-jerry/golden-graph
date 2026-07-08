@@ -160,6 +160,7 @@ function createInterfaceNodes(ctx: ConversionContext, subGraph: SubGraph) {
 
   for (const item of ctx.handleMap.values()) {
     const firstHandle = item.handles[0]
+    if (!firstHandle) continue
     let name = `${item.node.name}_${firstHandle.name}`
 
     if (usedNames.has(name)) {
@@ -175,19 +176,26 @@ function createInterfaceNodes(ctx: ConversionContext, subGraph: SubGraph) {
     const type = firstHandle.types[0] || '*'
 
     if (item.type === 'input') {
-      createInputNode(subGraph, name, type, item.handles)
+      createInputNode({ subGraph, name, type, targetHandles: item.handles })
     } else {
-      createOutputNode(subGraph, name, type, item.handles)
+      createOutputNode({ subGraph, name, type, sourceHandles: item.handles })
     }
   }
 }
 
-function createInputNode(
-  subGraph: SubGraph,
-  name: string,
-  type: string,
-  targetHandles: NodeHandle[],
-) {
+interface CreateInterfaceNodeOptions {
+  subGraph: SubGraph
+  name: string
+  type: string
+  targetHandles: NodeHandle[]
+}
+
+function createInputNode({
+  subGraph,
+  name,
+  type,
+  targetHandles,
+}: CreateInterfaceNodeOptions) {
   const inputNode = subGraph.workspace.addNode('subgraph.input', {
     data: {
       Name: name,
@@ -201,12 +209,12 @@ function createInputNode(
   }
 }
 
-function createOutputNode(
-  subGraph: SubGraph,
-  name: string,
-  type: string,
-  sourceHandles: NodeHandle[],
-) {
+function createOutputNode({
+  subGraph,
+  name,
+  type,
+  sourceHandles: targetHandles,
+}: Omit<CreateInterfaceNodeOptions, 'targetHandles'> & { sourceHandles: NodeHandle[] }) {
   const outputNode = subGraph.workspace.addNode('subgraph.output', {
     data: {
       Name: name,
@@ -215,7 +223,7 @@ function createOutputNode(
   })
   const valueHandle = outputNode.getHandle('Value')!
 
-  for (const handle of sourceHandles) {
+  for (const handle of targetHandles) {
     subGraph.workspace.connect(handle, valueHandle)
   }
 }

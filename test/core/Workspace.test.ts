@@ -66,7 +66,7 @@ describe('Workspace', () => {
     const edge = ws.connect(a.getHandle('o')!, b.getHandle('i')!)!
     expect(ws.edges.length).toBe(1)
     const edges = ws.queryEdges(a.getHandle('o')!.loc)
-    expect(edges[0].id).toBe(edge.id)
+    expect(edges[0]!.id).toBe(edge.id)
     ws.removeEdgeByIds(edge.id)
     expect(ws.edges.length).toBe(0)
   })
@@ -111,7 +111,7 @@ describe('Workspace', () => {
     ws2.registerNode('Source', SourceNode)
     ws2.fromJSON(json)
     expect(ws2.nodes.length).toBe(1)
-    expect(ws2.nodes[0].type).toBe(s.type)
+    expect(ws2.nodes[0]!.type).toBe(s.type)
   })
 
   it('should convert group to subgraph', () => {
@@ -150,23 +150,23 @@ describe('Workspace', () => {
     const subGraph = ws.subGraphs[0]
 
     // 3. Node B should be in SubGraph
-    expect(subGraph.workspace.nodes.find(n => n.id === nodeB.id)).toBeDefined()
+    expect(subGraph!.workspace.nodes.find(n => n.id === nodeB.id)).toBeDefined()
     expect(ws.nodes.find(n => n.id === nodeB.id)).toBeUndefined()
 
     // 4. SubGraph should have Input and Output nodes
-    const sgInput = subGraph.workspace.nodes.find(n => n.name === 'Input')
-    const sgOutput = subGraph.workspace.nodes.find(n => n.name === 'Output')
+    const sgInput = subGraph!.workspace.nodes.find(n => n.name === 'Input')
+    const sgOutput = subGraph!.workspace.nodes.find(n => n.name === 'Output')
     expect(sgInput).toBeDefined()
     expect(sgOutput).toBeDefined()
 
     // 5. Check Internal Connections
     // InputNode -> NodeB
     const bInput = nodeB.getHandle('input')!
-    expect(subGraph.workspace.queryEdges(bInput.loc).length).toBe(1)
+    expect(subGraph!.workspace.queryEdges(bInput.loc).length).toBe(1)
 
     // NodeB -> OutputNode
     const bOutput = nodeB.getHandle('output')!
-    expect(subGraph.workspace.queryEdges(bOutput.loc).length).toBe(1)
+    expect(subGraph!.workspace.queryEdges(bOutput.loc).length).toBe(1)
 
     // 6. Check Main Workspace Connections
     const sgNode = ws.nodes.find(n => n instanceof Node && n !== nodeA && n !== nodeC)
@@ -176,13 +176,13 @@ describe('Workspace', () => {
     const aOutput = nodeA.getHandle('output')!
     const edgesFromA = ws.queryEdges(aOutput.loc)
     expect(edgesFromA.length).toBe(1)
-    expect(edgesFromA[0].end.node.id).toBe(sgNode!.id)
+    expect(edgesFromA[0]!.end.node.id).toBe(sgNode!.id)
 
     // SubGraphNode -> C
     const cInput = nodeC.getHandle('input')!
     const edgesToC = ws.queryEdges(cInput.loc)
     expect(edgesToC.length).toBe(1)
-    expect(edgesToC[0].start.node.id).toBe(sgNode!.id)
+    expect(edgesToC[0]!.start.node.id).toBe(sgNode!.id)
   })
 
   it('should handle internal edges correctly', () => {
@@ -202,14 +202,14 @@ describe('Workspace', () => {
 
     ws.covertGroupToSubGraph(group.id)
 
-    const subGraph = ws.subGraphs[0]
+    const subGraph = ws.subGraphs[0]!
 
     // Both nodes in subgraph
     expect(subGraph.workspace.nodes.length).toBe(2)
 
     // Edge should be in subgraph
     expect(subGraph.workspace.edges.length).toBe(1)
-    const edge = subGraph.workspace.edges[0]
+    const edge = subGraph.workspace.edges[0]!
     expect(edge.start.node.id).toBe(n1.id)
     expect(edge.end.node.id).toBe(n2.id)
   })
@@ -315,13 +315,13 @@ describe('Workspace', () => {
     const handles = subGraphNode.handles
     expect(handles.length).toBe(1)
 
-    const subGraph = ws.subGraphs[0]
+    const subGraph = ws.subGraphs[0]!
     // Should have 1 Input Node inside
     const inputNodes = subGraph.workspace.nodes.filter(n => n.name === 'Input')
     expect(inputNodes.length).toBe(1)
 
     // That single input node should connect to BOTH n1 and n2 inside
-    const outputHandle = inputNodes[0].getHandle('Output')!
+    const outputHandle = inputNodes[0]!.getHandle('Output')!
     const internalEdges = subGraph.workspace.queryEdges(outputHandle.loc)
     expect(internalEdges.length).toBe(2)
   })

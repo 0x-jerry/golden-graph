@@ -1,5 +1,4 @@
 import Konva from 'konva'
-import type { NodeHandle } from '../../core'
 import type { HandleModule } from './types'
 
 export const type = 'image'

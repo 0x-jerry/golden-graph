@@ -1,7 +1,7 @@
 import { HandlePosition, Node } from '../../../src'
 
 export class DisplayNode extends Node {
-  static nodeName = 'Display'
+  static override nodeName = 'Display'
 
   constructor() {
     super()

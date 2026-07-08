@@ -4,53 +4,54 @@ import type { NodeHandle, Workspace } from '../core'
 import { ActiveType, HandlePosition } from '../core'
 import { ConnectionLine } from './ConnectionLine'
 import { COLORS, LAYOUT } from './types'
-import { getHandleIndex } from './NodeRenderer'
+
+export interface InteractionManagerOptions {
+  stage: Konva.Stage
+  ws: Workspace
+  edgeLayer: Konva.Layer
+  onNodeSelect: (id: number) => void
+}
 
 export class InteractionManager {
-  private _stage: Konva.Stage
-  private _ws: Workspace
-  private _connectionLine: ConnectionLine
+  _stage: Konva.Stage
+  _ws: Workspace
+  _connectionLine: ConnectionLine
 
-  private _isDragging = false
-  private _dragType: 'node' | 'group' | 'canvas' | 'selection' | null = null
-  private _dragNodeId = 0
-  private _dragGroupId = 0
-  private _dragLastPos = { x: 0, y: 0 }
+  _dragType: 'node' | 'group' | 'canvas' | 'selection' | null = null
+  _dragNodeId = 0
+  _dragGroupId = 0
+  _dragLastPos = { x: 0, y: 0 }
 
-  private _isConnecting = false
-  private _connectHandle: NodeHandle | null = null
+  _isConnecting = false
+  _connectHandle: NodeHandle | null = null
 
-  private _selectionStarted = false
-  private _selectionX1 = 0
-  private _selectionY1 = 0
-  private _selectionRect: Konva.Rect | null = null
+  _selectionStarted = false
+  _selectionX1 = 0
+  _selectionY1 = 0
+  _selectionRect: Konva.Rect | null = null
 
-  private _disposers: (() => void)[] = []
+  _disposers: (() => void)[] = []
 
-  constructor(
-    stage: Konva.Stage,
-    ws: Workspace,
-    edgeLayer: Konva.Layer,
-    private _getNodeGroup: (id: number) => Konva.Group | undefined,
-    private _getGroupGroup: (id: number) => Konva.Group | undefined,
-    private _onNodeSelect: (id: number) => void,
-  ) {
-    this._stage = stage
-    this._ws = ws
-    this._connectionLine = new ConnectionLine(edgeLayer)
+  _onNodeSelect: (id: number) => void
+
+  constructor(opts: InteractionManagerOptions) {
+    this._stage = opts.stage
+    this._ws = opts.ws
+    this._connectionLine = new ConnectionLine(opts.edgeLayer)
+    this._onNodeSelect = opts.onNodeSelect
     this._setupStageEvents()
     this._setupKeyboardEvents()
   }
 
-  private _setupStageEvents() {
+  _setupStageEvents() {
     const stage = this._stage
 
     stage.on('pointerdown', (e) => {
       this._onPointerDown(e)
     })
 
-    stage.on('pointermove', (e) => {
-      this._onPointerMove(e)
+    stage.on('pointermove', () => {
+      this._onPointerMove()
     })
 
     stage.on('pointerup', () => {
@@ -66,7 +67,7 @@ export class InteractionManager {
     })
   }
 
-  private _setupKeyboardEvents() {
+  _setupKeyboardEvents() {
     const onKeyDown = (e: KeyboardEvent) => {
       this._ws.interactive._state.shift = e.shiftKey
     }
@@ -82,12 +83,12 @@ export class InteractionManager {
     })
   }
 
-  private _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
+  _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     const target = e.target
     const targetName = target.name()
 
     if (targetName.startsWith('joint-')) {
-      this._startConnecting(targetName, e)
+      this._startConnecting(targetName)
       return
     }
 
@@ -105,20 +106,20 @@ export class InteractionManager {
     if (groupGroup) {
       const groupId = Number(groupGroup.getAttr('groupId'))
       if (groupId) {
-        this._startGroupDrag(groupId, e)
+        this._startGroupDrag(groupId)
         return
       }
     }
 
     if (e.evt.shiftKey) {
-      this._startSelection(e)
+      this._startSelection()
     } else {
-      this._startCanvasDrag(e)
+      this._startCanvasDrag()
       this._ws.clearActiveIds()
     }
   }
 
-  private _onPointerMove(e: Konva.KonvaEventObject<PointerEvent>) {
+  _onPointerMove() {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
@@ -148,7 +149,7 @@ export class InteractionManager {
     }
   }
 
-  private _onPointerUp() {
+  _onPointerUp() {
     if (this._isConnecting) {
       this._endConnecting()
     }
@@ -157,13 +158,12 @@ export class InteractionManager {
       this._endSelection()
     }
 
-    this._isDragging = false
     this._dragType = null
   }
 
   // -- Connecting ---
 
-  private _startConnecting(targetName: string, e: Konva.KonvaEventObject<PointerEvent>) {
+  _startConnecting(targetName: string) {
     const match = targetName.match(/^joint-(\d+)-(.+)$/)
     if (!match) return
 
@@ -173,7 +173,7 @@ export class InteractionManager {
     const node = this._ws.getNode(nodeId)
     if (!node) return
 
-    const handle = node.getHandle(handleKey)
+    const handle = node.getHandle(handleKey!)
     if (!handle) return
 
     let startHandle = handle
@@ -194,27 +194,19 @@ export class InteractionManager {
     const wsPos = this._ws.coord.convertScreenCoord(pos)
     const jointPos = this._getHandlePos(startHandle)
 
-    if (startHandle.isRight) {
-      this._connectionLine.show(jointPos, wsPos)
-    } else {
-      this._connectionLine.show(jointPos, wsPos)
-    }
+    this._connectionLine.show(jointPos, wsPos)
   }
 
-  private _handleConnectingMove(screenPos: { x: number; y: number }) {
+  _handleConnectingMove(screenPos: { x: number; y: number }) {
     if (!this._connectHandle) return
 
     const wsPos = this._ws.coord.convertScreenCoord(screenPos)
     const jointPos = this._getHandlePos(this._connectHandle)
 
-    if (this._connectHandle.isRight) {
-      this._connectionLine.update(jointPos, wsPos)
-    } else {
-      this._connectionLine.update(jointPos, wsPos)
-    }
+    this._connectionLine.update(jointPos, wsPos)
   }
 
-  private _endConnecting() {
+  _endConnecting() {
     this._isConnecting = false
     this._connectionLine.hide()
 
@@ -253,7 +245,7 @@ export class InteractionManager {
       return
     }
 
-    const targetHandle = targetNode.getHandle(targetKey)
+    const targetHandle = targetNode.getHandle(targetKey!)
     if (!targetHandle) {
       this._connectHandle = null
       return
@@ -268,17 +260,16 @@ export class InteractionManager {
 
   // --- Node Drag ---
 
-  private _startNodeDrag(nodeId: number, _e: Konva.KonvaEventObject<PointerEvent>) {
+  _startNodeDrag(nodeId: number, _e: Konva.KonvaEventObject<PointerEvent>) {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
-    this._isDragging = true
     this._dragType = 'node'
     this._dragNodeId = nodeId
     this._dragLastPos = { x: pos.x, y: pos.y }
   }
 
-  private _handleNodeDrag(screenPos: { x: number; y: number }) {
+  _handleNodeDrag(screenPos: { x: number; y: number }) {
     const dx = screenPos.x - this._dragLastPos.x
     const dy = screenPos.y - this._dragLastPos.y
 
@@ -301,14 +292,13 @@ export class InteractionManager {
 
   // --- Group Drag ---
 
-  private _startGroupDrag(groupId: number, e: Konva.KonvaEventObject<PointerEvent>) {
+  _startGroupDrag(groupId: number) {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
     const group = this._ws.groups.find((g) => g.id === groupId)
     if (!group) return
 
-    this._isDragging = true
     this._dragType = 'group'
     this._dragGroupId = groupId
     this._dragLastPos = { x: pos.x, y: pos.y }
@@ -316,7 +306,7 @@ export class InteractionManager {
     this._ws.setActiveIds(ActiveType.Group, [groupId])
   }
 
-  private _handleGroupDrag(screenPos: { x: number; y: number }) {
+  _handleGroupDrag(screenPos: { x: number; y: number }) {
     const dx = screenPos.x - this._dragLastPos.x
     const dy = screenPos.y - this._dragLastPos.y
 
@@ -333,16 +323,15 @@ export class InteractionManager {
 
   // --- Canvas Pan ---
 
-  private _startCanvasDrag(e: Konva.KonvaEventObject<PointerEvent>) {
+  _startCanvasDrag() {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
-    this._isDragging = true
     this._dragType = 'canvas'
     this._dragLastPos = { x: pos.x, y: pos.y }
   }
 
-  private _handleCanvasDrag(screenPos: { x: number; y: number }) {
+  _handleCanvasDrag(screenPos: { x: number; y: number }) {
     const dx = screenPos.x - this._dragLastPos.x
     const dy = screenPos.y - this._dragLastPos.y
 
@@ -353,7 +342,7 @@ export class InteractionManager {
 
   // --- Rubber-band Selection ---
 
-  private _startSelection(e: Konva.KonvaEventObject<PointerEvent>) {
+  _startSelection() {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
@@ -370,11 +359,11 @@ export class InteractionManager {
         listening: false,
         visible: false,
       })
-      this._stage.getLayers()![0].add(this._selectionRect)
+      this._stage.getLayers()[0]?.add(this._selectionRect)
     }
   }
 
-  private _handleSelectionDrag(screenPos: { x: number; y: number }) {
+  _handleSelectionDrag(screenPos: { x: number; y: number }) {
     if (!this._selectionRect) return
 
     const x = Math.min(this._selectionX1, screenPos.x)
@@ -390,7 +379,7 @@ export class InteractionManager {
     this._selectionRect.getLayer()?.batchDraw()
   }
 
-  private _endSelection() {
+  _endSelection() {
     if (!this._selectionRect || !this._selectionStarted) return
 
     this._selectionStarted = false
@@ -422,7 +411,7 @@ export class InteractionManager {
 
   // --- Zoom ---
 
-  private _onWheel(e: Konva.KonvaEventObject<WheelEvent>) {
+  _onWheel(e: Konva.KonvaEventObject<WheelEvent>) {
     e.evt.preventDefault()
     const pos = this._stage.getPointerPosition()
     if (!pos) return
@@ -437,7 +426,7 @@ export class InteractionManager {
 
   // --- Helpers ---
 
-  private _getHandlePos(handle: NodeHandle): { x: number; y: number } {
+  _getHandlePos(handle: NodeHandle): { x: number; y: number } {
     const handles = handle.node.handles.filter((h) => h.position !== HandlePosition.None)
     const index = handles.indexOf(handle)
     const y = handle.node.pos.y + LAYOUT.HEADER_HEIGHT + index * LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2
