@@ -3,28 +3,28 @@
 ## Commands
 
 ```bash
-pnpm dev            # start playground
-pnpm test           # vitest run (single-run)
-pnpm test:watch     # vitest watch mode
-pnpm test:coverage  # vitest + coverage output
-pnpm build          # vite build (lib mode, ESM)
-pnpm check          # vue-tsc --noEmit (typecheck)
+bun dev            # start playground
+bun test           # vitest run (single-run)
+bun test:watch     # vitest watch mode
+bun test:coverage  # vitest + coverage output
+bun build          # vite build (lib mode, ESM)
+bun check          # vue-tsc --noEmit (typecheck)
 ```
 
 Run a single test file or filter by name:
 
 ```bash
-pnpm vitest run test/core/Workspace.test.ts
-pnpm vitest run -t "should add node"
+bun vitest run test/core/Workspace.test.ts
+bun vitest run -t "should add node"
 ```
 
 ## Tech stack
 
 - **TypeScript** + **Vue 3** (SFC `.vue` files)
-- **pnpm** workspace: root library + `playground/` sub-package
+- **bun** runtime + package manager, pnpm workspace: root library + `playground/` sub-package
 - **Vite** lib build (ESM output to `dist/`), `vite-plugin-dts` with `rollupTypes: true` rolls types into `dist/index.d.ts`
 - **Vitest** with `jsdom` environment, `globals: true`
-- **vue-tsc** for typechecking (`pnpm check`)
+- **vue-tsc** for typechecking (`bun check`)
 
 ## Architecture
 
@@ -45,7 +45,7 @@ pnpm vitest run -t "should add node"
 
 ## Repo-specific notes
 
-- The `playground` is a pnpm workspace package; `pnpm dev` proxies to `npm run dev -C playground`
+- The `playground` is a pnpm workspace package; `bun dev` proxies to `npm run dev -C playground`
 - GitHub Pages deploys `playground/dist` on push to `main`
-- CI runs `pnpm run test:coverage` and uploads to Codecov
+- CI runs `bun run test:coverage` and uploads to Codecov
 - Releasing: push a `v*` tag, `changelogithub` generates the release notes

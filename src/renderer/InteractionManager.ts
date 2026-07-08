@@ -371,10 +371,18 @@ export class InteractionManager {
     const w = Math.abs(this._selectionX1 - screenPos.x)
     const h = Math.abs(this._selectionY1 - screenPos.y)
 
-    this._selectionRect.x(x)
-    this._selectionRect.y(y)
-    this._selectionRect.width(w)
-    this._selectionRect.height(h)
+    // Convert from screen coords to stage-local coords so the rect renders
+    // at the correct position when the stage has a transform applied.
+    const stage = this._stage
+    const localX = (x - stage.x()) / stage.scaleX()
+    const localY = (y - stage.y()) / stage.scaleY()
+    const localW = w / stage.scaleX()
+    const localH = h / stage.scaleY()
+
+    this._selectionRect.x(localX)
+    this._selectionRect.y(localY)
+    this._selectionRect.width(localW)
+    this._selectionRect.height(localH)
     this._selectionRect.visible(true)
     this._selectionRect.getLayer()?.batchDraw()
   }
@@ -387,12 +395,13 @@ export class InteractionManager {
     this._selectionRect.getLayer()?.batchDraw()
 
     const selRect = this._selectionRect
-    const coord = this._ws.coord
-    const tl = coord.convertScreenCoord({ x: selRect.x(), y: selRect.y() })
-    const br = coord.convertScreenCoord({
+    // After the fix in _handleSelectionDrag, selRect position is in stage-local
+    // coords which equal convertScreenCoord(screenPos), i.e. workspace coords.
+    const tl = { x: selRect.x(), y: selRect.y() }
+    const br = {
       x: selRect.x() + selRect.width(),
       y: selRect.y() + selRect.height(),
-    })
+    }
 
     const selectedNodeIds: number[] = []
     for (const node of this._ws.nodes) {
