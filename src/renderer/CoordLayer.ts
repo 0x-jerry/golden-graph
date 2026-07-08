@@ -1,6 +1,9 @@
 import Konva from 'konva'
 import type { CoordSystem } from '../core'
-import { COLORS, GRID_SIZE, GRID_EXTENT } from './constants'
+import { COLORS } from './constants'
+
+const GRID_SIZE = 40
+const GRID_EXTENT = 10_000
 
 export function createCoordLayer(coord: CoordSystem): Konva.Layer {
   const layer = new Konva.Layer()
@@ -12,10 +15,10 @@ export function createCoordLayer(coord: CoordSystem): Konva.Layer {
 }
 
 function renderGrid(layer: Konva.Layer, _coord: CoordSystem) {
-  for (let x = 0; x < GRID_EXTENT; x += GRID_SIZE) {
+  for (let x = -GRID_EXTENT; x < GRID_EXTENT; x += GRID_SIZE) {
     layer.add(
       new Konva.Line({
-        points: [x, 0, x, GRID_EXTENT],
+        points: [x, -GRID_EXTENT, x, GRID_EXTENT],
         stroke: COLORS.GRID_COLOR,
         strokeWidth: 1,
         listening: false,
@@ -23,10 +26,10 @@ function renderGrid(layer: Konva.Layer, _coord: CoordSystem) {
     )
   }
 
-  for (let y = 0; y < GRID_EXTENT; y += GRID_SIZE) {
+  for (let y = -GRID_EXTENT; y < GRID_EXTENT; y += GRID_SIZE) {
     layer.add(
       new Konva.Line({
-        points: [0, y, GRID_EXTENT, y],
+        points: [-GRID_EXTENT, y, GRID_EXTENT, y],
         stroke: COLORS.GRID_COLOR,
         strokeWidth: 1,
         listening: false,

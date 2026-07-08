@@ -21,7 +21,7 @@ export const COLORS = {
   JOINT_DEFAULT: '#000000',
   GROUP_BG: 'rgba(213, 213, 213, 0.67)',
   GROUP_BORDER: '#b0b0b0',
-  GRID_COLOR: '#e5e5e5',
+  GRID_COLOR: '#eeeeee',
   GROUP_HEADER_BG: 'rgba(0, 0, 0, 0.1)',
   SELECTION_BORDER: 'rgba(41, 136, 237, 1)',
   SELECTION_FILL: 'rgba(41, 136, 237, 0.2)',
@@ -79,8 +79,6 @@ export const BEZIER_MIN_OFFSET = 10
 export const BEZIER_MAX_OFFSET = 200
 export const EDGE_HIT_STROKE = 20
 export const DASH_PATTERN: number[] = [8, 4]
-export const GRID_SIZE = 40
-export const GRID_EXTENT = 4000
 export const HANDLE_CONTENT_X = LAYOUT.JOINT_RADIUS + 4
 export const HANDLE_CONTENT_Y_OFFSET = 8
 export const EXECUTOR_SHADOW_BLUR = 10
