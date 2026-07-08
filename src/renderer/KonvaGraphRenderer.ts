@@ -1,5 +1,12 @@
 import Konva from 'konva'
-import type { Edge, Group, Node, NodeHandle, Workspace } from '../core'
+import type {
+  Edge,
+  Group,
+  IDisposable,
+  Node,
+  NodeHandle,
+  Workspace,
+} from '../core'
 import type { IRenderer } from '../core'
 import { ActiveType, HandlePosition } from '../core'
 import { createCoordLayer } from './CoordLayer'
@@ -17,13 +24,15 @@ import {
   NODE_BODY_PADDING,
   EXECUTOR_SHADOW_BLUR,
 } from './constants'
+import { Disposable } from '../utils/Disposable'
 
-export class KonvaGraphRenderer implements IRenderer {
+export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _stage: Konva.Stage
   _gridLayer: Konva.Layer
   _groupLayer: Konva.Layer
   _edgeLayer: Konva.Layer
   _nodeLayer: Konva.Layer
+  _disposable = new Disposable()
   _ws: Workspace
 
   _nodeGroups = new Map<number, Konva.Group>()
@@ -33,6 +42,10 @@ export class KonvaGraphRenderer implements IRenderer {
   _interaction: InteractionManager
   _resizeObserver: ResizeObserver
   _disposed = false
+
+  get stage(): Konva.Stage {
+    return this._stage
+  }
 
   constructor(container: HTMLElement, workspace: Workspace) {
     this._ws = workspace
@@ -120,73 +133,86 @@ export class KonvaGraphRenderer implements IRenderer {
   _subscribe() {
     const ws = this._ws
 
-    ws.events.on('node:added', (node) => {
-      if (this._disposed) return
-      this._onNodeAdded(node)
-      this._rebuildEdges()
-    })
+    this._disposable.add(
+      ws.events.on('node:added', (node) => {
+        this._onNodeAdded(node)
+        this._rebuildEdges()
+      }),
+    )
 
-    ws.events.on('node:removed', (node) => {
-      if (this._disposed) return
-      this._onNodeRemoved(node)
-    })
+    this._disposable.add(
+      ws.events.on('node:removed', (node) => {
+        this._onNodeRemoved(node)
+      }),
+    )
 
-    ws.events.on('node:changed', (node) => {
-      if (this._disposed) return
-      this._onNodeChanged(node)
-      this._rebuildEdgesForNode(node.id)
-    })
+    this._disposable.add(
+      ws.events.on('node:changed', (node) => {
+        this._onNodeChanged(node)
+        this._rebuildEdgesForNode(node.id)
+      }),
+    )
 
-    ws.events.on('edge:added', () => {
-      if (this._disposed) return
-      this._rebuildEdges()
-    })
+    this._disposable.add(
+      ws.events.on('edge:added', () => {
+        this._rebuildEdges()
+      }),
+    )
 
-    ws.events.on('edge:removed', () => {
-      if (this._disposed) return
-      this._rebuildEdges()
-    })
+    this._disposable.add(
+      ws.events.on('edge:removed', () => {
+        this._rebuildEdges()
+      }),
+    )
 
-    ws.events.on('group:added', (group) => {
-      if (this._disposed) return
-      this._onGroupAdded(group)
-    })
+    this._disposable.add(
+      ws.events.on('group:added', (group) => {
+        this._onGroupAdded(group)
+      }),
+    )
 
-    ws.events.on('group:removed', (group) => {
-      if (this._disposed) return
-      this._onGroupRemoved(group)
-    })
+    this._disposable.add(
+      ws.events.on('group:removed', (group) => {
+        this._onGroupRemoved(group)
+      }),
+    )
 
-    ws.events.on('group:changed', (group) => {
-      if (this._disposed) return
-      this._onGroupChanged(group)
-    })
+    this._disposable.add(
+      ws.events.on('group:changed', (group) => {
+        this._onGroupChanged(group)
+      }),
+    )
 
-    ws.events.on('coord:changed', () => {
-      if (this._disposed) return
-      this._syncCoord()
-    })
+    this._disposable.add(
+      ws.events.on('coord:changed', () => {
+        this._syncCoord()
+      }),
+    )
 
-    ws.events.on('state:changed', () => {
-      if (this._disposed) return
-      this._syncState()
-    })
+    this._disposable.add(
+      ws.events.on('state:changed', () => {
+        this._syncState()
+      }),
+    )
 
-    ws.events.on('executor:changed', () => {
-      if (this._disposed) return
-      this._syncExecutor()
-    })
+    this._disposable.add(
+      ws.events.on('executor:changed', () => {
+        this._syncExecutor()
+      }),
+    )
 
-    ws.events.on('handle:updated', (handle) => {
-      if (this._disposed) return
-      this._onHandleUpdated(handle)
-    })
+    this._disposable.add(
+      ws.events.on('handle:updated', (handle) => {
+        this._onHandleUpdated(handle)
+      }),
+    )
 
-    ws.events.on('handle:connection-changed', (handle) => {
-      if (this._disposed) return
-      this._onHandleConnectionChanged(handle)
-      this._rebuildEdgesForNode(handle.node.id)
-    })
+    this._disposable.add(
+      ws.events.on('handle:connection-changed', (handle) => {
+        this._onHandleConnectionChanged(handle)
+        this._rebuildEdgesForNode(handle.node.id)
+      }),
+    )
   }
 
   // --- Full Render ---
@@ -357,7 +383,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
     for (const [nodeId, group] of this._nodeGroups) {
       const isActive = state.activeIds.includes(nodeId)
-      const body = group.findOne(SEL.BODY) as Konva.Rect
+      const body = group.findOne<Konva.Rect>(SEL.BODY)
       if (body) {
         body.stroke(isActive ? COLORS.ACCENT : COLORS.BORDER)
       }
@@ -365,7 +391,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
     for (const [groupId, group] of this._groupGroups) {
       const isActive = state.activeIds.includes(groupId)
-      const body = group.findOne(SEL.BODY) as Konva.Rect
+      const body = group.findOne<Konva.Rect>(SEL.BODY)
       if (body) {
         body.stroke(isActive ? COLORS.ACCENT : COLORS.GROUP_BORDER)
       }
@@ -381,7 +407,7 @@ export class KonvaGraphRenderer implements IRenderer {
     const { executorState } = this._ws
 
     for (const [nodeId, group] of this._nodeGroups) {
-      const body = group.findOne(SEL.BODY) as Konva.Rect
+      const body = group.findOne<Konva.Rect>(SEL.BODY)
       if (body) {
         if (
           executorState.isProcessing &&
@@ -402,14 +428,9 @@ export class KonvaGraphRenderer implements IRenderer {
 
   // --- Lifecycle ---
 
-  get stage(): Konva.Stage {
-    return this._stage
-  }
-
   dispose() {
     this._disposed = true
-    this._ws.events.off()
-
+    this._disposable.dispose()
     this._interaction.dispose()
     this._resizeObserver.disconnect()
 

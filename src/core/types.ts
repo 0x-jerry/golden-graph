@@ -81,6 +81,8 @@ export interface IDisposable {
   dispose(): void
 }
 
+export type IDisposableFn = () => void
+
 export interface IRenderer {
   getNodesBounding(nodeIds: number[]): {
     x: number
