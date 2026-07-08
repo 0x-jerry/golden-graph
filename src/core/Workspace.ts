@@ -15,7 +15,6 @@ import { Executor } from './Executor'
 import { Group } from './Group'
 import { convertGroupToSubGraph } from './GroupToSubGraph'
 import { createIncrementIdGenerator, toReadonly, type Factory } from './helper'
-import { Interactive } from './Interactive'
 import {
   type Node,
   type NodeBaseUpdateOptions,
@@ -92,7 +91,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   readonly events = new EventEmitter<WorkspaceEvents>()
   readonly coord = new CoordSystem(this)
-  readonly interactive = new Interactive(this)
 
   _nodes: Node[] = shallowReactive([])
   _edges: Edge[] = shallowReactive([])
@@ -467,24 +465,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   setActiveIds(type: ActiveType, ids: Arrayable<number>) {
     const _ids = ensureArray(ids)
-    const isShift = this.interactive.state.shift
-
-    if (isShift) {
-      const activeIds = [...this._state.activeIds]
-
-      for (const id of _ids) {
-        const idx = activeIds.indexOf(id)
-        if (idx !== -1) {
-          activeIds.splice(idx, 1)
-        } else {
-          activeIds.push(id)
-        }
-      }
-
-      this._state.activeIds = activeIds
-      this._state.activeType = type
-      return
-    }
 
     const alreadyIncluded = _ids.length
       ? _ids.every((id) => this._state.activeIds.includes(id))
@@ -547,7 +527,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   dispose() {
     this.events.off()
-    this.interactive.dispose()
   }
 
   toJSON(): IWorkspace {

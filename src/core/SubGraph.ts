@@ -137,9 +137,6 @@ class VirtualWorkspace extends Workspace {
         incrementID: ws._idGenerator.current(),
       },
     })
-
-    // Do no need interactive helpers
-    this.interactive.dispose()
   }
 }
 
