@@ -15,14 +15,14 @@
     "dist"
   ],
   "scripts": {
-    "dev": "npm run play",
-    "play": "npm run dev -C playground",
-    "play:build": "npm run build -C playground",
+    "dev": "bun run play",
+    "play": "bun run --cwd playground dev",
+    "play:build": "bun run --cwd playground build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build": "vite build",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "bun run build",
     "release": "x-release",
     "check": "vue-tsc --noEmit"
   },
