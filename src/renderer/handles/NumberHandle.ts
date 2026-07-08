@@ -1,6 +1,6 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../../core'
-import { COLORS } from '../types'
+import { COLORS } from '../constants'
 import type { HandleModule } from './types'
 
 export const type = 'number'

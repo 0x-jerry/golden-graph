@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import type { Edge, NodeHandle } from '../core'
 import { HandlePosition } from '../core'
-import { COLORS, LAYOUT } from './types'
+import { COLORS, LAYOUT, NAME, BEZIER_MIN_OFFSET, BEZIER_MAX_OFFSET, EDGE_HIT_STROKE } from './constants'
 
 function getJointPos(
   handle: NodeHandle,
@@ -21,7 +21,7 @@ export function computeBezierPoints(
   endPos: { x: number; y: number },
 ): number[] {
   const dx = Math.abs(startPos.x - endPos.x)
-  const handleOffset = Math.max(10, Math.min(dx / 2, 200))
+  const handleOffset = Math.max(BEZIER_MIN_OFFSET, Math.min(dx / 2, BEZIER_MAX_OFFSET))
 
   return [
     startPos.x, startPos.y,
@@ -50,9 +50,9 @@ export function createEdge(edge: Edge): Konva.Line {
     bezier: true,
     stroke: COLORS.EDGE,
     strokeWidth: COLORS.EDGE_WIDTH,
-    hitStrokeWidth: 20,
+    hitStrokeWidth: EDGE_HIT_STROKE,
     fill: undefined,
-    name: `edge-${edge.id}`,
+    name: NAME.EDGE(edge.id),
   })
 
   return line

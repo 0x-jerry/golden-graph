@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../core'
 import { HandlePosition } from '../core'
-import { COLORS, LAYOUT } from './types'
+import { COLORS, LAYOUT, NAME, SHAPE, SEL, HANDLE_CONTENT_X, HANDLE_CONTENT_Y_OFFSET } from './constants'
 import { getHandleModule } from './handles'
 
 const handleGroupMap = new WeakMap<NodeHandle, Konva.Group>()
@@ -13,11 +13,11 @@ function handleY(index: number): number {
 
 export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   const group = new Konva.Group({
-    name: `handle-${handle.key}`,
+    name: NAME.HANDLE(handle.key),
   })
   handleGroupMap.set(handle, group)
 
-  const jointName = `joint-${handle.node.id}-${handle.key}`
+  const jointName = NAME.JOINT(handle.node.id, handle.key)
 
   if (handle.position === HandlePosition.Left) {
     const circle = new Konva.Circle({
@@ -49,14 +49,14 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   const hModule = getHandleModule(moduleType)
   if (hModule) {
     const contentGroup = hModule.create(handle, handle.getOptions())
-    contentGroup.name('content')
+    contentGroup.name(SHAPE.CONTENT)
 
     if (handle.position === HandlePosition.Left) {
-      contentGroup.x(LAYOUT.JOINT_RADIUS + 4)
-      contentGroup.y(handleY(index) - 8)
+      contentGroup.x(HANDLE_CONTENT_X)
+      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
     } else if (handle.position === HandlePosition.Right) {
       contentGroup.x(LAYOUT.NODE_WIDTH - LAYOUT.JOINT_RADIUS - 4)
-      contentGroup.y(handleY(index) - 8)
+      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
       contentGroup.offsetX(contentGroup.getClientRect().width)
     }
 
@@ -72,7 +72,7 @@ export function updateHandle(handle: NodeHandle, index: number): void {
 
   const hModule = getHandleModule(handleModuleMap.get(handle) || '')
   if (hModule?.update) {
-    const content = group.findOne('.content') as Konva.Group
+    const content = group.findOne(SEL.CONTENT) as Konva.Group
     if (content) {
       hModule.update(content, handle)
     }

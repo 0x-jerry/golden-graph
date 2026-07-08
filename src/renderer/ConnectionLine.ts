@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import { clamp } from '@0x-jerry/utils'
 import type { IVec2 } from '../core'
-import { COLORS } from './types'
+import { COLORS, BEZIER_MIN_OFFSET, BEZIER_MAX_OFFSET, DASH_PATTERN } from './constants'
 
 export class ConnectionLine {
   _line: Konva.Line | null = null
@@ -20,7 +20,7 @@ export class ConnectionLine {
         strokeWidth: COLORS.EDGE_WIDTH,
         fill: undefined,
         listening: false,
-        dash: [8, 4],
+        dash: DASH_PATTERN,
       })
       this._layer.add(this._line)
     }
@@ -33,7 +33,7 @@ export class ConnectionLine {
     if (!this._line) return
 
     const dx = Math.abs(start.x - end.x)
-    const offset = clamp(dx / 2, 10, 200)
+    const offset = clamp(dx / 2, BEZIER_MIN_OFFSET, BEZIER_MAX_OFFSET)
 
     const cp1x = start.x <= end.x ? start.x + offset : start.x - offset
     const cp2x = start.x <= end.x ? end.x - offset : end.x + offset

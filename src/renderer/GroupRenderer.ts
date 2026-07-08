@@ -1,12 +1,12 @@
 import Konva from 'konva'
 import type { Group } from '../core'
-import { COLORS, LAYOUT } from './types'
+import { COLORS, LAYOUT, NAME, SHAPE, SEL } from './constants'
 
 export function createGroup(group: Group): Konva.Group {
   const g = new Konva.Group({
     x: group.pos.x,
     y: group.pos.y,
-    name: `group-group-${group.id}`,
+    name: NAME.GROUP_GROUP(group.id),
   })
 
   const body = new Konva.Rect({
@@ -15,15 +15,15 @@ export function createGroup(group: Group): Konva.Group {
     fill: COLORS.GROUP_BG,
     stroke: COLORS.GROUP_BORDER,
     strokeWidth: 1,
-    name: 'body',
+    name: SHAPE.BODY,
   })
   g.add(body)
 
   const header = new Konva.Rect({
     width: group.size.x,
     height: LAYOUT.GROUP_HEADER_HEIGHT,
-    fill: 'rgba(0, 0, 0, 0.1)',
-    name: 'header',
+    fill: COLORS.GROUP_HEADER_BG,
+    name: SHAPE.HEADER,
   })
   g.add(header)
 
@@ -33,7 +33,7 @@ export function createGroup(group: Group): Konva.Group {
     fill: COLORS.TEXT_PRIMARY,
     x: 8,
     y: 16,
-    name: 'name',
+    name: SHAPE.NAME,
   })
   g.add(nameText)
 
@@ -44,18 +44,18 @@ export function updateGroup(konvaGroup: Konva.Group, group: Group): void {
   konvaGroup.x(group.pos.x)
   konvaGroup.y(group.pos.y)
 
-  const body = konvaGroup.findOne('.body') as Konva.Rect
+  const body = konvaGroup.findOne(SEL.BODY) as Konva.Rect
   if (body) {
     body.width(group.size.x)
     body.height(group.size.y)
   }
 
-  const header = konvaGroup.findOne('.header') as Konva.Rect
+  const header = konvaGroup.findOne(SEL.HEADER) as Konva.Rect
   if (header) {
     header.width(group.size.x)
   }
 
-  const nameText = konvaGroup.findOne('.name') as Konva.Text
+  const nameText = konvaGroup.findOne(SEL.NAME) as Konva.Text
   if (nameText) {
     nameText.text(group.name)
   }

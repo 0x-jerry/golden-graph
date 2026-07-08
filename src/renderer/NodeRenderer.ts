@@ -1,12 +1,12 @@
 import Konva from 'konva'
 import type { Node, NodeHandle } from '../core'
 import { HandlePosition } from '../core'
-import { COLORS, LAYOUT } from './types'
+import { COLORS, LAYOUT, NAME, SHAPE, SEL, NODE_BODY_PADDING } from './constants'
 import { renderHandle, updateHandle, destroyHandle } from './HandleRenderer'
 
 export function computeNodeHeight(node: Node): number {
   const handleCount = node.handles.length || 1
-  return LAYOUT.HEADER_HEIGHT + handleCount * LAYOUT.HANDLE_ROW_HEIGHT + 8
+  return LAYOUT.HEADER_HEIGHT + handleCount * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING
 }
 
 export function createNode(node: Node): Konva.Group {
@@ -14,7 +14,7 @@ export function createNode(node: Node): Konva.Group {
   const g = new Konva.Group({
     x: node.pos.x,
     y: node.pos.y,
-    name: `node-group-${node.id}`,
+    name: NAME.NODE_GROUP(node.id),
   })
 
   const body = new Konva.Rect({
@@ -23,7 +23,7 @@ export function createNode(node: Node): Konva.Group {
     fill: COLORS.BG,
     stroke: COLORS.BORDER,
     strokeWidth: 1,
-    name: 'body',
+    name: SHAPE.BODY,
   })
   g.add(body)
 
@@ -31,7 +31,7 @@ export function createNode(node: Node): Konva.Group {
     width: LAYOUT.NODE_WIDTH,
     height: LAYOUT.HEADER_HEIGHT,
     fill: COLORS.HEADER_BG,
-    name: 'header',
+    name: SHAPE.HEADER,
   })
   g.add(header)
 
@@ -42,7 +42,7 @@ export function createNode(node: Node): Konva.Group {
     x: 8,
     y: 7,
     width: LAYOUT.NODE_WIDTH - 16,
-    name: 'name',
+    name: SHAPE.NAME,
   })
   g.add(nameText)
 
@@ -62,7 +62,7 @@ export function createNode(node: Node): Konva.Group {
       fill: COLORS.TEXT_MUTED,
       x: LAYOUT.JOINT_RADIUS + 8,
       y: offsetY + LAYOUT.HANDLE_ROW_HEIGHT / 2 - 7,
-      name: `handle-text-${handle.key}`,
+      name: NAME.HANDLE_TEXT(handle.key),
     })
     g.add(label)
   })
@@ -74,13 +74,13 @@ export function updateNode(group: Konva.Group, node: Node): void {
   group.x(node.pos.x)
   group.y(node.pos.y)
 
-  const nameText = group.findOne('.name') as Konva.Text
+  const nameText = group.findOne(SEL.NAME) as Konva.Text
   if (nameText) {
     nameText.text(node.name)
   }
 
   const height = computeNodeHeight(node)
-  const body = group.findOne('.body') as Konva.Rect
+  const body = group.findOne(SEL.BODY) as Konva.Rect
   if (body) {
     body.height(height)
   }

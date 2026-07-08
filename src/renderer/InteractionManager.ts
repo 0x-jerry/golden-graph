@@ -3,7 +3,7 @@ import { clamp } from '@0x-jerry/utils'
 import type { NodeHandle, Workspace } from '../core'
 import { ActiveType, HandlePosition } from '../core'
 import { ConnectionLine } from './ConnectionLine'
-import { COLORS, LAYOUT } from './types'
+import { COLORS, LAYOUT, NODE_PREFIX, GROUP_PREFIX, JOINT_PREFIX, JOINT_REGEX, DRAG_TYPE, NODE_BODY_PADDING, ZOOM_MIN, ZOOM_MAX } from './constants'
 
 export interface InteractionManagerOptions {
   stage: Konva.Stage
@@ -17,7 +17,7 @@ export class InteractionManager {
   _ws: Workspace
   _connectionLine: ConnectionLine
 
-  _dragType: 'node' | 'group' | 'canvas' | 'selection' | null = null
+  _dragType: string | null = null
   _dragNodeId = 0
   _dragGroupId = 0
   _dragLastPos = { x: 0, y: 0 }
@@ -87,12 +87,12 @@ export class InteractionManager {
     const target = e.target
     const targetName = target.name()
 
-    if (targetName.startsWith('joint-')) {
+    if (targetName.startsWith(JOINT_PREFIX)) {
       this._startConnecting(targetName)
       return
     }
 
-    const nodeGroup = target.findAncestor('.node-group') as Konva.Group | undefined
+    const nodeGroup = target.findAncestor((n: Konva.Node) => n.name().startsWith(NODE_PREFIX)) as Konva.Group | undefined
     if (nodeGroup) {
       const nodeId = Number(nodeGroup.getAttr('nodeId'))
       if (nodeId) {
@@ -102,7 +102,7 @@ export class InteractionManager {
       }
     }
 
-    const groupGroup = target.findAncestor('.group-group') as Konva.Group | undefined
+    const groupGroup = target.findAncestor((n: Konva.Node) => n.name().startsWith(GROUP_PREFIX)) as Konva.Group | undefined
     if (groupGroup) {
       const groupId = Number(groupGroup.getAttr('groupId'))
       if (groupId) {
@@ -128,22 +128,22 @@ export class InteractionManager {
       return
     }
 
-    if (this._dragType === 'node') {
+    if (this._dragType === DRAG_TYPE.NODE) {
       this._handleNodeDrag(pos)
       return
     }
 
-    if (this._dragType === 'group') {
+    if (this._dragType === DRAG_TYPE.GROUP) {
       this._handleGroupDrag(pos)
       return
     }
 
-    if (this._dragType === 'canvas') {
+    if (this._dragType === DRAG_TYPE.CANVAS) {
       this._handleCanvasDrag(pos)
       return
     }
 
-    if (this._dragType === 'selection') {
+    if (this._dragType === DRAG_TYPE.SELECTION) {
       this._handleSelectionDrag(pos)
       return
     }
@@ -154,7 +154,7 @@ export class InteractionManager {
       this._endConnecting()
     }
 
-    if (this._dragType === 'selection') {
+    if (this._dragType === DRAG_TYPE.SELECTION) {
       this._endSelection()
     }
 
@@ -164,7 +164,7 @@ export class InteractionManager {
   // -- Connecting ---
 
   _startConnecting(targetName: string) {
-    const match = targetName.match(/^joint-(\d+)-(.+)$/)
+    const match = targetName.match(JOINT_REGEX)
     if (!match) return
 
     const nodeId = Number(match[1])
@@ -225,12 +225,12 @@ export class InteractionManager {
     }
 
     const targetName = target.name()
-    if (!targetName || !targetName.startsWith('joint-')) {
+    if (!targetName || !targetName.startsWith(JOINT_PREFIX)) {
       this._connectHandle = null
       return
     }
 
-    const match = targetName.match(/^joint-(\d+)-(.+)$/)
+    const match = targetName.match(JOINT_REGEX)
     if (!match) {
       this._connectHandle = null
       return
@@ -264,7 +264,7 @@ export class InteractionManager {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
-    this._dragType = 'node'
+    this._dragType = DRAG_TYPE.NODE
     this._dragNodeId = nodeId
     this._dragLastPos = { x: pos.x, y: pos.y }
   }
@@ -299,7 +299,7 @@ export class InteractionManager {
     const group = this._ws.groups.find((g) => g.id === groupId)
     if (!group) return
 
-    this._dragType = 'group'
+    this._dragType = DRAG_TYPE.GROUP
     this._dragGroupId = groupId
     this._dragLastPos = { x: pos.x, y: pos.y }
 
@@ -327,7 +327,7 @@ export class InteractionManager {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
-    this._dragType = 'canvas'
+    this._dragType = DRAG_TYPE.CANVAS
     this._dragLastPos = { x: pos.x, y: pos.y }
   }
 
@@ -346,7 +346,7 @@ export class InteractionManager {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
-    this._dragType = 'selection'
+    this._dragType = DRAG_TYPE.SELECTION
     this._selectionStarted = true
     this._selectionX1 = pos.x
     this._selectionY1 = pos.y
@@ -400,7 +400,7 @@ export class InteractionManager {
         node.pos.x >= tl.x &&
         node.pos.y >= tl.y &&
         node.pos.x + LAYOUT.NODE_WIDTH <= br.x &&
-        node.pos.y + LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + 8 <= br.y
+        node.pos.y + LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING <= br.y
       ) {
         selectedNodeIds.push(node.id)
       }
@@ -419,7 +419,7 @@ export class InteractionManager {
     const coord = this._ws.coord
     const scaleStep = coord.scale > 1 ? 0.05 : coord.scale > 0.1 ? 0.025 : 0.01
     let scale = coord.scale + (e.evt.deltaY < 0 ? 1 : -1) * scaleStep
-    scale = clamp(scale, 0.01, 2)
+    scale = clamp(scale, ZOOM_MIN, ZOOM_MAX)
 
     coord.zoomAt(pos, scale)
   }

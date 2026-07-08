@@ -1,6 +1,6 @@
 import Konva from 'konva'
 import type { HandleModule } from './types'
-import { COLORS } from '../types'
+import { COLORS } from '../constants'
 
 export const type = 'text'
 

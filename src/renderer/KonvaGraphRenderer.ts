@@ -10,7 +10,7 @@ import { createNode, updateNode, destroyNode } from './NodeRenderer'
 import {
   updateHandle,
 } from './HandleRenderer'
-import { COLORS, LAYOUT } from './types'
+import { COLORS, LAYOUT, SEL, ATTR, LAYER_NAME, NODE_BODY_PADDING, EXECUTOR_SHADOW_BLUR } from './constants'
 
 export class KonvaGraphRenderer implements IRenderer {
   _stage: Konva.Stage
@@ -38,9 +38,9 @@ export class KonvaGraphRenderer implements IRenderer {
     })
 
     this._gridLayer = createCoordLayer(workspace.coord)
-    this._groupLayer = new Konva.Layer({ name: 'groups' })
-    this._edgeLayer = new Konva.Layer({ name: 'edges' })
-    this._nodeLayer = new Konva.Layer({ name: 'nodes' })
+    this._groupLayer = new Konva.Layer({ name: LAYER_NAME.GROUPS })
+    this._edgeLayer = new Konva.Layer({ name: LAYER_NAME.EDGES })
+    this._nodeLayer = new Konva.Layer({ name: LAYER_NAME.NODES })
 
     this._stage.add(this._gridLayer)
     this._stage.add(this._groupLayer)
@@ -85,7 +85,7 @@ export class KonvaGraphRenderer implements IRenderer {
       const node = this._ws.getNode(id)
       if (!node) continue
 
-      const height = LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + 8
+      const height = LAYOUT.HEADER_HEIGHT + node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING
 
       left = Math.min(left, node.pos.x)
       top = Math.min(top, node.pos.y)
@@ -209,7 +209,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   _onNodeAdded(node: import('../core').Node) {
     const group = createNode(node)
-    group.setAttr('nodeId', node.id)
+    group.setAttr(ATTR.NODE_ID, node.id)
 
     this._nodeGroups.set(node.id, group)
     this._nodeLayer.add(group)
@@ -279,7 +279,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
   _onGroupAdded(group: import('../core').Group) {
     const konvaGroup = createGroup(group)
-    konvaGroup.setAttr('groupId', group.id)
+    konvaGroup.setAttr(ATTR.GROUP_ID, group.id)
 
     this._groupGroups.set(group.id, konvaGroup)
     this._groupLayer.add(konvaGroup)
@@ -339,7 +339,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
     for (const [nodeId, group] of this._nodeGroups) {
       const isActive = state.activeIds.includes(nodeId)
-      const body = group.findOne('.body') as Konva.Rect
+      const body = group.findOne(SEL.BODY) as Konva.Rect
       if (body) {
         body.stroke(isActive ? COLORS.ACCENT : COLORS.BORDER)
       }
@@ -347,7 +347,7 @@ export class KonvaGraphRenderer implements IRenderer {
 
     for (const [groupId, group] of this._groupGroups) {
       const isActive = state.activeIds.includes(groupId)
-      const body = group.findOne('.body') as Konva.Rect
+      const body = group.findOne(SEL.BODY) as Konva.Rect
       if (body) {
         body.stroke(isActive ? COLORS.ACCENT : COLORS.GROUP_BORDER)
       }
@@ -363,11 +363,11 @@ export class KonvaGraphRenderer implements IRenderer {
     const { executorState } = this._ws
 
     for (const [nodeId, group] of this._nodeGroups) {
-      const body = group.findOne('.body') as Konva.Rect
+      const body = group.findOne(SEL.BODY) as Konva.Rect
       if (body) {
         if (executorState.isProcessing && executorState.currentNodeId === nodeId) {
           body.shadowColor(COLORS.ACCENT_SOFT)
-          body.shadowBlur(10)
+          body.shadowBlur(EXECUTOR_SHADOW_BLUR)
           body.shadowOffset({ x: 0, y: 0 })
           body.shadowEnabled(true)
         } else {
