@@ -25,6 +25,7 @@ import {
   EXECUTOR_SHADOW_BLUR,
 } from './constants'
 import { Disposable } from '../utils/Disposable'
+import type { IRect } from '../utils/RectBox'
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _stage: Konva.Stage
@@ -32,7 +33,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _groupLayer: Konva.Layer
   _edgeLayer: Konva.Layer
   _nodeLayer: Konva.Layer
-  _disposable = new Disposable()
+  _disposers = new Disposable()
   _ws: Workspace
 
   _nodeGroups = new Map<number, Konva.Group>()
@@ -91,12 +92,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   // --- IRenderer implementation ---
 
-  getNodesBounding(nodeIds: number[]): {
-    x: number
-    y: number
-    width: number
-    height: number
-  } {
+  getNodesBounding(nodeIds: number[]): IRect {
     let left = Infinity
     let top = Infinity
     let right = -Infinity
@@ -133,81 +129,81 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _subscribe() {
     const ws = this._ws
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('node:added', (node) => {
         this._onNodeAdded(node)
         this._rebuildEdges()
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('node:removed', (node) => {
         this._onNodeRemoved(node)
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('node:changed', (node) => {
         this._onNodeChanged(node)
         this._rebuildEdgesForNode(node.id)
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('edge:added', () => {
         this._rebuildEdges()
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('edge:removed', () => {
         this._rebuildEdges()
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('group:added', (group) => {
         this._onGroupAdded(group)
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('group:removed', (group) => {
         this._onGroupRemoved(group)
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('group:changed', (group) => {
         this._onGroupChanged(group)
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('coord:changed', () => {
         this._syncCoord()
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('state:changed', () => {
         this._syncState()
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('executor:changed', () => {
         this._syncExecutor()
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('handle:updated', (handle) => {
         this._onHandleUpdated(handle)
       }),
     )
 
-    this._disposable.add(
+    this._disposers.add(
       ws.events.on('handle:connection-changed', (handle) => {
         this._onHandleConnectionChanged(handle)
         this._rebuildEdgesForNode(handle.node.id)
@@ -430,7 +426,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   dispose() {
     this._disposed = true
-    this._disposable.dispose()
+    this._disposers.dispose()
     this._interaction.dispose()
     this._resizeObserver.disconnect()
 

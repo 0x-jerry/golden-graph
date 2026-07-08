@@ -51,7 +51,6 @@ export class InteractionManager {
     this._connectionLine = new ConnectionLine(opts.edgeLayer)
     this._onNodeSelect = opts.onNodeSelect
     this._setupStageEvents()
-    this._setupKeyboardEvents()
   }
 
   _setupStageEvents() {
@@ -78,22 +77,6 @@ export class InteractionManager {
     })
   }
 
-  _setupKeyboardEvents() {
-    const onKeyDown = (e: KeyboardEvent) => {
-      this._ws.interactive._state.shift = e.shiftKey
-    }
-    const onKeyUp = (e: KeyboardEvent) => {
-      this._ws.interactive._state.shift = e.shiftKey
-    }
-    document.addEventListener('keydown', onKeyDown)
-    document.addEventListener('keyup', onKeyUp)
-
-    this._disposers.push(() => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.removeEventListener('keyup', onKeyUp)
-    })
-  }
-
   _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     const target = e.target
     const targetName = target.name()
@@ -106,6 +89,7 @@ export class InteractionManager {
     const nodeGroup = target.findAncestor((n: Konva.Node) =>
       n.name().startsWith(NODE_PREFIX),
     ) as Konva.Group | undefined
+
     if (nodeGroup) {
       const nodeId = Number(nodeGroup.getAttr('nodeId'))
       if (nodeId) {
