@@ -476,12 +476,12 @@ function getJointInfo(target: Konva.Node) {
     .findAncestor((n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE)
     ?.getAttr(ATTR.ELEMENT_ID)
 
-  if (!handleKey || !nodeId) {
+  if (handleKey != null || nodeId != null) {
     return null
   }
 
   return {
-    nodeId: nodeId,
-    handleKey: handleKey,
+    nodeId: nodeId as number,
+    handleKey: handleKey as string,
   }
 }

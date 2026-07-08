@@ -17,11 +17,9 @@ import { createNode, updateNode, destroyNode } from './NodeRenderer'
 import { updateHandle } from './HandleRenderer'
 import {
   COLORS,
-  LAYOUT,
   SEL,
   ATTR,
   LAYER_NAME,
-  NODE_BODY_PADDING,
   EXECUTOR_SHADOW_BLUR,
 } from './constants'
 import { Disposable } from '../utils/Disposable'
@@ -105,14 +103,11 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       const node = this._ws.getNode(id)
       if (!node) continue
 
-      const height =
-        LAYOUT.HEADER_HEIGHT +
-        node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT +
-        NODE_BODY_PADDING
+      const { width, height } = group.getSize()
 
       left = Math.min(left, node.pos.x)
       top = Math.min(top, node.pos.y)
-      right = Math.max(right, node.pos.x + LAYOUT.NODE_WIDTH)
+      right = Math.max(right, node.pos.x + width)
       bottom = Math.max(bottom, node.pos.y + height)
     }
 
