@@ -4,10 +4,11 @@ import { HandlePosition } from '../core'
 import {
   COLORS,
   LAYOUT,
-  NAME,
   BEZIER_MIN_OFFSET,
   BEZIER_MAX_OFFSET,
   EDGE_HIT_STROKE,
+  ELEMENT_TYPE,
+  ATTR,
 } from './constants'
 
 function getJointPos(handle: NodeHandle): { x: number; y: number } {
@@ -71,7 +72,8 @@ export function createEdge(edge: Edge): Konva.Line {
     strokeWidth: COLORS.EDGE_WIDTH,
     hitStrokeWidth: EDGE_HIT_STROKE,
     fill: undefined,
-    name: NAME.EDGE(edge.id),
+    name: ELEMENT_TYPE.EDGE,
+    [ATTR.ELEMENT_ID]: edge.id,
   })
 
   return line

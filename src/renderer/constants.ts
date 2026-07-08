@@ -27,30 +27,23 @@ export const COLORS = {
   SELECTION_FILL: 'rgba(41, 136, 237, 0.2)',
 } as const
 
-export const NAME = {
-  NODE_GROUP: (id: number) => `node-group-${id}`,
-  GROUP_GROUP: (id: number) => `group-group-${id}`,
-  EDGE: (id: number) => `edge-${id}`,
-  HANDLE: (key: string) => `handle-${key}`,
-  HANDLE_TEXT: (key: string) => `handle-text-${key}`,
-  JOINT: (nodeId: number, key: string) => `joint-${nodeId}-${key}`,
-} as const
-
-export const SHAPE = {
+export const NODE_SHAPE = {
   BODY: 'body',
   HEADER: 'header',
   NAME: 'name',
   CONTENT: 'content',
 } as const
 
-export const NODE_PREFIX = 'node-group-' as const
-export const GROUP_PREFIX = 'group-group-' as const
-export const JOINT_PREFIX = 'joint-' as const
-export const JOINT_REGEX = /^joint-(\d+)-(.+)$/
+export const ELEMENT_TYPE = {
+  NODE: 'node',
+  GROUP: 'group',
+  JOINT: 'joint',
+  EDGE: 'edge',
+  HANDLE: 'handle',
+} as const
 
 export const ATTR = {
-  NODE_ID: 'nodeId',
-  GROUP_ID: 'groupId',
+  ELEMENT_ID: 'elementId',
 } as const
 
 export const LAYER_NAME = {

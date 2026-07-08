@@ -1,12 +1,20 @@
 import Konva from 'konva'
 import type { Group } from '../core'
-import { COLORS, LAYOUT, NAME, SHAPE, SEL } from './constants'
+import {
+  COLORS,
+  LAYOUT,
+  NODE_SHAPE,
+  SEL,
+  ELEMENT_TYPE,
+  ATTR,
+} from './constants'
 
 export function createGroup(group: Group): Konva.Group {
   const g = new Konva.Group({
     x: group.pos.x,
     y: group.pos.y,
-    name: NAME.GROUP_GROUP(group.id),
+    name: ELEMENT_TYPE.GROUP,
+    [ATTR.ELEMENT_ID]: group.id,
   })
 
   const body = new Konva.Rect({
@@ -15,7 +23,7 @@ export function createGroup(group: Group): Konva.Group {
     fill: COLORS.GROUP_BG,
     stroke: COLORS.GROUP_BORDER,
     strokeWidth: 1,
-    name: SHAPE.BODY,
+    name: NODE_SHAPE.BODY,
   })
   g.add(body)
 
@@ -23,7 +31,7 @@ export function createGroup(group: Group): Konva.Group {
     width: group.size.x,
     height: LAYOUT.GROUP_HEADER_HEIGHT,
     fill: COLORS.GROUP_HEADER_BG,
-    name: SHAPE.HEADER,
+    name: NODE_SHAPE.HEADER,
   })
   g.add(header)
 
@@ -33,7 +41,7 @@ export function createGroup(group: Group): Konva.Group {
     fill: COLORS.TEXT_PRIMARY,
     x: 8,
     y: 16,
-    name: SHAPE.NAME,
+    name: NODE_SHAPE.NAME,
   })
   g.add(nameText)
 

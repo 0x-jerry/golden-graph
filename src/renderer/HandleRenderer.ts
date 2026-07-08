@@ -4,11 +4,12 @@ import { HandlePosition } from '../core'
 import {
   COLORS,
   LAYOUT,
-  NAME,
-  SHAPE,
+  NODE_SHAPE,
   SEL,
   HANDLE_CONTENT_X,
   HANDLE_CONTENT_Y_OFFSET,
+  ELEMENT_TYPE,
+  ATTR,
 } from './constants'
 import { getHandleModule } from './handles'
 
@@ -25,11 +26,10 @@ function handleY(index: number): number {
 
 export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   const group = new Konva.Group({
-    name: NAME.HANDLE(handle.key),
+    name: ELEMENT_TYPE.HANDLE,
+    [ATTR.ELEMENT_ID]: handle.key,
   })
   handleGroupMap.set(handle, group)
-
-  const jointName = NAME.JOINT(handle.node.id, handle.key)
 
   if (handle.position === HandlePosition.Left) {
     const circle = new Konva.Circle({
@@ -39,7 +39,7 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
       fill: COLORS.JOINT_DEFAULT,
       stroke: COLORS.BORDER,
       strokeWidth: 1,
-      name: jointName,
+      name: ELEMENT_TYPE.JOINT,
     })
     group.add(circle)
   } else if (handle.position === HandlePosition.Right) {
@@ -50,7 +50,7 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
       fill: COLORS.JOINT_DEFAULT,
       stroke: COLORS.BORDER,
       strokeWidth: 1,
-      name: jointName,
+      name: ELEMENT_TYPE.JOINT,
     })
     group.add(circle)
   }
@@ -61,7 +61,7 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   const hModule = getHandleModule(moduleType)
   if (hModule) {
     const contentGroup = hModule.create(handle, handle.getOptions())
-    contentGroup.name(SHAPE.CONTENT)
+    contentGroup.name(NODE_SHAPE.CONTENT)
 
     if (handle.position === HandlePosition.Left) {
       contentGroup.x(HANDLE_CONTENT_X)

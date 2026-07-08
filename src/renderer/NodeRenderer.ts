@@ -4,10 +4,11 @@ import { HandlePosition } from '../core'
 import {
   COLORS,
   LAYOUT,
-  NAME,
-  SHAPE,
+  NODE_SHAPE,
   SEL,
   NODE_BODY_PADDING,
+  ELEMENT_TYPE,
+  ATTR,
 } from './constants'
 import { renderHandle, updateHandle, destroyHandle } from './HandleRenderer'
 
@@ -25,7 +26,8 @@ export function createNode(node: Node): Konva.Group {
   const g = new Konva.Group({
     x: node.pos.x,
     y: node.pos.y,
-    name: NAME.NODE_GROUP(node.id),
+    name: ELEMENT_TYPE.NODE,
+    [ATTR.ELEMENT_ID]: node.id,
   })
 
   const body = new Konva.Rect({
@@ -34,7 +36,7 @@ export function createNode(node: Node): Konva.Group {
     fill: COLORS.BG,
     stroke: COLORS.BORDER,
     strokeWidth: 1,
-    name: SHAPE.BODY,
+    name: NODE_SHAPE.BODY,
   })
   g.add(body)
 
@@ -42,7 +44,7 @@ export function createNode(node: Node): Konva.Group {
     width: LAYOUT.NODE_WIDTH,
     height: LAYOUT.HEADER_HEIGHT,
     fill: COLORS.HEADER_BG,
-    name: SHAPE.HEADER,
+    name: NODE_SHAPE.HEADER,
   })
   g.add(header)
 
@@ -53,7 +55,7 @@ export function createNode(node: Node): Konva.Group {
     x: 8,
     y: 7,
     width: LAYOUT.NODE_WIDTH - 16,
-    name: SHAPE.NAME,
+    name: NODE_SHAPE.NAME,
   })
   g.add(nameText)
 
@@ -78,7 +80,6 @@ export function createNode(node: Node): Konva.Group {
       fill: COLORS.TEXT_MUTED,
       x: LAYOUT.JOINT_RADIUS + 8,
       y: offsetY + LAYOUT.HANDLE_ROW_HEIGHT / 2 - 7,
-      name: NAME.HANDLE_TEXT(handle.key),
     })
     g.add(label)
   })

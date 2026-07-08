@@ -6,14 +6,12 @@ import { ConnectionLine } from './ConnectionLine'
 import {
   COLORS,
   LAYOUT,
-  NODE_PREFIX,
-  GROUP_PREFIX,
-  JOINT_PREFIX,
-  JOINT_REGEX,
   DRAG_TYPE,
   NODE_BODY_PADDING,
   ZOOM_MIN,
   ZOOM_MAX,
+  ELEMENT_TYPE,
+  ATTR,
 } from './constants'
 
 export interface InteractionManagerOptions {
@@ -78,20 +76,24 @@ export class InteractionManager {
   }
 
   _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
-    const target = e.target
+    const target = e.target as Konva.Node
+
     const targetName = target.name()
 
-    if (targetName.startsWith(JOINT_PREFIX)) {
-      this._startConnecting(targetName)
-      return
+    if (targetName === ELEMENT_TYPE.JOINT) {
+      const info = getJointInfo(target)
+      if (info) {
+        this._startConnecting(info.handleKey, info.nodeId)
+        return
+      }
     }
 
-    const nodeGroup = target.findAncestor((n: Konva.Node) =>
-      n.name().startsWith(NODE_PREFIX),
+    const nodeGroup = target.findAncestor(
+      (n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE,
     ) as Konva.Group | undefined
 
     if (nodeGroup) {
-      const nodeId = Number(nodeGroup.getAttr('nodeId'))
+      const nodeId = nodeGroup.getAttr(ATTR.ELEMENT_ID)
       if (nodeId) {
         this._onNodeSelect(nodeId)
         this._startNodeDrag(nodeId, e)
@@ -99,11 +101,12 @@ export class InteractionManager {
       }
     }
 
-    const groupGroup = target.findAncestor((n: Konva.Node) =>
-      n.name().startsWith(GROUP_PREFIX),
+    const groupGroup = target.findAncestor(
+      (n: Konva.Node) => n.name() === ELEMENT_TYPE.GROUP,
     ) as Konva.Group | undefined
+
     if (groupGroup) {
-      const groupId = Number(groupGroup.getAttr('groupId'))
+      const groupId = Number(groupGroup.getAttr(ATTR.ELEMENT_ID))
       if (groupId) {
         this._startGroupDrag(groupId)
         return
@@ -162,13 +165,7 @@ export class InteractionManager {
 
   // -- Connecting ---
 
-  _startConnecting(targetName: string) {
-    const match = targetName.match(JOINT_REGEX)
-    if (!match) return
-
-    const nodeId = Number(match[1])
-    const handleKey = match[2]
-
+  _startConnecting(handleKey: string, nodeId: number) {
     const node = this._ws.getNode(nodeId)
     if (!node) return
 
@@ -224,19 +221,18 @@ export class InteractionManager {
     }
 
     const targetName = target.name()
-    if (!targetName || !targetName.startsWith(JOINT_PREFIX)) {
+    if (targetName !== ELEMENT_TYPE.JOINT) {
+      this._connectHandle = null
+      return
+    }
+    const info = getJointInfo(target)
+    if (!info) {
       this._connectHandle = null
       return
     }
 
-    const match = targetName.match(JOINT_REGEX)
-    if (!match) {
-      this._connectHandle = null
-      return
-    }
-
-    const targetNodeId = Number(match[1])
-    const targetKey = match[2]
+    const targetNodeId = info.nodeId
+    const targetKey = info.handleKey
 
     const targetNode = this._ws.getNode(targetNodeId)
     if (!targetNode) {
@@ -463,5 +459,29 @@ export class InteractionManager {
     this._connectionLine.destroy()
     this._disposers.forEach((d) => d())
     this._disposers = []
+  }
+}
+
+function getJointInfo(target: Konva.Node) {
+  const targetName = target.name()
+  if (targetName !== ELEMENT_TYPE.JOINT) {
+    return null
+  }
+
+  const handleKey = target
+    .findAncestor((n: Konva.Node) => n.name() === ELEMENT_TYPE.HANDLE)
+    ?.getAttr(ATTR.ELEMENT_ID)
+
+  const nodeId = target
+    .findAncestor((n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE)
+    ?.getAttr(ATTR.ELEMENT_ID)
+
+  if (!handleKey || !nodeId) {
+    return null
+  }
+
+  return {
+    nodeId: nodeId,
+    handleKey: handleKey,
   }
 }

@@ -245,7 +245,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   _onNodeAdded(node: Node) {
     const group = createNode(node)
-    group.setAttr(ATTR.NODE_ID, node.id)
+    group.setAttr(ATTR.ELEMENT_ID, node.id)
 
     this._nodeGroups.set(node.id, group)
     this._nodeLayer.add(group)
@@ -315,7 +315,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   _onGroupAdded(group: Group) {
     const konvaGroup = createGroup(group)
-    konvaGroup.setAttr(ATTR.GROUP_ID, group.id)
+    konvaGroup.setAttr(ATTR.ELEMENT_ID, group.id)
 
     this._groupGroups.set(group.id, konvaGroup)
     this._groupLayer.add(konvaGroup)
