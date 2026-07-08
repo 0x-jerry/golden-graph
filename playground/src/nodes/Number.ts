@@ -1,10 +1,10 @@
 import { HandlePosition, Node, NodeType } from '../../../src'
 
 export class NumberNode extends Node {
+  static nodeName = 'Number Input'
+
   constructor() {
     super()
-
-    this.name = 'Number Input'
 
     this.setNodeType(NodeType.Entry)
 

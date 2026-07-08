@@ -218,9 +218,10 @@ describe('Workspace', () => {
     const ws = new Workspace()
 
     class TestNode extends Node {
+      static nodeName = 'MyNode'
+
       constructor() {
         super()
-        this.name = 'MyNode' // Same name for all instances
         this.addHandle({
           name: 'Input',
           key: 'input',

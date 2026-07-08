@@ -1,10 +1,10 @@
 import { HandlePosition, Node } from '../../../src'
 
 export class DisplayNode extends Node {
+  static nodeName = 'Display'
+
   constructor() {
     super()
-
-    this.name = 'Display'
 
     this.addHandle({
       key: 'input',

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CoordSystem from './CoordSystem.vue';
 import ContextMenu from './components/ContextMenu.vue';
+import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
 import type { Workspace } from './core';
 import GraphWorkspace from './GraphWorkspace.vue'
 import { useWorkspace } from './hooks';
@@ -30,6 +31,7 @@ defineExpose({
     <CoordSystem>
       <GraphWorkspace></GraphWorkspace>
     </CoordSystem>
+    <WorkspaceToolbar />
     <ContextMenu :visible="ws.contextMenuState.visible" :x="ws.contextMenuState.x" :y="ws.contextMenuState.y"
       :items="ws.contextMenuState.menus" @close="ws.hideContextMenus()" />
   </div>
@@ -39,6 +41,7 @@ defineExpose({
 @import './style/index.css';
 
 .r-renderer {
+  position: relative;
   width: 100%;
   height: 100%;
   user-select: none;

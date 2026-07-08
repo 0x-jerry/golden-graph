@@ -1,10 +1,10 @@
 import { HandlePosition, Node } from '../../../../src'
 
 export class MathOpNode extends Node {
+  static nodeName = 'Math - Op'
+
   constructor() {
     super()
-
-    this.name = 'Math - Op'
 
     this.addHandle({
       key: 's',

@@ -15,9 +15,14 @@ import { Edge } from './Edge'
 import { Executor } from './Executor'
 import { Group } from './Group'
 import { convertGroupToSubGraph } from './GroupToSubGraph'
-import { createIncrementIdGenerator, type Factory, toReadonly } from './helper'
+import { createIncrementIdGenerator, toReadonly, type Factory } from './helper'
 import { Interactive } from './Interactive'
-import { type Node, type NodeBaseUpdateOptions, NodeType } from './Node'
+import {
+  type Node,
+  type NodeBaseUpdateOptions,
+  type NodeConstructor,
+  NodeType,
+} from './Node'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
@@ -63,7 +68,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   _idGenerator = createIncrementIdGenerator()
 
-  _nodeRegister = new Register<Factory<Node>>()
+  _nodeRegister = new Register<NodeConstructor>()
 
   _executor = new Executor(this)
 
@@ -122,7 +127,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   registerNode<T extends Node>(type: string, node: Factory<T>) {
-    this._nodeRegister.set(type, node)
+    this._nodeRegister.set(type, node as unknown as NodeConstructor)
   }
 
   moveActiveNodes(delta: IVec2) {

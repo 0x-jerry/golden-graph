@@ -1,10 +1,10 @@
 import { HandlePosition, Node } from '../../../src'
 
 export class ToStringNode extends Node {
+  static nodeName = 'To String'
+
   constructor() {
     super()
-
-    this.name = 'To String'
 
     this.addHandle({
       key: 'output',

@@ -2,7 +2,7 @@
 import type { Placement } from "@floating-ui/vue";
 import { autoUpdate, flip, offset, shift, useFloating } from "@floating-ui/vue";
 import { onClickOutside } from "@vueuse/core";
-import { type Component, computed, type MaybeRefOrGetter, ref, toValue } from "vue";
+import { type Component, computed, type MaybeRefOrGetter, ref } from "vue";
 
 export interface ContextMenuItem {
   key?: string | number;

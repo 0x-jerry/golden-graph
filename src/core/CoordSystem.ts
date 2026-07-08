@@ -34,6 +34,12 @@ export class CoordSystem implements IPersistent<ICoordinate> {
     this._state.scale = scale
   }
 
+  reset() {
+    this._state.x = 0
+    this._state.y = 0
+    this._state.scale = 1
+  }
+
   move(x: number, y: number) {
     this._state.x += x / this.scale
     this._state.y += y / this.scale

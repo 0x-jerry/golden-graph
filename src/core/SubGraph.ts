@@ -9,11 +9,12 @@ import { Workspace } from './Workspace'
 
 export class SubGraphInputNode extends Node {
   static type = 'subgraph.input'
+  static nodeName = 'Input'
+  static internal = true
 
   constructor() {
     super()
     this._type = SubGraphInputNode.type
-    this.name = 'Input'
     this.setNodeType(NodeType.Entry)
 
     this.addHandle({
@@ -66,11 +67,12 @@ export class SubGraphInputNode extends Node {
 
 export class SubGraphOutputNode extends Node {
   static type = 'subgraph.output'
+  static nodeName = 'Output'
+  static internal = true
 
   constructor() {
     super()
     this._type = SubGraphOutputNode.type
-    this.name = 'Output'
 
     this.addHandle({
       name: 'Value',

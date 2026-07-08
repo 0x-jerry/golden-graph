@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { HandlePosition, Node, NodeHandle, NodeHandleType } from '../../src/core'
 
 class TestNode extends Node {
+  static nodeName = 'Test'
+
   constructor() {
     super()
-    this.name = 'Test'
   }
 }
 

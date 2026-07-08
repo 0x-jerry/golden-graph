@@ -1,7 +1,7 @@
 import { ensureArray } from '@0x-jerry/utils'
 import { reactive, shallowReactive } from 'vue'
 import type { HandlePosition } from './HandlePosition'
-import { toReadonly } from './helper'
+import { toReadonly, type Factory } from './helper'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import type { INode, IVec2, ObjectAny } from './types'
@@ -24,8 +24,11 @@ export enum NodeType {
 }
 
 export class Node implements IPersistent<INode> {
+  static nodeName = 'Node'
+  static internal = false
+
   id = 0
-  name = 'Node'
+  name = (this.constructor as typeof Node).nodeName
   description?: string
 
   _type = 'DefaultNode'
@@ -219,3 +222,5 @@ export class Node implements IPersistent<INode> {
     this.setSubGraphId(data.subGraphId)
   }
 }
+
+export type NodeConstructor = Factory<Node> & typeof Node
