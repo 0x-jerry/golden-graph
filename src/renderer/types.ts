@@ -15,4 +15,10 @@ export interface KonvaGroupEntry {
   groupId: number
 }
 
+export interface ContextMenuContext {
+  type: 'canvas' | 'node' | 'group'
+  nodeId?: number
+  groupId?: number
+}
+
 export type { HandleModule } from './handles/types'

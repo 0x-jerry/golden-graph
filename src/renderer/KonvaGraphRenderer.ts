@@ -13,6 +13,7 @@ import { createCoordLayer } from './CoordLayer'
 import { createEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
+import type { ContextMenuContext } from './types'
 import { createNode, updateNode, destroyNode } from './NodeRenderer'
 import { updateHandle } from './HandleRenderer'
 import {
@@ -24,6 +25,10 @@ import {
 } from './constants'
 import { Disposable } from '../utils/Disposable'
 import type { IRect } from '../utils/RectBox'
+
+export interface KonvaGraphRendererOptions {
+  onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent) => void
+}
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _stage: Konva.Stage
@@ -46,7 +51,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     return this._stage
   }
 
-  constructor(container: HTMLElement, workspace: Workspace) {
+  constructor(container: HTMLElement, workspace: Workspace, options?: KonvaGraphRendererOptions) {
     this._ws = workspace
 
     this._stage = new Konva.Stage({
@@ -78,6 +83,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       onNodeSelect: (id) => {
         workspace.setActiveIds(ActiveType.Node, [id])
       },
+      onContextMenu: options?.onContextMenu,
     })
 
     this._resizeObserver = new ResizeObserver(() => {

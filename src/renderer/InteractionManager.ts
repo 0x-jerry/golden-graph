@@ -13,12 +13,14 @@ import {
   ELEMENT_TYPE,
   ATTR,
 } from './constants'
+import type { ContextMenuContext } from './types'
 
 export interface InteractionManagerOptions {
   stage: Konva.Stage
   ws: Workspace
   edgeLayer: Konva.Layer
   onNodeSelect: (id: number) => void
+  onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent) => void
 }
 
 export class InteractionManager {
@@ -42,12 +44,14 @@ export class InteractionManager {
   _disposers: (() => void)[] = []
 
   _onNodeSelect: (id: number) => void
+  _onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent) => void
 
   constructor(opts: InteractionManagerOptions) {
     this._stage = opts.stage
     this._ws = opts.ws
     this._connectionLine = new ConnectionLine(opts.edgeLayer)
     this._onNodeSelect = opts.onNodeSelect
+    this._onContextMenu = opts.onContextMenu
     this._setupStageEvents()
   }
 
@@ -72,7 +76,48 @@ export class InteractionManager {
 
     stage.on('contextmenu', (e) => {
       e.evt.preventDefault()
+      this._handleContextMenu(e)
     })
+  }
+
+  _handleContextMenu(e: Konva.KonvaEventObject<PointerEvent>) {
+    if (!this._onContextMenu) return
+
+    const target = e.target as Konva.Node
+
+    const nodeGroup = target.findAncestor(
+      (n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE,
+    ) as Konva.Group | undefined
+
+    if (nodeGroup) {
+      const nodeId = nodeGroup.getAttr(ATTR.ELEMENT_ID)
+      if (nodeId) {
+        this._onNodeSelect(nodeId)
+        this._onContextMenu(
+          { type: 'node', nodeId },
+          e.evt,
+        )
+        return
+      }
+    }
+
+    const groupGroup = target.findAncestor(
+      (n: Konva.Node) => n.name() === ELEMENT_TYPE.GROUP,
+    ) as Konva.Group | undefined
+
+    if (groupGroup) {
+      const groupId = Number(groupGroup.getAttr(ATTR.ELEMENT_ID))
+      if (groupId) {
+        this._ws.setActiveIds(ActiveType.Group, [groupId])
+        this._onContextMenu(
+          { type: 'group', groupId },
+          e.evt,
+        )
+        return
+      }
+    }
+
+    this._onContextMenu({ type: 'canvas' }, e.evt)
   }
 
   _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
