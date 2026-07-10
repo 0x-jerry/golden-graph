@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { clamp } from '@0x-jerry/utils'
-import { computed } from 'vue'
-import { useCoordSystem } from '../hooks'
+import { computed, ref } from 'vue'
+import { useCoordSystem, useWorkspaceEvent } from '../hooks'
 
 const coord = useCoordSystem()!
 
-const zoomPercent = computed(() => `${Math.round(coord.scale * 100)}%`)
+const scale = ref(coord.scale)
+
+useWorkspaceEvent('coord:changed', () => {
+  scale.value = coord.scale
+})
+
+const zoomPercent = computed(() => `${Math.round(scale.value * 100)}%`)
 
 function zoomIn() {
   const scaleStep = coord.scale > 1 ? 0.05 : coord.scale > 0.1 ? 0.025 : 0.01

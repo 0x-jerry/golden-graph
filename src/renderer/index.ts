@@ -1,3 +1,4 @@
 export { KonvaGraphRenderer } from './KonvaGraphRenderer'
 export type { KonvaGraphRendererOptions } from './KonvaGraphRenderer'
-export type { ContextMenuContext } from './types'
+export { buildDefaultContextMenu } from './ContextMenuBuilder'
+export type { ContextMenuContext, ContextMenuTargetType, CoreMenuItem } from './types'

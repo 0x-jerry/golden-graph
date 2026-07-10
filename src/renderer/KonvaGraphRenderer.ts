@@ -13,7 +13,7 @@ import { createCoordLayer } from './CoordLayer'
 import { createEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
-import type { ContextMenuContext } from './types'
+import type { ContextMenuContext, CoreMenuItem } from './types'
 import { createNode, updateNode, destroyNode } from './NodeRenderer'
 import { updateHandle } from './HandleRenderer'
 import {
@@ -27,7 +27,7 @@ import { Disposable } from '../utils/Disposable'
 import type { IRect } from '../utils/RectBox'
 
 export interface KonvaGraphRendererOptions {
-  onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent) => void
+  onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent, menus: CoreMenuItem[]) => void
 }
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {

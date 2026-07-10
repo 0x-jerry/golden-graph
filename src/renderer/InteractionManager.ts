@@ -2,6 +2,9 @@ import Konva from 'konva'
 import { clamp } from '@0x-jerry/utils'
 import type { NodeHandle, Workspace } from '../core'
 import { ActiveType, HandlePosition } from '../core'
+import type { ContextMenuContext, CoreMenuItem } from './types'
+import { ContextMenuTargetType } from './types'
+import { buildDefaultContextMenu } from './ContextMenuBuilder'
 import { ConnectionLine } from './ConnectionLine'
 import {
   COLORS,
@@ -13,14 +16,17 @@ import {
   ELEMENT_TYPE,
   ATTR,
 } from './constants'
-import type { ContextMenuContext } from './types'
 
 export interface InteractionManagerOptions {
   stage: Konva.Stage
   ws: Workspace
   edgeLayer: Konva.Layer
   onNodeSelect: (id: number) => void
-  onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent) => void
+  onContextMenu?: (
+    ctx: ContextMenuContext,
+    evt: PointerEvent,
+    menus: CoreMenuItem[],
+  ) => void
 }
 
 export class InteractionManager {
@@ -41,10 +47,12 @@ export class InteractionManager {
   _selectionY1 = 0
   _selectionRect: Konva.Rect | null = null
 
-  _disposers: (() => void)[] = []
-
   _onNodeSelect: (id: number) => void
-  _onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent) => void
+  _onContextMenu?: (
+    ctx: ContextMenuContext,
+    evt: PointerEvent,
+    menus: CoreMenuItem[],
+  ) => void
 
   constructor(opts: InteractionManagerOptions) {
     this._stage = opts.stage
@@ -83,49 +91,33 @@ export class InteractionManager {
   _handleContextMenu(e: Konva.KonvaEventObject<PointerEvent>) {
     if (!this._onContextMenu) return
 
-    const target = e.target as Konva.Node
+    const ctx = this._resolveContextTarget(e)
+    if (!ctx) return
 
-    const nodeGroup = target.findAncestor(
-      (n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE,
-    ) as Konva.Group | undefined
-
-    if (nodeGroup) {
-      const nodeId = nodeGroup.getAttr(ATTR.ELEMENT_ID)
-      if (nodeId) {
-        this._onNodeSelect(nodeId)
-        this._onContextMenu(
-          { type: 'node', nodeId },
-          e.evt,
-        )
-        return
-      }
+    if (ctx.type === ContextMenuTargetType.Node) {
+      this._onNodeSelect(ctx.id!)
+    } else if (ctx.type === ContextMenuTargetType.Group) {
+      this._ws.setActiveIds(ActiveType.Group, [ctx.id!])
     }
 
-    const groupGroup = target.findAncestor(
-      (n: Konva.Node) => n.name() === ELEMENT_TYPE.GROUP,
-    ) as Konva.Group | undefined
+    this._onContextMenu(ctx, e.evt, buildDefaultContextMenu(ctx, this._ws))
+  }
 
-    if (groupGroup) {
-      const groupId = Number(groupGroup.getAttr(ATTR.ELEMENT_ID))
-      if (groupId) {
-        this._ws.setActiveIds(ActiveType.Group, [groupId])
-        this._onContextMenu(
-          { type: 'group', groupId },
-          e.evt,
-        )
-        return
-      }
+  _resolveContextTarget(
+    e: Konva.KonvaEventObject<PointerEvent>,
+  ): ContextMenuContext | null {
+    const hit = this._hitTarget(e.target as Konva.Node)
+    if (hit) {
+      return { type: ContextMenuTargetType.Node, id: hit.id }
     }
 
-    this._onContextMenu({ type: 'canvas' }, e.evt)
+    return { type: ContextMenuTargetType.Canvas }
   }
 
   _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     const target = e.target as Konva.Node
 
-    const targetName = target.name()
-
-    if (targetName === ELEMENT_TYPE.JOINT) {
+    if (target.name() === ELEMENT_TYPE.JOINT) {
       const info = getJointInfo(target)
       if (info) {
         this._startConnecting(info.handleKey, info.nodeId)
@@ -133,29 +125,15 @@ export class InteractionManager {
       }
     }
 
-    const nodeGroup = target.findAncestor(
-      (n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE,
-    ) as Konva.Group | undefined
-
-    if (nodeGroup) {
-      const nodeId = nodeGroup.getAttr(ATTR.ELEMENT_ID)
-      if (nodeId) {
-        this._onNodeSelect(nodeId)
-        this._startNodeDrag(nodeId, e)
-        return
+    const hit = this._hitTarget(target)
+    if (hit) {
+      if (hit.type === ContextMenuTargetType.Node) {
+        this._onNodeSelect(hit.id)
+        this._startNodeDrag(hit.id, e)
+      } else {
+        this._startGroupDrag(hit.id)
       }
-    }
-
-    const groupGroup = target.findAncestor(
-      (n: Konva.Node) => n.name() === ELEMENT_TYPE.GROUP,
-    ) as Konva.Group | undefined
-
-    if (groupGroup) {
-      const groupId = Number(groupGroup.getAttr(ATTR.ELEMENT_ID))
-      if (groupId) {
-        this._startGroupDrag(groupId)
-        return
-      }
+      return
     }
 
     if (e.evt.shiftKey) {
@@ -208,6 +186,47 @@ export class InteractionManager {
     this._dragType = null
   }
 
+  // -- Helpers ---
+
+  _hitTarget(target: Konva.Node) {
+    const nodeGroup = target.findAncestor(
+      (n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE,
+    ) as Konva.Group | undefined
+
+    if (nodeGroup) {
+      const nodeId = nodeGroup.getAttr(ATTR.ELEMENT_ID)
+      if (nodeId) return { type: ContextMenuTargetType.Node, id: nodeId }
+    }
+
+    const groupGroup = target.findAncestor(
+      (n: Konva.Node) => n.name() === ELEMENT_TYPE.GROUP,
+    ) as Konva.Group | undefined
+
+    if (groupGroup) {
+      const groupId = Number(groupGroup.getAttr(ATTR.ELEMENT_ID))
+      if (groupId) return { type: ContextMenuTargetType.Group, id: groupId }
+    }
+
+    return null
+  }
+
+  _getHandlePos(handle: NodeHandle): { x: number; y: number } {
+    const handles = handle.node.handles.filter(
+      (h) => h.position !== HandlePosition.None,
+    )
+    const index = handles.indexOf(handle)
+    const y =
+      handle.node.pos.y +
+      LAYOUT.HEADER_HEIGHT +
+      index * LAYOUT.HANDLE_ROW_HEIGHT +
+      LAYOUT.HANDLE_ROW_HEIGHT / 2
+
+    if (handle.isRight) {
+      return { x: handle.node.pos.x + LAYOUT.NODE_WIDTH, y }
+    }
+    return { x: handle.node.pos.x, y }
+  }
+
   // -- Connecting ---
 
   _startConnecting(handleKey: string, nodeId: number) {
@@ -253,49 +272,30 @@ export class InteractionManager {
 
     if (!this._connectHandle) return
 
-    const pos = this._stage.getPointerPosition()
-    if (!pos) {
-      this._connectHandle = null
-      return
-    }
-
-    const target = this._stage.getIntersection(pos)
-    if (!target) {
-      this._connectHandle = null
-      return
-    }
-
-    const targetName = target.name()
-    if (targetName !== ELEMENT_TYPE.JOINT) {
-      this._connectHandle = null
-      return
-    }
-    const info = getJointInfo(target)
-    if (!info) {
-      this._connectHandle = null
-      return
-    }
-
-    const targetNodeId = info.nodeId
-    const targetKey = info.handleKey
-
-    const targetNode = this._ws.getNode(targetNodeId)
-    if (!targetNode) {
-      this._connectHandle = null
-      return
-    }
-
-    const targetHandle = targetNode.getHandle(targetKey!)
-    if (!targetHandle) {
-      this._connectHandle = null
-      return
-    }
-
-    if (this._connectHandle.node.id !== targetHandle.node.id) {
+    const targetHandle = this._findHandleAtPointer()
+    if (targetHandle && this._connectHandle.node.id !== targetHandle.node.id) {
       this._ws.connect(this._connectHandle, targetHandle)
     }
 
     this._connectHandle = null
+  }
+
+  _findHandleAtPointer(): NodeHandle | null {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return null
+
+    const target = this._stage.getIntersection(pos)
+    if (!target) return null
+
+    if (target.name() !== ELEMENT_TYPE.JOINT) return null
+
+    const info = getJointInfo(target)
+    if (!info) return null
+
+    const targetNode = this._ws.getNode(info.nodeId)
+    if (!targetNode) return null
+
+    return targetNode.getHandle(info.handleKey!) ?? null
   }
 
   // --- Node Drag ---
@@ -480,30 +480,9 @@ export class InteractionManager {
     coord.zoomAt(pos, scale)
   }
 
-  // --- Helpers ---
-
-  _getHandlePos(handle: NodeHandle): { x: number; y: number } {
-    const handles = handle.node.handles.filter(
-      (h) => h.position !== HandlePosition.None,
-    )
-    const index = handles.indexOf(handle)
-    const y =
-      handle.node.pos.y +
-      LAYOUT.HEADER_HEIGHT +
-      index * LAYOUT.HANDLE_ROW_HEIGHT +
-      LAYOUT.HANDLE_ROW_HEIGHT / 2
-
-    if (handle.isRight) {
-      return { x: handle.node.pos.x + LAYOUT.NODE_WIDTH, y }
-    }
-    return { x: handle.node.pos.x, y }
-  }
-
   dispose() {
     this._stage.off()
     this._connectionLine.destroy()
-    this._disposers.forEach((d) => d())
-    this._disposers = []
   }
 }
 
@@ -521,7 +500,7 @@ function getJointInfo(target: Konva.Node) {
     .findAncestor((n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE)
     ?.getAttr(ATTR.ELEMENT_ID)
 
-  if (handleKey != null || nodeId != null) {
+  if (handleKey == null || nodeId == null) {
     return null
   }
 

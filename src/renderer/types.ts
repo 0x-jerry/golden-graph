@@ -15,10 +15,27 @@ export interface KonvaGroupEntry {
   groupId: number
 }
 
+export enum ContextMenuTargetType {
+  Canvas = 'canvas',
+  Node = 'node',
+  Group = 'group',
+}
+
 export interface ContextMenuContext {
-  type: 'canvas' | 'node' | 'group'
-  nodeId?: number
-  groupId?: number
+  type: ContextMenuTargetType
+  /** Target element id */
+  id?: number
+}
+
+export interface CoreMenuItem {
+  key?: string | number
+  label: string
+  icon?: string
+  disabled?: boolean
+  shortcut?: string
+  visible?: boolean | (() => boolean)
+  action?: () => void
+  children?: CoreMenuItem[]
 }
 
 export type { HandleModule } from './handles/types'

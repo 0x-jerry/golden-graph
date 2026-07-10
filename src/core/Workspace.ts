@@ -6,7 +6,6 @@ import {
   remove,
 } from '@0x-jerry/utils'
 import { uniq } from 'lodash-es'
-import { ContextMenuHelper, type CoreMenuItem } from './ContextMenu'
 import { CoordSystem } from './CoordSystem'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
@@ -64,10 +63,6 @@ export interface WorkspaceEvents {
   ]
 
   'executor:changed': [state: { isProcessing: boolean; currentNodeId: number }]
-
-  'contextmenu:changed': [
-    state: { visible: boolean; x: number; y: number; menus: CoreMenuItem[] },
-  ]
 }
 
 export enum ActiveType {
@@ -100,8 +95,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   _nodeRegister = new Register<NodeConstructor>()
 
   _executor = new Executor(this)
-
-  _ctxMenuHelper = new ContextMenuHelper(this)
 
   _workspaceDataStack: IWorkspaceData[] = []
 
@@ -141,10 +134,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   get executorState() {
     return this._executor.state
-  }
-
-  get contextMenuState() {
-    return this._ctxMenuHelper.state
   }
 
   get isActiveSubGraph() {
@@ -381,16 +370,6 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     this.addRawNode(node)
 
     return node
-  }
-
-  showContextMenus(evt: MouseEvent, menus: CoreMenuItem[]) {
-    evt.preventDefault()
-
-    this._ctxMenuHelper.show(evt.clientX, evt.clientY, menus)
-  }
-
-  hideContextMenus() {
-    this._ctxMenuHelper.hide()
   }
 
   canConnect(start: NodeHandle, end: NodeHandle) {
