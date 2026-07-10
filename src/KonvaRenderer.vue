@@ -2,8 +2,7 @@
 import { onMounted, onUnmounted, useTemplateRef } from 'vue'
 import type { Workspace as IWorkspace } from './core'
 import { KonvaGraphRenderer } from './renderer'
-import { useWorkspace } from './hooks'
-import { useContextMenuState } from './hooks/useContextMenuState'
+import { useContextMenuState, useWorkspace } from './hooks'
 import WorkspaceToolbar from './components/WorkspaceToolbar.vue'
 import ContextMenu from './components/ContextMenu.vue'
 
