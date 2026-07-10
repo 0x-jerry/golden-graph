@@ -1,5 +1,4 @@
 import { type Arrayable, ensureArray } from '@0x-jerry/utils'
-import { shallowRef } from 'vue'
 import { HandlePosition } from './HandlePosition'
 import { isIntersected, toReadonly } from './helper'
 import type { Node } from './Node'
@@ -70,16 +69,16 @@ export class NodeHandle {
 
   _node?: Node
 
-  _connectedHandle = shallowRef<NodeHandle>()
+  _connectedHandle?: NodeHandle
 
-  _value = shallowRef<unknown>()
+  _value?: unknown
 
   get connectedHandle() {
-    return toReadonly(this._connectedHandle.value)
+    return toReadonly(this._connectedHandle)
   }
 
   get isConnected() {
-    return !!this._connectedHandle.value
+    return !!this._connectedHandle
   }
 
   get loc() {
@@ -128,7 +127,7 @@ export class NodeHandle {
       return this.connectedHandle.getValue()
     }
 
-    return this._value.value
+    return this._value
   }
 
   /**
@@ -137,11 +136,11 @@ export class NodeHandle {
    * @returns
    */
   setValue(value: unknown) {
-    if (this._value.value === value) {
+    if (this._value === value) {
       return
     }
 
-    this._value.value = value
+    this._value = value
 
     this.node.workspace.events.emit('handle:updated', this)
   }
@@ -153,7 +152,7 @@ export class NodeHandle {
    * @param value
    */
   setInitialValue(value: unknown) {
-    this._value.value = value
+    this._value = value
   }
 
   /**
@@ -163,7 +162,7 @@ export class NodeHandle {
    * @returns
    */
   getRealValue() {
-    return this._value.value
+    return this._value
   }
 
   setNode(node: Node) {
@@ -187,7 +186,7 @@ export class NodeHandle {
   }
 
   setConnectedHandle(handle?: NodeHandle) {
-    this._connectedHandle.value = handle
+    this._connectedHandle = handle
     this.node.workspace.events.emit('handle:connection-changed', this)
   }
 
@@ -196,7 +195,7 @@ export class NodeHandle {
     this.name = data.name ?? ''
     this.types = ensureArray(data.type)
     this.position = data.position ?? HandlePosition.None
-    this._value.value = data.value
+    this._value = data.value
 
     Object.assign(this._options, data.options)
   }

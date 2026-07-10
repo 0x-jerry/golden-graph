@@ -1,4 +1,3 @@
-import { reactive, shallowReactive } from 'vue'
 import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
 import type { IGroup, IVec2 } from './types'
@@ -9,9 +8,9 @@ export class Group implements IPersistent<IGroup> {
 
   _workspace?: Workspace
 
-  readonly nodes = shallowReactive<number[]>([])
+  readonly nodes: number[] = []
 
-  _state = reactive({
+  _state = {
     name: 'Untitled',
     pos: {
       x: 0,
@@ -21,7 +20,7 @@ export class Group implements IPersistent<IGroup> {
       x: 0,
       y: 0,
     },
-  })
+  }
 
   get pos() {
     return toReadonly(this._state.pos)

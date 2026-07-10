@@ -2,7 +2,7 @@
 import type { Placement } from '@floating-ui/vue'
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue'
 import { onClickOutside } from '@vueuse/core'
-import { type Component, computed, type MaybeRefOrGetter, ref } from 'vue'
+import { type Component, computed, ref } from 'vue'
 
 export interface ContextMenuItem {
   key?: string | number
@@ -13,7 +13,7 @@ export interface ContextMenuItem {
    * Keyboard shortcut
    */
   shortcut?: string
-  visible?: MaybeRefOrGetter<boolean>
+  visible?: boolean | (() => boolean)
   action?: () => void
   children?: ContextMenuItem[]
 }

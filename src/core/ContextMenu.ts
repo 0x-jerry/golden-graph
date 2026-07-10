@@ -1,37 +1,47 @@
-import { reactive, toValue } from 'vue'
-import type { ContextMenuItem } from '../components/ContextMenu.vue'
-import { toReadonly } from './helper'
 import type { Workspace } from './Workspace'
+
+export interface CoreMenuItem {
+  key?: string | number
+  label: string
+  icon?: string
+  disabled?: boolean
+  shortcut?: string
+  visible?: boolean | (() => boolean)
+  action?: () => void
+  children?: CoreMenuItem[]
+}
 
 export interface ContextMenuHelperState {
   visible: boolean
   x: number
   y: number
-  menus: ContextMenuItem[]
+  menus: CoreMenuItem[]
 }
 
 export class ContextMenuHelper {
   _workspace?: Workspace
 
-  _state: ContextMenuHelperState = reactive({
+  _state: ContextMenuHelperState = {
     visible: false,
     x: 0,
     y: 0,
     menus: [],
-  })
+  }
 
   constructor(workspace?: Workspace) {
     this._workspace = workspace
   }
 
   get state() {
-    return toReadonly(this._state)
+    return this._state
   }
 
-  show(x: number, y: number, menus: ContextMenuItem[]) {
-    const visibleMenus = menus.filter((item) =>
-      item.visible == null ? true : toValue(item.visible),
-    )
+  show(x: number, y: number, menus: CoreMenuItem[]) {
+    const visibleMenus = menus.filter((item) => {
+      if (item.visible == null) return true
+      if (typeof item.visible === 'function') return item.visible()
+      return item.visible
+    })
 
     if (!visibleMenus.length) {
       return

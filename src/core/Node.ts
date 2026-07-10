@@ -1,5 +1,4 @@
 import { ensureArray } from '@0x-jerry/utils'
-import { reactive, shallowReactive } from 'vue'
 import type { HandlePosition } from './HandlePosition'
 import { toReadonly, type Factory } from './helper'
 import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
@@ -34,14 +33,14 @@ export class Node implements IPersistent<INode> {
   _type = 'DefaultNode'
   _nodeType = NodeType.None
 
-  _handles: NodeHandle[] = shallowReactive([])
+  _handles: NodeHandle[] = []
 
-  _state = reactive({
+  _state = {
     pos: {
       x: 0,
       y: 0,
     },
-  })
+  }
 
   _workspace?: Workspace
 

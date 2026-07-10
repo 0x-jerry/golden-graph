@@ -1,4 +1,3 @@
-import { shallowRef } from 'vue'
 import { toReadonly } from './helper'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
@@ -10,17 +9,17 @@ export class Edge implements IPersistent<IEdge> {
 
   type = 'default'
 
-  _start = shallowRef<NodeHandle>()
-  _end = shallowRef<NodeHandle>()
+  _start?: NodeHandle
+  _end?: NodeHandle
 
   _workspace?: Workspace
 
   get start() {
-    return toReadonly(this._start.value!)
+    return toReadonly(this._start!)
   }
 
   get end() {
-    return toReadonly(this._end.value!)
+    return toReadonly(this._end!)
   }
 
   get workspace() {
@@ -35,15 +34,15 @@ export class Edge implements IPersistent<IEdge> {
   }
 
   setEndpoints(start: NodeHandle, end: NodeHandle) {
-    this._start.value = start
-    this._end.value = end
+    this._start = start
+    this._end = end
     start.setConnectedHandle(end)
     end.setConnectedHandle(start)
   }
 
   clearEndpoints() {
-    this._start.value?.setConnectedHandle()
-    this._end.value?.setConnectedHandle()
+    this._start?.setConnectedHandle()
+    this._end?.setConnectedHandle()
   }
 
   toJSON(): IEdge {

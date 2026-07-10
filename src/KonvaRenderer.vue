@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, shallowReactive, useTemplateRef } from 'vue'
 import type { Workspace as IWorkspace } from './core'
+import type { CoreMenuItem } from './core/ContextMenu'
 import { KonvaGraphRenderer } from './renderer'
 import type { ContextMenuContext } from './renderer'
 import { useWorkspace } from './hooks'
@@ -12,7 +13,7 @@ export interface KonvaRendererProps {
   setup?: (ws: IWorkspace) => void
   showToolbar?: boolean
   showContextMenu?: boolean
-  buildContextMenu?: (ctx: ContextMenuContext) => ContextMenuItem[]
+  buildContextMenu?: (ctx: ContextMenuContext) => CoreMenuItem[]
 }
 
 const props = withDefaults(defineProps<KonvaRendererProps>(), {
@@ -73,7 +74,7 @@ function handleContextMenuClose() {
 function defaultBuildContextMenu(
   ctx: ContextMenuContext,
   w: IWorkspace,
-): ContextMenuItem[] {
+): CoreMenuItem[] {
   switch (ctx.type) {
     case 'canvas':
       return [
@@ -92,7 +93,7 @@ function defaultBuildContextMenu(
   }
 }
 
-function nodeMenu(w: IWorkspace, nodeId: number): ContextMenuItem[] {
+function nodeMenu(w: IWorkspace, nodeId: number): CoreMenuItem[] {
   return [
     {
       label: 'Delete',
@@ -124,7 +125,7 @@ function nodeMenu(w: IWorkspace, nodeId: number): ContextMenuItem[] {
   ]
 }
 
-function groupMenu(w: IWorkspace, groupId: number): ContextMenuItem[] {
+function groupMenu(w: IWorkspace, groupId: number): CoreMenuItem[] {
   return [
     {
       label: 'Ungroup',

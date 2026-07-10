@@ -1,6 +1,5 @@
 import { sleep } from '@0x-jerry/utils'
 import { isEqual } from 'lodash-es'
-import { reactive } from 'vue'
 import { HandlePosition } from './HandlePosition'
 import { toReadonly } from './helper'
 import type { Node } from './Node'
@@ -15,10 +14,10 @@ export class Executor {
   _cache = new Map<number, Record<string, unknown>>()
   _cacheNew = new Map<number, Record<string, unknown>>()
 
-  _state = reactive({
+  _state = {
     isProcessing: false,
     currentNodeId: 0,
-  })
+  }
 
   get state() {
     return toReadonly(this._state)

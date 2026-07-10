@@ -1,4 +1,3 @@
-import { reactive } from 'vue'
 import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
 import type { ICoordinate, IVec2 } from './types'
@@ -10,11 +9,11 @@ export class CoordSystem implements IPersistent<ICoordinate> {
   /**
    * Coord system _state position
    */
-  _state = reactive({
+  _state = {
     x: 0,
     y: 0,
     scale: 1,
-  })
+  }
 
   constructor(workspace?: Workspace) {
     this._workspace = workspace

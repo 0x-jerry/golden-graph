@@ -6,9 +6,7 @@ import {
   remove,
 } from '@0x-jerry/utils'
 import { uniq } from 'lodash-es'
-import { reactive, shallowReactive } from 'vue'
-import type { ContextMenuItem } from '../components/ContextMenu.vue'
-import { ContextMenuHelper } from './ContextMenu'
+import { ContextMenuHelper, type CoreMenuItem } from './ContextMenu'
 import { CoordSystem } from './CoordSystem'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
@@ -68,7 +66,7 @@ export interface WorkspaceEvents {
   'executor:changed': [state: { isProcessing: boolean; currentNodeId: number }]
 
   'contextmenu:changed': [
-    state: { visible: boolean; x: number; y: number; menus: ContextMenuItem[] },
+    state: { visible: boolean; x: number; y: number; menus: CoreMenuItem[] },
   ]
 }
 
@@ -92,10 +90,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   readonly events = new EventEmitter<WorkspaceEvents>()
   readonly coord = new CoordSystem(this)
 
-  _nodes: Node[] = shallowReactive([])
-  _edges: Edge[] = shallowReactive([])
-  _groups: Group[] = shallowReactive([])
-  _subGraphs: SubGraph[] = shallowReactive([])
+  _nodes: Node[] = []
+  _edges: Edge[] = []
+  _groups: Group[] = []
+  _subGraphs: SubGraph[] = []
 
   _idGenerator = createIncrementIdGenerator()
 
@@ -107,7 +105,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   _workspaceDataStack: IWorkspaceData[] = []
 
-  _state = reactive({
+  _state = {
     debug: false,
     disabled: false,
     /**
@@ -115,7 +113,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
      */
     activeIds: [] as number[],
     activeType: ActiveType.None,
-  })
+  }
 
   get state() {
     return toReadonly(this._state)
@@ -385,7 +383,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     return node
   }
 
-  showContextMenus(evt: MouseEvent, menus: ContextMenuItem[]) {
+  showContextMenus(evt: MouseEvent, menus: CoreMenuItem[]) {
     evt.preventDefault()
 
     this._ctxMenuHelper.show(evt.clientX, evt.clientY, menus)
