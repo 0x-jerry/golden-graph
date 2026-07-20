@@ -2,11 +2,11 @@ import Konva from 'konva'
 import type { NodeHandle } from '../../core'
 import { COLORS } from '../constants'
 import { closeOverlayOnCoordChange, positionOverlay } from './overlay'
+import { availableWidth } from './utils'
 import type { HandleModule } from './types'
 
 export const type = 'select'
 
-const INPUT_WIDTH = 64
 const INPUT_HEIGHT = 18
 
 let sharedSelect: HTMLSelectElement | null = null
@@ -83,7 +83,7 @@ function openDropdown(select: HTMLSelectElement) {
 function startEdit(handle: NodeHandle, valueText: Konva.Text) {
   const select = getSharedSelect()
 
-  if (!positionOverlay(select, valueText, INPUT_WIDTH, INPUT_HEIGHT)) return
+  if (!positionOverlay(select, valueText, valueText.width(), INPUT_HEIGHT)) return
 
   const options = handle.getOptions<{ type: string, options?: Array<{ value: string, label: string }> | string[] }>()
   select.innerHTML = ''
@@ -114,10 +114,11 @@ function startEdit(handle: NodeHandle, valueText: Konva.Text) {
 
 export const create: HandleModule['create'] = (handle) => {
   const group = new Konva.Group()
+  const w = availableWidth(handle)
 
   const inputBg = new Konva.Rect({
     name: 'input-bg',
-    width: INPUT_WIDTH,
+    width: w,
     height: INPUT_HEIGHT,
     fill: COLORS.BG,
     stroke: COLORS.BORDER,
@@ -131,10 +132,11 @@ export const create: HandleModule['create'] = (handle) => {
     text: String(handle.getValue() ?? ''),
     fontSize: 12,
     fill: COLORS.TEXT_PRIMARY,
-    width: INPUT_WIDTH,
+    width: w,
     height: INPUT_HEIGHT,
-    align: 'center',
+    align: 'left',
     verticalAlign: 'middle',
+    padding: 4,
   })
   group.add(valueText)
 

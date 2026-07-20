@@ -2,11 +2,11 @@ import Konva from 'konva'
 import type { NodeHandle } from '../../core'
 import { COLORS } from '../constants'
 import { closeOverlayOnCoordChange, positionOverlay } from './overlay'
+import { availableWidth } from './utils'
 import type { HandleModule } from './types'
 
 export const type = 'text'
 
-const INPUT_WIDTH = 80
 const INPUT_HEIGHT = 18
 
 let sharedInput: HTMLInputElement | null = null
@@ -70,7 +70,7 @@ export function dispose() {
 function startEdit(handle: NodeHandle, valueText: Konva.Text) {
   const input = getSharedInput()
 
-  if (!positionOverlay(input, valueText, INPUT_WIDTH, INPUT_HEIGHT)) return
+  if (!positionOverlay(input, valueText, valueText.width(), INPUT_HEIGHT)) return
 
   input.value = String(handle.getRealValue() ?? '')
 
@@ -84,10 +84,11 @@ function startEdit(handle: NodeHandle, valueText: Konva.Text) {
 
 export const create: HandleModule['create'] = (handle) => {
   const group = new Konva.Group()
+  const w = availableWidth(handle)
 
   const inputBg = new Konva.Rect({
     name: 'input-bg',
-    width: INPUT_WIDTH,
+    width: w,
     height: INPUT_HEIGHT,
     fill: COLORS.BG,
     stroke: COLORS.BORDER,
@@ -101,10 +102,11 @@ export const create: HandleModule['create'] = (handle) => {
     text: String(handle.getValue() ?? ''),
     fontSize: 12,
     fill: COLORS.TEXT_PRIMARY,
-    width: INPUT_WIDTH,
+    width: w,
     height: INPUT_HEIGHT,
-    align: 'center',
+    align: 'left',
     verticalAlign: 'middle',
+    padding: 4,
   })
   group.add(valueText)
 
