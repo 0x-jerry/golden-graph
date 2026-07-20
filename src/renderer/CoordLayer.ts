@@ -14,19 +14,12 @@ export function createCoordLayer(_coord: CoordSystem): Konva.Layer {
 }
 
 function renderGrid(layer: Konva.Layer) {
-  const tile = document.createElement('canvas')
-  tile.width = GRID_SIZE
-  tile.height = GRID_SIZE
-
+  const tile = new OffscreenCanvas(GRID_SIZE, GRID_SIZE)
   const ctx = tile.getContext('2d')!
-  ctx.strokeStyle = COLORS.GRID_COLOR
-  ctx.lineWidth = 1
+  ctx.fillStyle = COLORS.GRID_COLOR
   ctx.beginPath()
-  ctx.moveTo(GRID_SIZE - 0.5, 0)
-  ctx.lineTo(GRID_SIZE - 0.5, GRID_SIZE)
-  ctx.moveTo(0, GRID_SIZE - 0.5)
-  ctx.lineTo(GRID_SIZE, GRID_SIZE - 0.5)
-  ctx.stroke()
+  ctx.arc(GRID_SIZE / 2, GRID_SIZE / 2, 1.5, 0, Math.PI * 2)
+  ctx.fill()
 
   layer.add(
     new Konva.Rect({

@@ -128,7 +128,12 @@ export class InteractionManager {
     const hit = this._hitTarget(target)
     if (hit) {
       if (hit.type === ContextMenuTargetType.Node) {
-        this._onNodeSelect(hit.id)
+        if (
+          this._ws.state.activeType !== ActiveType.Node ||
+          !this._ws.isActive(hit.id)
+        ) {
+          this._onNodeSelect(hit.id)
+        }
         this._startNodeDrag(hit.id, e)
       } else {
         this._startGroupDrag(hit.id)

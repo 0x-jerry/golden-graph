@@ -21,7 +21,7 @@ export const COLORS = {
   JOINT_DEFAULT: '#000000',
   GROUP_BG: 'rgba(213, 213, 213, 0.67)',
   GROUP_BORDER: '#b0b0b0',
-  GRID_COLOR: '#eeeeee',
+  GRID_COLOR: '#cccccc',
   GROUP_HEADER_BG: 'rgba(0, 0, 0, 0.1)',
   SELECTION_BORDER: 'rgba(41, 136, 237, 1)',
   SELECTION_FILL: 'rgba(41, 136, 237, 0.2)',
