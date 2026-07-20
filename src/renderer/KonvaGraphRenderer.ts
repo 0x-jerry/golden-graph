@@ -351,6 +351,16 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     if (index >= 0) {
       updateHandle(handle, index)
     }
+
+    const edges = this._ws.queryEdges(handle.loc)
+    for (const edge of edges) {
+      const otherHandle = edge.start === handle ? edge.end : edge.start
+      const otherIndex = getHandleIndex(otherHandle.node, otherHandle)
+      if (otherIndex >= 0) {
+        updateHandle(otherHandle, otherIndex)
+      }
+    }
+
     this._nodeLayer.batchDraw()
   }
 
