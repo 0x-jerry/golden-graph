@@ -8,6 +8,8 @@ import {
   SEL,
   HANDLE_CONTENT_X,
   HANDLE_CONTENT_Y_OFFSET,
+  HANDLE_NAME_WIDTH,
+  HANDLE_NAME_GAP,
   ELEMENT_TYPE,
   ATTR,
 } from './constants'
@@ -31,20 +33,12 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   })
   handleGroupMap.set(handle, group)
 
-  if (handle.position === HandlePosition.Left) {
+  if (
+    handle.position === HandlePosition.Left ||
+    handle.position === HandlePosition.Right
+  ) {
     const circle = new Konva.Circle({
-      x: 0,
-      y: handleY(index),
-      radius: LAYOUT.JOINT_RADIUS,
-      fill: COLORS.JOINT_DEFAULT,
-      stroke: COLORS.BORDER,
-      strokeWidth: 1,
-      name: ELEMENT_TYPE.JOINT,
-    })
-    group.add(circle)
-  } else if (handle.position === HandlePosition.Right) {
-    const circle = new Konva.Circle({
-      x: LAYOUT.NODE_WIDTH,
+      x: handle.position === HandlePosition.Left ? 0 : LAYOUT.NODE_WIDTH,
       y: handleY(index),
       radius: LAYOUT.JOINT_RADIUS,
       fill: COLORS.JOINT_DEFAULT,
@@ -58,21 +52,48 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   const moduleType = handle.getOptions().type
   handleModuleMap.set(handle, moduleType)
 
+  const label = new Konva.Text({
+    name: 'label',
+    text: handle.name,
+    fontSize: 12,
+    fill: COLORS.TEXT_MUTED,
+    y: handleY(index),
+    // Fixed-width name column: keeps handle contents aligned across rows.
+    // Handles without a name reserve no space (auto width = 0).
+    width: handle.name ? HANDLE_NAME_WIDTH : undefined,
+    wrap: 'none',
+    ellipsis: true,
+  })
+  label.offsetY(label.height() / 2)
+
+  if (handle.position === HandlePosition.Right) {
+    label.x(LAYOUT.NODE_WIDTH - HANDLE_CONTENT_X)
+    label.offsetX(label.width())
+  } else {
+    label.x(
+      handle.position === HandlePosition.Left
+        ? HANDLE_CONTENT_X
+        : LAYOUT.HANDLE_PADDING,
+    )
+  }
+  group.add(label)
+
   const hModule = getHandleModule(moduleType)
   if (hModule) {
     const contentGroup = hModule.create(handle, handle.getOptions())
     contentGroup.name(NODE_SHAPE.CONTENT)
+    contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
+
+    const nameWidth = label.width()
+    const nameGap = nameWidth > 0 ? HANDLE_NAME_GAP : 0
 
     if (handle.position === HandlePosition.Left) {
-      contentGroup.x(HANDLE_CONTENT_X)
-      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
+      contentGroup.x(HANDLE_CONTENT_X + nameWidth + nameGap)
     } else if (handle.position === HandlePosition.Right) {
-      contentGroup.x(LAYOUT.NODE_WIDTH - LAYOUT.JOINT_RADIUS - 4)
-      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
+      contentGroup.x(LAYOUT.NODE_WIDTH - HANDLE_CONTENT_X - nameWidth - nameGap)
       contentGroup.offsetX(contentGroup.getClientRect().width)
     } else {
-      contentGroup.x(LAYOUT.HANDLE_PADDING)
-      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
+      contentGroup.x(LAYOUT.HANDLE_PADDING + nameWidth + nameGap)
     }
 
     group.add(contentGroup)
@@ -101,6 +122,11 @@ export function updateHandle(handle: NodeHandle, index: number): void {
     } else {
       joint.fill(COLORS.JOINT_DEFAULT)
     }
+  }
+
+  const label = group.findOne('.label') as Konva.Text
+  if (label) {
+    label.y(handleY(index))
   }
 }
 

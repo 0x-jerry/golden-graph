@@ -1,18 +1,10 @@
 import Konva from 'konva'
-import { COLORS } from '../constants'
 import type { HandleModule } from './types'
 
 export const type = 'default'
 
-export const create: HandleModule['create'] = (handle) => {
-  const group = new Konva.Group()
-  const text = new Konva.Text({
-    text: handle.name,
-    fontSize: 12,
-    fill: COLORS.TEXT_MUTED,
-    align: 'center',
-    verticalAlign: 'middle',
-  })
-  group.add(text)
-  return group
+// The handle name is rendered by HandleRenderer itself (next to the joint
+// dot), so the default module renders no extra content.
+export const create: HandleModule['create'] = () => {
+  return new Konva.Group()
 }

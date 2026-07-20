@@ -108,16 +108,6 @@ export const create: HandleModule['create'] = (handle) => {
   })
   group.add(valueText)
 
-  const labelText = new Konva.Text({
-    name: 'label',
-    text: handle.name,
-    fontSize: 12,
-    fill: COLORS.TEXT_MUTED,
-    x: INPUT_WIDTH + 6,
-    verticalAlign: 'middle',
-  })
-  group.add(labelText)
-
   inputBg.on('click', () => {
     startEdit(handle, valueText)
   })
