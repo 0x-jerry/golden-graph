@@ -21,9 +21,9 @@ export class ToStringNode extends Node {
     })
 
     this.addHandle({
+      value: 'This is a ToString node, and some text explanation',
       options: {
-        type: 'text',
-        content: 'This is a ToString node, and some text explanation',
+        type: 'display',
       },
     })
   }

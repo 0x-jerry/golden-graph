@@ -8,13 +8,13 @@ import type {
   Workspace,
 } from '../core'
 import type { IRenderer } from '../core'
-import { ActiveType, HandlePosition } from '../core'
+import { ActiveType } from '../core'
 import { createCoordLayer } from './CoordLayer'
 import { createEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
-import { createNode, updateNode, destroyNode } from './NodeRenderer'
+import { createNode, updateNode, destroyNode, getHandleIndex } from './NodeRenderer'
 import { updateHandle } from './HandleRenderer'
 import {
   COLORS,
@@ -347,10 +347,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   // --- Handle ---
 
   _onHandleUpdated(handle: NodeHandle) {
-    const handles = handle.node.handles.filter(
-      (h) => h.position !== HandlePosition.None,
-    )
-    const index = handles.indexOf(handle)
+    const index = getHandleIndex(handle.node, handle)
     if (index >= 0) {
       updateHandle(handle, index)
     }
@@ -358,10 +355,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   }
 
   _onHandleConnectionChanged(handle: NodeHandle) {
-    const handles = handle.node.handles.filter(
-      (h) => h.position !== HandlePosition.None,
-    )
-    const index = handles.indexOf(handle)
+    const index = getHandleIndex(handle.node, handle)
     if (index >= 0) {
       updateHandle(handle, index)
     }

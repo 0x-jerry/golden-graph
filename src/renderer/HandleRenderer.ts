@@ -70,6 +70,9 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
       contentGroup.x(LAYOUT.NODE_WIDTH - LAYOUT.JOINT_RADIUS - 4)
       contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
       contentGroup.offsetX(contentGroup.getClientRect().width)
+    } else {
+      contentGroup.x(LAYOUT.HANDLE_PADDING)
+      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
     }
 
     group.add(contentGroup)

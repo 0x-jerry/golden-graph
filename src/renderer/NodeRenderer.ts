@@ -70,18 +70,8 @@ export function createNode(node: Node): Konva.Group {
   })
 
   noneHandles.forEach((handle, i) => {
-    const offsetY =
-      LAYOUT.HEADER_HEIGHT +
-      handles.length * LAYOUT.HANDLE_ROW_HEIGHT +
-      i * LAYOUT.HANDLE_ROW_HEIGHT
-    const label = new Konva.Text({
-      text: handle.name,
-      fontSize: 12,
-      fill: COLORS.TEXT_MUTED,
-      x: LAYOUT.JOINT_RADIUS + 8,
-      y: offsetY + LAYOUT.HANDLE_ROW_HEIGHT / 2 - 7,
-    })
-    g.add(label)
+    const hg = renderHandle(handle, handles.length + i)
+    g.add(hg)
   })
 
   return g
@@ -103,7 +93,6 @@ export function updateNode(group: Konva.Group, node: Node): void {
   }
 
   node.handles.forEach((handle) => {
-    if (handle.position === HandlePosition.None) return
     const hi = getHandleIndex(node, handle)
     if (hi < 0) return
     updateHandle(handle, hi)
@@ -118,7 +107,13 @@ export function destroyNode(group: Konva.Group, node: Node): void {
 }
 
 export function getHandleIndex(node: Node, handle: NodeHandle): number {
-  return node.handles
-    .filter((h) => h.position !== HandlePosition.None)
-    .indexOf(handle)
+  const positioned = node.handles.filter((h) => h.position !== HandlePosition.None)
+  const idx = positioned.indexOf(handle)
+  if (idx >= 0) return idx
+
+  const noneHandles = node.handles.filter((h) => h.position === HandlePosition.None)
+  const noneIdx = noneHandles.indexOf(handle)
+  if (noneIdx >= 0) return positioned.length + noneIdx
+
+  return -1
 }
