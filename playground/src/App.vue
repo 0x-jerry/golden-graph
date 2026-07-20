@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, useTemplateRef } from 'vue';
-import { KonvaRenderer, SubGraphInputNode, SubGraphOutputNode, Workspace } from '../../src'
+import { KonvaRenderer, Workspace } from '../../src'
 import { setup as _setup } from './editor'
 
 const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
@@ -12,9 +12,6 @@ const workspace = computed(() => instance.value?.workspace);
 function setup(ws: Workspace) {
   _setup(ws)
   ws.setDebug(true)
-
-  ws.registerNode(SubGraphInputNode.type, SubGraphInputNode)
-  ws.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)
 
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
@@ -134,6 +131,8 @@ async function loadFromJSON() {
   display: flex;
   padding: 0 20px;
   align-items: center;
+  border: 0 solid #eee;
+  border-width: 0 0 1px 0;
 
   gap: 8px;
 }

@@ -11,7 +11,12 @@ import { Edge } from './Edge'
 import { Executor } from './Executor'
 import { Group } from './Group'
 import { convertGroupToSubGraph } from './GroupToSubGraph'
-import { createIncrementIdGenerator, toReadonly, type Factory } from './helper'
+import {
+  createIncrementIdGenerator,
+  edgeLocKey,
+  toReadonly,
+  type Factory,
+} from './helper'
 import {
   type Node,
   type NodeBaseUpdateOptions,
@@ -21,7 +26,7 @@ import {
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
-import { SubGraph } from './SubGraph'
+import { SubGraph, SubGraphInputNode, SubGraphOutputNode } from './SubGraph'
 import type {
   IDisposable,
   INodeHandleLoc,
@@ -87,6 +92,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   _nodes: Node[] = []
   _edges: Edge[] = []
+  /**
+   * Index of edges by endpoint handle loc, for fast `queryEdges` lookups.
+   */
+  _edgeIndex = new Map<string, Edge[]>()
   _groups: Group[] = []
   _subGraphs: SubGraph[] = []
 
@@ -106,6 +115,13 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
      */
     activeIds: [] as number[],
     activeType: ActiveType.None,
+  }
+
+  constructor() {
+    // Internal node types must always be registered so that `fromJSON`
+    // (e.g. `enterSubGraph`) can restore subgraph interface nodes.
+    this.registerNode(SubGraphInputNode.type, SubGraphInputNode)
+    this.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)
   }
 
   get state() {
@@ -144,7 +160,11 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     return toReadonly(this._nodeRegister)
   }
 
-  setRenderer(renderer: IRenderer) {
+  get renderer() {
+    return this._renderer
+  }
+
+  setRenderer(renderer?: IRenderer) {
     this._renderer = renderer
   }
 
@@ -226,6 +246,17 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
     const rect = this._renderer.getNodesBounding(nodeIds)
 
+    if (
+      !Number.isFinite(rect.x) ||
+      !Number.isFinite(rect.y) ||
+      !Number.isFinite(rect.width) ||
+      !Number.isFinite(rect.height)
+    ) {
+      throw new Error(
+        `Can not compute bounding box for nodes: [${nodeIds.join(', ')}]`,
+      )
+    }
+
     const padding = 40
     const headerHeight = 50
 
@@ -256,7 +287,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     return groups
   }
 
-  covertGroupToSubGraph(groupId: number) {
+  convertGroupToSubGraph(groupId: number) {
     const subGraph = convertGroupToSubGraph(this, groupId)
 
     this.addSubGraph(subGraph)
@@ -372,9 +403,9 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     return node
   }
 
-  canConnect(start: NodeHandle, end: NodeHandle) {
+  canConnect(start: NodeHandle, end: NodeHandle): boolean {
     if (start.position === end.position) {
-      return
+      return false
     }
 
     return start.canConnectTo(end)
@@ -395,10 +426,53 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
     edge.setEndpoints(start, end)
 
-    this._edges.push(edge)
-    this.events.emit('edge:added', edge)
+    this._addEdge(edge)
 
     return edge
+  }
+
+  /**
+   * Add an edge to the workspace, keep the edge index up-to-date and emit
+   * `edge:added`.
+   * @internal
+   */
+  _addEdge(edge: Edge) {
+    this._edges.push(edge)
+    this._indexEdge(edge)
+    this.events.emit('edge:added', edge)
+  }
+
+  _indexEdge(edge: Edge) {
+    for (const loc of [edge.start.loc, edge.end.loc]) {
+      const key = edgeLocKey(loc)
+      const list = this._edgeIndex.get(key)
+      if (list) {
+        list.push(edge)
+      } else {
+        this._edgeIndex.set(key, [edge])
+      }
+    }
+  }
+
+  _unindexEdge(edge: Edge) {
+    if (!edge._start || !edge._end) {
+      return
+    }
+
+    for (const loc of [edge._start.loc, edge._end.loc]) {
+      const key = edgeLocKey(loc)
+      const list = this._edgeIndex.get(key)
+      if (!list) {
+        continue
+      }
+
+      const filtered = list.filter((e) => e !== edge)
+      if (filtered.length) {
+        this._edgeIndex.set(key, filtered)
+      } else {
+        this._edgeIndex.delete(key)
+      }
+    }
   }
 
   removeConnectedEdgesByHandle(handle: NodeHandle) {
@@ -422,16 +496,13 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   queryEdges(loc: INodeHandleLoc) {
-    const filtered = this._edges.filter((edge) => {
-      return edge.start.is(loc) || edge.end.is(loc)
-    })
-
-    return filtered
+    return this._edgeIndex.get(edgeLocKey(loc)) ?? []
   }
 
   removeEdgeByIds(...ids: number[]) {
     const edges = remove(this._edges, (e) => ids.includes(e.id))
     for (const edge of edges) {
+      this._unindexEdge(edge)
       edge.clearEndpoints()
 
       this.events.emit('edge:removed', edge)
@@ -486,10 +557,17 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
     this._groups.splice(0)
     this._edges.splice(0)
+    this._edgeIndex.clear()
     this._nodes.splice(0)
     this._subGraphs.splice(0)
 
     this._idGenerator.reset(0)
+
+    this.clearActiveIds()
+
+    // NOTE: `_workspaceDataStack` is intentionally left untouched — `clear()`
+    // is also used by `fromJSON()` during `enterSubGraph()`, which relies on
+    // the stack to restore the parent workspace on `exitSubGraph()`.
   }
 
   async execute() {
@@ -522,6 +600,12 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   fromJSON(data: IWorkspace): void {
+    if (data.version && data.version !== this.version) {
+      console.warn(
+        `Workspace data version [${data.version}] differs from current version [${this.version}]`,
+      )
+    }
+
     this.clear()
 
     this._idGenerator.reset(data.extra.incrementID)
@@ -558,8 +642,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
       edge.setWorkspace(this)
 
       edge.fromJSON(edgeData)
-      this._edges.push(edge)
-      this.events.emit('edge:added', edge)
+      this._addEdge(edge)
     }
 
     for (const group of data.groups) {

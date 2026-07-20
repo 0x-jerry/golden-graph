@@ -1,6 +1,7 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../../core'
 import { COLORS } from '../constants'
+import { closeOverlayOnCoordChange, positionOverlay } from './overlay'
 import type { HandleModule } from './types'
 
 export const type = 'select'
@@ -10,6 +11,7 @@ const INPUT_HEIGHT = 18
 
 let sharedSelect: HTMLSelectElement | null = null
 let currentHandle: NodeHandle | null = null
+let unsubscribeCoord: (() => void) | null = null
 
 function getSharedSelect(): HTMLSelectElement {
   if (!sharedSelect) {
@@ -54,12 +56,22 @@ function hideSharedSelect() {
     sharedSelect.style.display = 'none'
   }
   currentHandle = null
+  unsubscribeCoord?.()
+  unsubscribeCoord = null
+}
+
+export function dispose() {
+  sharedSelect?.remove()
+  sharedSelect = null
+  currentHandle = null
+  unsubscribeCoord?.()
+  unsubscribeCoord = null
 }
 
 function startEdit(handle: NodeHandle, valueText: Konva.Text) {
   const select = getSharedSelect()
-  const stage = valueText.getStage()
-  if (!stage) return
+
+  if (!positionOverlay(select, valueText, INPUT_WIDTH, INPUT_HEIGHT)) return
 
   const options = handle.getOptions<{ type: string, options?: Array<{ value: string, label: string }> | string[] }>()
   select.innerHTML = ''
@@ -80,24 +92,9 @@ function startEdit(handle: NodeHandle, valueText: Konva.Text) {
 
   select.value = String(handle.getRealValue() ?? '')
 
-  const container = stage.container()
-  const absPos = valueText.getAbsolutePosition()
-  const scale = stage.scaleX()
-  const rect = container.getBoundingClientRect()
-
-  const x = rect.left + absPos.x * scale - 2 * scale
-  const y = rect.top + absPos.y * scale - 2 * scale
-  const width = INPUT_WIDTH * scale + 4
-  const height = INPUT_HEIGHT * scale + 2
-
-  select.style.left = `${x}px`
-  select.style.top = `${y}px`
-  select.style.width = `${width}px`
-  select.style.height = `${height}px`
-  select.style.fontSize = `${12 * scale}px`
-  select.style.display = 'block'
-
   currentHandle = handle
+  unsubscribeCoord?.()
+  unsubscribeCoord = closeOverlayOnCoordChange(handle, () => select.blur())
 
   select.focus()
 }

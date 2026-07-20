@@ -17,3 +17,14 @@ const registry = new HandleComponentRegistry<HandleModule>()
   .setDefault(DefaultHandle)
 
 export const getHandleModule = (type: string) => registry.get(type)
+
+/**
+ * Remove shared DOM editors (appended to `document.body`) created by handle
+ * modules. Should be called when the renderer is disposed.
+ */
+export function disposeHandleEditors() {
+  TextHandle.dispose()
+  NumberHandle.dispose()
+  SelectHandle.dispose()
+  ImageHandle.dispose()
+}

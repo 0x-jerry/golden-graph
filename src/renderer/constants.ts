@@ -77,3 +77,10 @@ export const HANDLE_CONTENT_Y_OFFSET = 8
 export const EXECUTOR_SHADOW_BLUR = 10
 export const ZOOM_MIN = 0.01
 export const ZOOM_MAX = 2
+
+/**
+ * Zoom step for a given scale — finer steps when zoomed out.
+ */
+export function getZoomStep(scale: number) {
+  return scale > 1 ? 0.05 : scale > 0.1 ? 0.025 : 0.01
+}

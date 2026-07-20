@@ -1,11 +1,12 @@
 import Konva from 'konva'
 import { clamp } from '@0x-jerry/utils'
 import type { NodeHandle, Workspace } from '../core'
-import { ActiveType, HandlePosition } from '../core'
+import { ActiveType } from '../core'
 import type { ContextMenuContext, CoreMenuItem } from './types'
 import { ContextMenuTargetType } from './types'
 import { buildDefaultContextMenu } from './ContextMenuBuilder'
 import { ConnectionLine } from './ConnectionLine'
+import { getJointPos } from './EdgeRenderer'
 import {
   COLORS,
   LAYOUT,
@@ -15,6 +16,7 @@ import {
   ZOOM_MAX,
   ELEMENT_TYPE,
   ATTR,
+  getZoomStep,
 } from './constants'
 
 export interface InteractionManagerOptions {
@@ -66,26 +68,16 @@ export class InteractionManager {
   _setupStageEvents() {
     const stage = this._stage
 
-    stage.on('pointerdown', (e) => {
-      this._onPointerDown(e)
-    })
+    stage.on('pointerdown', this._onPointerDown)
+    stage.on('pointermove', this._onPointerMove)
+    stage.on('pointerup', this._onPointerUp)
+    stage.on('wheel', this._onWheel)
+    stage.on('contextmenu', this._onContextMenuEvent)
+  }
 
-    stage.on('pointermove', () => {
-      this._onPointerMove()
-    })
-
-    stage.on('pointerup', () => {
-      this._onPointerUp()
-    })
-
-    stage.on('wheel', (e) => {
-      this._onWheel(e)
-    })
-
-    stage.on('contextmenu', (e) => {
-      e.evt.preventDefault()
-      this._handleContextMenu(e)
-    })
+  _onContextMenuEvent = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault()
+    this._handleContextMenu(e)
   }
 
   _handleContextMenu(e: Konva.KonvaEventObject<PointerEvent>) {
@@ -114,7 +106,11 @@ export class InteractionManager {
     return { type: ContextMenuTargetType.Canvas }
   }
 
-  _onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
+  _onPointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    // Only the primary (left) button starts drags/connections — right-click
+    // is reserved for the context menu, middle-click is ignored.
+    if (e.evt.button !== 0) return
+
     const target = e.target as Konva.Node
 
     if (target.name() === ELEMENT_TYPE.JOINT) {
@@ -134,7 +130,7 @@ export class InteractionManager {
         ) {
           this._onNodeSelect(hit.id)
         }
-        this._startNodeDrag(hit.id, e)
+        this._startNodeDrag(hit.id)
       } else {
         this._startGroupDrag(hit.id)
       }
@@ -149,7 +145,7 @@ export class InteractionManager {
     }
   }
 
-  _onPointerMove() {
+  _onPointerMove = () => {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
@@ -179,7 +175,7 @@ export class InteractionManager {
     }
   }
 
-  _onPointerUp() {
+  _onPointerUp = () => {
     if (this._isConnecting) {
       this._endConnecting()
     }
@@ -215,23 +211,6 @@ export class InteractionManager {
     return null
   }
 
-  _getHandlePos(handle: NodeHandle): { x: number; y: number } {
-    const handles = handle.node.handles.filter(
-      (h) => h.position !== HandlePosition.None,
-    )
-    const index = handles.indexOf(handle)
-    const y =
-      handle.node.pos.y +
-      LAYOUT.HEADER_HEIGHT +
-      index * LAYOUT.HANDLE_ROW_HEIGHT +
-      LAYOUT.HANDLE_ROW_HEIGHT / 2
-
-    if (handle.isRight) {
-      return { x: handle.node.pos.x + LAYOUT.NODE_WIDTH, y }
-    }
-    return { x: handle.node.pos.x, y }
-  }
-
   // -- Connecting ---
 
   _startConnecting(handleKey: string, nodeId: number) {
@@ -257,7 +236,7 @@ export class InteractionManager {
     if (!pos) return
 
     const wsPos = this._ws.coord.convertScreenCoord(pos)
-    const jointPos = this._getHandlePos(startHandle)
+    const jointPos = getJointPos(startHandle)
 
     this._connectionLine.show(jointPos, wsPos)
   }
@@ -266,7 +245,7 @@ export class InteractionManager {
     if (!this._connectHandle) return
 
     const wsPos = this._ws.coord.convertScreenCoord(screenPos)
-    const jointPos = this._getHandlePos(this._connectHandle)
+    const jointPos = getJointPos(this._connectHandle)
 
     this._connectionLine.update(jointPos, wsPos)
   }
@@ -305,7 +284,7 @@ export class InteractionManager {
 
   // --- Node Drag ---
 
-  _startNodeDrag(nodeId: number, _e: Konva.KonvaEventObject<PointerEvent>) {
+  _startNodeDrag(nodeId: number) {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
@@ -472,13 +451,13 @@ export class InteractionManager {
 
   // --- Zoom ---
 
-  _onWheel(e: Konva.KonvaEventObject<WheelEvent>) {
+  _onWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault()
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
     const coord = this._ws.coord
-    const scaleStep = coord.scale > 1 ? 0.05 : coord.scale > 0.1 ? 0.025 : 0.01
+    const scaleStep = getZoomStep(coord.scale)
     let scale = coord.scale + (e.evt.deltaY < 0 ? 1 : -1) * scaleStep
     scale = clamp(scale, ZOOM_MIN, ZOOM_MAX)
 
@@ -486,7 +465,12 @@ export class InteractionManager {
   }
 
   dispose() {
-    this._stage.off()
+    // Remove only the listeners registered by this instance.
+    this._stage.off('pointerdown', this._onPointerDown)
+    this._stage.off('pointermove', this._onPointerMove)
+    this._stage.off('pointerup', this._onPointerUp)
+    this._stage.off('wheel', this._onWheel)
+    this._stage.off('contextmenu', this._onContextMenuEvent)
     this._connectionLine.destroy()
   }
 }

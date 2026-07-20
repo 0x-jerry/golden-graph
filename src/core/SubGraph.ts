@@ -217,7 +217,11 @@ export class SubGraph implements IPersistent<ISubGraph>, IDisposable {
       edge.setWorkspace(this.workspace)
       edge.id = this.workspace.nextId()
 
-      this.workspace._edges.push(edge)
+      // Edges migrated from another workspace had their handle connections
+      // cleared on removal — restore them so data keeps flowing.
+      edge.restoreEndpoints()
+
+      this.workspace._addEdge(edge)
     })
   }
 

@@ -51,6 +51,16 @@ export class Edge implements IPersistent<IEdge> {
     this._end?.setConnectedHandle()
   }
 
+  /**
+   * Re-establish handle connections after {@link clearEndpoints}.
+   * Used when an edge is moved to another workspace (e.g. group → subgraph),
+   * where the handle back-references were cleared but `_start`/`_end` are kept.
+   */
+  restoreEndpoints() {
+    this._start?.setConnectedHandle(this._end)
+    this._end?.setConnectedHandle(this._start)
+  }
+
   toJSON(): IEdge {
     return {
       id: this.id,

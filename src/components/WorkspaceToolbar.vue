@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { clamp } from '@0x-jerry/utils'
 import { computed, ref } from 'vue'
-import { useCoordSystem, useWorkspaceEvent } from '../hooks'
+import { useCoordSystem, useWorkspace, useWorkspaceEvent } from '../hooks'
+import { getZoomStep, ZOOM_MAX, ZOOM_MIN } from '../renderer/constants'
 
+const ws = useWorkspace()!
 const coord = useCoordSystem()!
 
 const scale = ref(coord.scale)
@@ -13,16 +15,22 @@ useWorkspaceEvent('coord:changed', () => {
 
 const zoomPercent = computed(() => `${Math.round(scale.value * 100)}%`)
 
+/**
+ * Anchor zoom at the viewport center (fall back to the origin when no
+ * renderer is attached, e.g. headless usage).
+ */
+function zoomCenter() {
+  return ws.renderer?.getViewportCenter?.() ?? { x: 0, y: 0 }
+}
+
 function zoomIn() {
-  const scaleStep = coord.scale > 1 ? 0.05 : coord.scale > 0.1 ? 0.025 : 0.01
-  const scale = clamp(coord.scale + scaleStep, 0.01, 2)
-  coord.zoomAt({ x: 0, y: 0 }, scale)
+  const scale = clamp(coord.scale + getZoomStep(coord.scale), ZOOM_MIN, ZOOM_MAX)
+  coord.zoomAt(zoomCenter(), scale)
 }
 
 function zoomOut() {
-  const scaleStep = coord.scale > 1 ? 0.05 : coord.scale > 0.1 ? 0.025 : 0.01
-  const scale = clamp(coord.scale - scaleStep, 0.01, 2)
-  coord.zoomAt({ x: 0, y: 0 }, scale)
+  const scale = clamp(coord.scale - getZoomStep(coord.scale), ZOOM_MIN, ZOOM_MAX)
+  coord.zoomAt(zoomCenter(), scale)
 }
 
 function resetZoom() {

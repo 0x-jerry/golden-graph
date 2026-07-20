@@ -90,4 +90,10 @@ export interface IRenderer {
     width: number
     height: number
   }
+
+  /**
+   * Center of the viewport in stage (screen) coordinates.
+   * Used to anchor zoom operations.
+   */
+  getViewportCenter?(): IVec2
 }

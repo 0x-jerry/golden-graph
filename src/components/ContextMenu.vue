@@ -127,15 +127,6 @@ function handleMouseEnter(index: number) {
   activeIndex.value = index
 }
 
-function handleMouseLeave() {
-  // We might want a delay here, but for simplicity, keep it simple for now.
-  // If we close immediately, moving to submenu might fail if there's a gap.
-  // But our offset is small.
-  // Usually, we only close if we hover another item.
-  // But if we leave the menu entirely?
-  // For now, let's not auto-close on simple mouseleave of the item unless we enter another.
-}
-
 function handleClick(item: ContextMenuItem) {
   if (item.disabled) return
 
@@ -183,7 +174,6 @@ function handleSubMenuClick(item: ContextMenuItem) {
         class="context-menu-item"
         :class="{ disabled: item.disabled, active: activeIndex === index }"
         @mouseenter="handleMouseEnter(index)"
-        @mouseleave="handleMouseLeave"
         @click.stop="handleClick(item)"
       >
         <div class="icon">

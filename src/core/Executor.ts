@@ -38,6 +38,9 @@ export class Executor {
       this._cache = this._cacheNew
       this._cacheNew = new Map()
     } catch (error) {
+      // Drop partial results of the failed run so the next run diffs
+      // against the last successful cache instead of stale entries.
+      this._cacheNew = new Map()
       throw new Error(String(error), { cause: error })
     } finally {
       this._state.isProcessing = false
@@ -47,13 +50,14 @@ export class Executor {
   }
 
   async _execute(entryNodes: Node[]) {
-    this._processStack = [...entryNodes]
+    // Use the array as a stack (push/pop are O(1), unlike shift/unshift).
+    this._processStack = [...entryNodes].reverse()
     this._processed.clear()
 
-    let i = 10_0000
+    let i = 100_000
 
     while (this._processStack.length) {
-      const currentNode = this._processStack.shift()!
+      const currentNode = this._processStack.pop()!
 
       if (this._processed.has(currentNode)) {
         continue
@@ -88,7 +92,11 @@ export class Executor {
     }
 
     if (preprocessNodes.length) {
-      this._processStack.unshift(...preprocessNodes, node)
+      // Re-queue the current node and process its dependencies first.
+      this._processStack.push(node)
+      for (let idx = preprocessNodes.length - 1; idx >= 0; idx--) {
+        this._processStack.push(preprocessNodes[idx]!)
+      }
 
       return
     }
@@ -127,6 +135,8 @@ export class Executor {
       }
     }
 
-    this._processStack.unshift(...nextProcessNodes)
+    for (let idx = nextProcessNodes.length - 1; idx >= 0; idx--) {
+      this._processStack.push(nextProcessNodes[idx]!)
+    }
   }
 }

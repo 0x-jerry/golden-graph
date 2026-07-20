@@ -11,7 +11,7 @@ import {
   ATTR,
 } from './constants'
 
-function getJointPos(handle: NodeHandle): { x: number; y: number } {
+export function getJointPos(handle: NodeHandle): { x: number; y: number } {
   const handles = handle.node.handles.filter(
     (h: NodeHandle) => h.position !== HandlePosition.None,
   )
@@ -91,7 +91,7 @@ function createCloseButton(): Konva.Group {
   return group
 }
 
-export function createEdge(edge: Edge): Konva.Group {
+function computeEdgeGeometry(edge: Edge) {
   let startHandle = edge.start
   let endHandle = edge.end
 
@@ -111,6 +111,13 @@ export function createEdge(edge: Edge): Konva.Group {
   const p3 = endPos
 
   const points = [p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y]
+  const mid = bezierMidpoint(p0, p1, p2, p3)
+
+  return { points, mid }
+}
+
+export function createEdge(edge: Edge): Konva.Group {
+  const { points, mid } = computeEdgeGeometry(edge)
 
   const group = new Konva.Group({
     name: ELEMENT_TYPE.EDGE,
@@ -128,7 +135,6 @@ export function createEdge(edge: Edge): Konva.Group {
   })
   group.add(line)
 
-  const mid = bezierMidpoint(p0, p1, p2, p3)
   const closeBtn = createCloseButton()
   closeBtn.position(mid)
   group.add(closeBtn)
@@ -148,6 +154,24 @@ export function createEdge(edge: Edge): Konva.Group {
   })
 
   return group
+}
+
+/**
+ * Update an existing edge group in place, avoiding destroy/recreate churn
+ * while nodes are being dragged.
+ */
+export function updateEdge(group: Konva.Group, edge: Edge): void {
+  const { points, mid } = computeEdgeGeometry(edge)
+
+  const line = group.findOne<Konva.Line>('.edge-line')
+  if (line) {
+    line.points(points)
+  }
+
+  const closeBtn = group.findOne<Konva.Group>('.edge-close')
+  if (closeBtn) {
+    closeBtn.position(mid)
+  }
 }
 
 export function destroyEdge(group: Konva.Group): void {

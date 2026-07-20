@@ -10,7 +10,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
-      reporter: ['clover', 'html-spa'],
+      reporter: ['clover', 'html'],
     },
   },
 })

@@ -1,6 +1,7 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../../core'
 import { COLORS } from '../constants'
+import { closeOverlayOnCoordChange, positionOverlay } from './overlay'
 import type { HandleModule } from './types'
 
 export const type = 'number'
@@ -10,6 +11,7 @@ const INPUT_HEIGHT = 18
 
 let sharedInput: HTMLInputElement | null = null
 let currentHandle: NodeHandle | null = null
+let unsubscribeCoord: (() => void) | null = null
 
 function getSharedInput(): HTMLInputElement {
   if (!sharedInput) {
@@ -44,7 +46,8 @@ function getSharedInput(): HTMLInputElement {
 
 function finishEdit() {
   if (!currentHandle || !sharedInput) return
-  const num = Number(sharedInput.value)
+  // Number('') === 0, so treat an empty field as "no value" explicitly.
+  const num = sharedInput.value === '' ? NaN : Number(sharedInput.value)
   currentHandle.setValue(Number.isNaN(num) ? undefined : num)
   hideSharedInput()
 }
@@ -54,32 +57,28 @@ function hideSharedInput() {
     sharedInput.style.display = 'none'
   }
   currentHandle = null
+  unsubscribeCoord?.()
+  unsubscribeCoord = null
+}
+
+export function dispose() {
+  sharedInput?.remove()
+  sharedInput = null
+  currentHandle = null
+  unsubscribeCoord?.()
+  unsubscribeCoord = null
 }
 
 function startEdit(handle: NodeHandle, valueText: Konva.Text) {
   const input = getSharedInput()
-  const stage = valueText.getStage()
-  if (!stage) return
 
-  const container = stage.container()
-  const absPos = valueText.getAbsolutePosition()
-  const scale = stage.scaleX()
-  const rect = container.getBoundingClientRect()
+  if (!positionOverlay(input, valueText, INPUT_WIDTH, INPUT_HEIGHT)) return
 
-  const x = rect.left + absPos.x * scale - 2 * scale
-  const y = rect.top + absPos.y * scale - 2 * scale
-  const width = INPUT_WIDTH * scale + 4
-  const height = INPUT_HEIGHT * scale + 2
-
-  input.style.left = `${x}px`
-  input.style.top = `${y}px`
-  input.style.width = `${width}px`
-  input.style.height = `${height}px`
-  input.style.fontSize = `${12 * scale}px`
-  input.style.display = 'block'
   input.value = String(handle.getRealValue() ?? '')
 
   currentHandle = handle
+  unsubscribeCoord?.()
+  unsubscribeCoord = closeOverlayOnCoordChange(handle, () => input.blur())
 
   input.focus()
   input.select()

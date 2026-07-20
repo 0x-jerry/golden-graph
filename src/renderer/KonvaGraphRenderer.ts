@@ -10,12 +10,13 @@ import type {
 import type { IRenderer } from '../core'
 import { ActiveType } from '../core'
 import { createCoordLayer } from './CoordLayer'
-import { createEdge } from './EdgeRenderer'
+import { createEdge, updateEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
 import { createNode, updateNode, destroyNode, getHandleIndex } from './NodeRenderer'
 import { updateHandle } from './HandleRenderer'
+import { disposeHandleEditors } from './handles'
 import {
   COLORS,
   SEL,
@@ -125,6 +126,13 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     }
   }
 
+  getViewportCenter() {
+    return {
+      x: this._stage.width() / 2,
+      y: this._stage.height() / 2,
+    }
+  }
+
   // --- Event Subscription ---
 
   _subscribe() {
@@ -133,7 +141,9 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._disposers.add(
       ws.events.on('node:added', (node) => {
         this._onNodeAdded(node)
-        this._rebuildEdges()
+        // Only edges connected to the new node can be affected (e.g. an edge
+        // whose line was skipped earlier because the node did not exist yet).
+        this._rebuildEdgesForNode(node.id)
       }),
     )
 
@@ -293,31 +303,19 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     }
   }
 
-  _rebuildEdges() {
-    this._edgeGroups.forEach((group) => group.destroy())
-    this._edgeGroups.clear()
-
-    for (const edge of this._ws.edges) {
-      this._addEdgeLine(edge)
-    }
-
-    this._edgeLayer.batchDraw()
-  }
-
   _rebuildEdgesForNode(nodeId: number) {
     const relatedEdges = this._ws.queryConnectedEdges(nodeId)
 
-    const removeIds = new Set<number>()
-    for (const [id, group] of this._edgeGroups) {
-      if (relatedEdges.some((e) => e.id === id)) {
-        group.destroy()
-        removeIds.add(id)
-      }
-    }
-    removeIds.forEach((id) => this._edgeGroups.delete(id))
-
     for (const edge of relatedEdges) {
-      if (!this._edgeGroups.has(edge.id)) {
+      const group = this._edgeGroups.get(edge.id)
+      if (group) {
+        // Update geometry in place to avoid Konva object churn while dragging.
+        try {
+          updateEdge(group, edge)
+        } catch {
+          // handle may not exist yet
+        }
+      } else {
         this._addEdgeLine(edge)
       }
     }
@@ -447,6 +445,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._disposers.dispose()
     this._interaction.dispose()
     this._resizeObserver.disconnect()
+    disposeHandleEditors()
 
     this._nodeGroups.forEach((group, nodeId) => {
       const node = this._ws.getNode(nodeId)
@@ -459,5 +458,9 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._groupGroups.clear()
 
     this._stage.destroy()
+
+    // Detach from the workspace so later core calls (e.g. addGroup) fail
+    // with a clear error instead of touching a destroyed stage.
+    this._ws.setRenderer(undefined)
   }
 }

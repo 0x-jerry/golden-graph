@@ -138,7 +138,7 @@ describe('Workspace', () => {
     ws._groups.push(group)
 
     // Action
-    ws.covertGroupToSubGraph(group.id)
+    ws.convertGroupToSubGraph(group.id)
 
     // Verification
 
@@ -200,7 +200,7 @@ describe('Workspace', () => {
     group.nodes.push(n1.id, n2.id)
     ws._groups.push(group)
 
-    ws.covertGroupToSubGraph(group.id)
+    ws.convertGroupToSubGraph(group.id)
 
     const subGraph = ws.subGraphs[0]!
 
@@ -264,7 +264,7 @@ describe('Workspace', () => {
     group.nodes.push(n1.id, n2.id)
     ws._groups.push(group)
 
-    ws.covertGroupToSubGraph(group.id)
+    ws.convertGroupToSubGraph(group.id)
 
     const subGraphNode = ws.nodes.find((n) => n.id !== 2001 && n.id !== 2002)!
     expect(subGraphNode).toBeDefined()
@@ -306,7 +306,7 @@ describe('Workspace', () => {
     group.nodes.push(n1.id, n2.id)
     ws._groups.push(group)
 
-    ws.covertGroupToSubGraph(group.id)
+    ws.convertGroupToSubGraph(group.id)
 
     const subGraphNode = ws.nodes.find((n) => n.id !== 2001)!
 

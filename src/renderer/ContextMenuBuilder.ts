@@ -20,10 +20,12 @@ function canvasMenu(ws: Workspace): CoreMenuItem[] {
   return [
     {
       label: 'Add Node',
-      children: Array.from(ws.nodeRegister.keys()).map((type) => ({
-        label: type,
-        action: () => ws.addNode(type),
-      })),
+      children: Array.from(ws.nodeRegister.entries())
+        .filter(([, ctor]) => !ctor.internal)
+        .map(([type]) => ({
+          label: type,
+          action: () => ws.addNode(type),
+        })),
     },
   ]
 }
@@ -70,12 +72,18 @@ function groupMenu(ws: Workspace, groupId: number): CoreMenuItem[] {
     },
     {
       label: 'Convert to SubGraph',
-      action: () => ws.covertGroupToSubGraph(groupId),
+      action: () => ws.convertGroupToSubGraph(groupId),
     },
     {
       label: 'Delete Group',
       shortcut: 'Del',
-      action: () => ws.removeGroup(groupId),
+      action: () => {
+        const group = ws.groups.find((g) => g.id === groupId)
+        if (!group) return
+
+        ws.removeNodeByIds(...group.nodes)
+        ws.removeGroup(groupId)
+      },
     },
   ]
 }
