@@ -68,6 +68,18 @@ export function dispose() {
   unsubscribeCoord = null
 }
 
+function openDropdown(select: HTMLSelectElement) {
+  if (typeof select.showPicker === 'function') {
+    try {
+      select.showPicker()
+      return
+    } catch {
+      // requires transient user activation — fall through to the legacy hack
+    }
+  }
+  select.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+}
+
 function startEdit(handle: NodeHandle, valueText: Konva.Text) {
   const select = getSharedSelect()
 
@@ -97,6 +109,7 @@ function startEdit(handle: NodeHandle, valueText: Konva.Text) {
   unsubscribeCoord = closeOverlayOnCoordChange(handle, () => select.blur())
 
   select.focus()
+  openDropdown(select)
 }
 
 export const create: HandleModule['create'] = (handle) => {
