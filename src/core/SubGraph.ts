@@ -4,7 +4,7 @@ import { toReadonly } from './helper'
 import { Node, NodeType } from './Node'
 import type { INodeHandleConfig } from './NodeHandle'
 import type { IPersistent } from './Persistent'
-import type { ISubGraph } from './types'
+import type { IDisposable, ISubGraph } from './types'
 import { Workspace } from './Workspace'
 
 export class SubGraphInputNode extends Node {
@@ -140,7 +140,7 @@ class VirtualWorkspace extends Workspace {
   }
 }
 
-export class SubGraph implements IPersistent<ISubGraph> {
+export class SubGraph implements IPersistent<ISubGraph>, IDisposable {
   id = 0
 
   _workspace: Workspace
@@ -219,6 +219,10 @@ export class SubGraph implements IPersistent<ISubGraph> {
 
       this.workspace._edges.push(edge)
     })
+  }
+
+  dispose() {
+    this._workspace.dispose()
   }
 
   fromJSON(data: ISubGraph): void {

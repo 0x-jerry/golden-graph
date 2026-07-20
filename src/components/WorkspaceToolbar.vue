@@ -35,7 +35,7 @@ function resetZoom() {
     <button
       class="r-workspace-toolbar-btn"
       title="Zoom out"
-      @pointerdown.stop="zoomOut"
+      @click.stop="zoomOut"
     >
       <svg
         width="14"
@@ -52,7 +52,7 @@ function resetZoom() {
     <button
       class="r-workspace-toolbar-btn"
       title="Zoom in"
-      @pointerdown.stop="zoomIn"
+      @click.stop="zoomIn"
     >
       <svg
         width="14"
@@ -69,7 +69,7 @@ function resetZoom() {
     <button
       class="r-workspace-toolbar-btn"
       title="Reset view"
-      @pointerdown.stop="resetZoom"
+      @click.stop="resetZoom"
     >
       <svg
         width="14"

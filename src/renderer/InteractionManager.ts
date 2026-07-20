@@ -108,7 +108,7 @@ export class InteractionManager {
   ): ContextMenuContext | null {
     const hit = this._hitTarget(e.target as Konva.Node)
     if (hit) {
-      return { type: ContextMenuTargetType.Node, id: hit.id }
+      return { type: hit.type, id: hit.id }
     }
 
     return { type: ContextMenuTargetType.Canvas }

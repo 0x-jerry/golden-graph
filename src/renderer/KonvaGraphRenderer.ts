@@ -151,14 +151,20 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     )
 
     this._disposers.add(
-      ws.events.on('edge:added', () => {
-        this._rebuildEdges()
+      ws.events.on('edge:added', (edge) => {
+        this._addEdgeLine(edge)
+        this._edgeLayer.batchDraw()
       }),
     )
 
     this._disposers.add(
-      ws.events.on('edge:removed', () => {
-        this._rebuildEdges()
+      ws.events.on('edge:removed', (edge) => {
+        const line = this._edgeLines.get(edge.id)
+        if (line) {
+          line.destroy()
+          this._edgeLines.delete(edge.id)
+        }
+        this._edgeLayer.batchDraw()
       }),
     )
 

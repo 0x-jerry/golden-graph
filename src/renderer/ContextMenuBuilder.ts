@@ -43,7 +43,9 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
         if (!node) return
         const json = node.toJSON()
         const clone = ws.addNode(json.type)
+        const newId = clone.id
         clone.fromJSON(json)
+        clone.id = newId
         clone.move(30, 30)
       },
     },

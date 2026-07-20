@@ -47,7 +47,8 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="container" class="r-konva-renderer">
+  <div class="r-konva-renderer-wrap">
+    <div ref="container" class="r-konva-renderer"></div>
     <WorkspaceToolbar v-if="props.showToolbar" />
     <ContextMenu
       v-if="props.showContextMenu"
@@ -61,10 +62,14 @@ defineExpose({
 </template>
 
 <style>
-.r-konva-renderer {
+.r-konva-renderer-wrap {
   width: 100%;
   height: 100%;
   overflow: hidden;
   position: relative;
+}
+.r-konva-renderer {
+  width: 100%;
+  height: 100%;
 }
 </style>

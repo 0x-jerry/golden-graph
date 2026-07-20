@@ -443,9 +443,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   setActiveIds(type: ActiveType, ids: Arrayable<number>) {
     const _ids = ensureArray(ids)
 
-    const alreadyIncluded = _ids.length
-      ? _ids.every((id) => this._state.activeIds.includes(id))
-      : false
+    const alreadyIncluded =
+      type === this._state.activeType &&
+      _ids.length === this._state.activeIds.length &&
+      _ids.every((id) => this._state.activeIds.includes(id))
 
     if (alreadyIncluded) {
       return

@@ -33,6 +33,7 @@ export function useContextMenuState() {
 
   function hide() {
     state.visible = false
+    state.items = []
   }
 
   return { state, show, hide }

@@ -15,11 +15,17 @@ export class Edge implements IPersistent<IEdge> {
   _workspace?: Workspace
 
   get start() {
-    return toReadonly(this._start!)
+    if (!this._start) {
+      throw new Error('Edge start handle is not set!')
+    }
+    return toReadonly(this._start)
   }
 
   get end() {
-    return toReadonly(this._end!)
+    if (!this._end) {
+      throw new Error('Edge end handle is not set!')
+    }
+    return toReadonly(this._end)
   }
 
   get workspace() {
