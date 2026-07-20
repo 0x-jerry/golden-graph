@@ -40,7 +40,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _ws: Workspace
 
   _nodeGroups = new Map<number, Konva.Group>()
-  _edgeLines = new Map<number, Konva.Line>()
+  _edgeGroups = new Map<number, Konva.Group>()
   _groupGroups = new Map<number, Konva.Group>()
 
   _interaction: InteractionManager
@@ -159,10 +159,10 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
     this._disposers.add(
       ws.events.on('edge:removed', (edge) => {
-        const line = this._edgeLines.get(edge.id)
-        if (line) {
-          line.destroy()
-          this._edgeLines.delete(edge.id)
+        const group = this._edgeGroups.get(edge.id)
+        if (group) {
+          group.destroy()
+          this._edgeGroups.delete(edge.id)
         }
         this._edgeLayer.batchDraw()
       }),
@@ -225,7 +225,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._edgeLayer.destroyChildren()
     this._groupLayer.destroyChildren()
     this._nodeGroups.clear()
-    this._edgeLines.clear()
+    this._edgeGroups.clear()
     this._groupGroups.clear()
 
     for (const node of this._ws.nodes) {
@@ -278,17 +278,24 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   _addEdgeLine(edge: Edge) {
     try {
-      const line = createEdge(edge)
-      this._edgeLines.set(edge.id, line)
-      this._edgeLayer.add(line)
+      const group = createEdge(edge)
+      this._edgeGroups.set(edge.id, group)
+      this._edgeLayer.add(group)
+
+      const closeBtn = group.findOne('.edge-close')
+      if (closeBtn) {
+        closeBtn.on('click', () => {
+          this._ws.removeEdgeByIds(edge.id)
+        })
+      }
     } catch {
       // handle may not exist yet
     }
   }
 
   _rebuildEdges() {
-    this._edgeLines.forEach((line) => line.destroy())
-    this._edgeLines.clear()
+    this._edgeGroups.forEach((group) => group.destroy())
+    this._edgeGroups.clear()
 
     for (const edge of this._ws.edges) {
       this._addEdgeLine(edge)
@@ -301,16 +308,16 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     const relatedEdges = this._ws.queryConnectedEdges(nodeId)
 
     const removeIds = new Set<number>()
-    for (const [id, line] of this._edgeLines) {
+    for (const [id, group] of this._edgeGroups) {
       if (relatedEdges.some((e) => e.id === id)) {
-        line.destroy()
+        group.destroy()
         removeIds.add(id)
       }
     }
-    removeIds.forEach((id) => this._edgeLines.delete(id))
+    removeIds.forEach((id) => this._edgeGroups.delete(id))
 
     for (const edge of relatedEdges) {
-      if (!this._edgeLines.has(edge.id)) {
+      if (!this._edgeGroups.has(edge.id)) {
         this._addEdgeLine(edge)
       }
     }
@@ -448,7 +455,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       }
     })
     this._nodeGroups.clear()
-    this._edgeLines.clear()
+    this._edgeGroups.clear()
     this._groupGroups.clear()
 
     this._stage.destroy()

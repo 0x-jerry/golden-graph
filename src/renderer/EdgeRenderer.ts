@@ -40,7 +40,58 @@ export function bezierOffset(
   return { handleOffset }
 }
 
-export function createEdge(edge: Edge): Konva.Line {
+function bezierMidpoint(
+  p0: { x: number; y: number },
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  p3: { x: number; y: number },
+): { x: number; y: number } {
+  const t = 0.5
+  const mt = 1 - t
+  return {
+    x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
+    y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y,
+  }
+}
+
+const CLOSE_SIZE = 12
+
+function createCloseButton(): Konva.Group {
+  const group = new Konva.Group({
+    name: 'edge-close',
+    visible: false,
+  })
+
+  const circle = new Konva.Rect({
+    width: CLOSE_SIZE,
+    height: CLOSE_SIZE,
+    offsetX: CLOSE_SIZE / 2,
+    offsetY: CLOSE_SIZE / 2,
+    fill: COLORS.BG,
+    stroke: COLORS.EDGE,
+    strokeWidth: 1,
+    cornerRadius: 2,
+  })
+  group.add(circle)
+
+  const line1 = new Konva.Line({
+    points: [-3, -3, 3, 3],
+    stroke: COLORS.EDGE,
+    strokeWidth: 1.5,
+    lineCap: 'round',
+  })
+  const line2 = new Konva.Line({
+    points: [3, -3, -3, 3],
+    stroke: COLORS.EDGE,
+    strokeWidth: 1.5,
+    lineCap: 'round',
+  })
+  group.add(line1, line2)
+
+  return group
+}
+
+export function createEdge(edge: Edge): Konva.Group {
   let startHandle = edge.start
   let endHandle = edge.end
 
@@ -54,16 +105,17 @@ export function createEdge(edge: Edge): Konva.Line {
 
   const { handleOffset } = bezierOffset(startPos, endPos)
 
-  const points = [
-    startPos.x,
-    startPos.y,
-    startPos.x - handleOffset,
-    startPos.y,
-    endPos.x + handleOffset,
-    endPos.y,
-    endPos.x,
-    endPos.y,
-  ]
+  const p0 = startPos
+  const p1 = { x: startPos.x - handleOffset, y: startPos.y }
+  const p2 = { x: endPos.x + handleOffset, y: endPos.y }
+  const p3 = endPos
+
+  const points = [p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y]
+
+  const group = new Konva.Group({
+    name: ELEMENT_TYPE.EDGE,
+    [ATTR.ELEMENT_ID]: edge.id,
+  })
 
   const line = new Konva.Line({
     points,
@@ -72,13 +124,32 @@ export function createEdge(edge: Edge): Konva.Line {
     strokeWidth: COLORS.EDGE_WIDTH,
     hitStrokeWidth: EDGE_HIT_STROKE,
     fill: undefined,
-    name: ELEMENT_TYPE.EDGE,
-    [ATTR.ELEMENT_ID]: edge.id,
+    name: 'edge-line',
+  })
+  group.add(line)
+
+  const mid = bezierMidpoint(p0, p1, p2, p3)
+  const closeBtn = createCloseButton()
+  closeBtn.position(mid)
+  group.add(closeBtn)
+
+  line.on('mouseenter', () => {
+    closeBtn.visible(true)
+    closeBtn.getLayer()?.batchDraw()
   })
 
-  return line
+  line.on('mouseleave', () => {
+    closeBtn.visible(false)
+    closeBtn.getLayer()?.batchDraw()
+  })
+
+  closeBtn.on('mouseenter', () => {
+    closeBtn.visible(true)
+  })
+
+  return group
 }
 
-export function destroyEdge(line: Konva.Line): void {
-  line.destroy()
+export function destroyEdge(group: Konva.Group): void {
+  group.destroy()
 }
