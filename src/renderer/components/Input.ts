@@ -1,6 +1,8 @@
 import Konva from 'konva'
 import type { GroupConfig } from 'konva/lib/Group'
 import { COLORS } from '../constants'
+import { setActiveElement, deactivateActiveElement } from './active'
+import type { ActiveElement } from './active'
 
 const DEFAULT_HEIGHT = 24
 const DEFAULT_FONT_SIZE = 12
@@ -43,7 +45,7 @@ export interface InputConfig extends GroupConfig {
   beforeChange?: (value: string) => string
 }
 
-export class Input extends Konva.Group {
+export class Input extends Konva.Group implements ActiveElement {
   declare _bg: Konva.Rect
   declare _textNode: Konva.Text
   declare _placeholderNode: Konva.Text
@@ -192,6 +194,15 @@ export class Input extends Konva.Group {
       e.cancelBubble = true
       const relX = this.getRelativePointerPosition()?.x ?? 0
       this._startEdit(this._posFromX(relX - PADDING + this._scrollX))
+    })
+
+    this._bg.on('dblclick', (e) => {
+      e.cancelBubble = true
+      this._startEdit()
+      this._cursorPos = this._val.length
+      this._selAnchor = 0
+      this._syncDisplay()
+      this._startBlink()
     })
 
     this._keydownFn = this._onKeyDown.bind(this)
@@ -421,6 +432,8 @@ export class Input extends Konva.Group {
   }
 
   _startEdit(pos?: number) {
+    setActiveElement(this)
+
     if (this._editing) {
       if (pos !== undefined) {
         this._cursorPos = pos
@@ -503,7 +516,9 @@ export class Input extends Konva.Group {
       this._onChange?.(this._val)
     }
 
+    this._selAnchor = -1
     this._syncDisplay()
+    deactivateActiveElement(this)
   }
 
   _onKeyDown(e: KeyboardEvent) {
@@ -680,6 +695,12 @@ export class Input extends Konva.Group {
         this._syncDisplay()
         this._startBlink()
       })
+    }
+  }
+
+  deactivate(): void {
+    if (this._editing) {
+      this._stopEdit(true)
     }
   }
 

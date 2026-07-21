@@ -1,6 +1,8 @@
 import Konva from 'konva'
 import type { GroupConfig } from 'konva/lib/Group'
 import { COLORS } from '../constants'
+import { setActiveElement, deactivateActiveElement } from './active'
+import type { ActiveElement } from './active'
 
 const DEFAULT_HEIGHT = 24
 const DEFAULT_FONT_SIZE = 12
@@ -36,7 +38,7 @@ function normalizeOptions(opts: (SelectOption | string)[]): SelectOption[] {
   return opts.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
 }
 
-export class Select extends Konva.Group {
+export class Select extends Konva.Group implements ActiveElement {
   declare _bg: Konva.Rect
   declare _textNode: Konva.Text
   declare _placeholderNode: Konva.Text
@@ -203,6 +205,7 @@ export class Select extends Konva.Group {
 
   _openDropdown() {
     if (this._open) return
+    setActiveElement(this)
     this._open = true
     this._bg.stroke(COLORS.ACCENT)
 
@@ -417,6 +420,7 @@ export class Select extends Konva.Group {
     }
 
     this.getLayer()?.batchDraw()
+    deactivateActiveElement(this)
   }
 
   _onKeyDown(e: KeyboardEvent) {
@@ -472,6 +476,12 @@ export class Select extends Konva.Group {
         this._setFocus(prev)
       }
       return
+    }
+  }
+
+  deactivate(): void {
+    if (this._open) {
+      this._close()
     }
   }
 
