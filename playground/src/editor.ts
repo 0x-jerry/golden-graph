@@ -11,6 +11,13 @@ export function setup(workspace: Workspace) {
     },
   })
 
+  workspace.addNode('Text', {
+    pos: {
+      x: 400,
+      y: 100,
+    },
+  })
+
   const n2 = workspace.addNode('ToString', {
     pos: {
       x: 200,

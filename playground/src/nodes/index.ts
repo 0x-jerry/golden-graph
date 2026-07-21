@@ -3,12 +3,14 @@ import { DisplayNode } from './Display'
 import { ImageLoaderNode } from './images/ImageLoader'
 import { registerMathNodes } from './math'
 import { NumberNode } from './Number'
+import { TextNode } from './Text'
 import { ToStringNode } from './ToString'
 
 export function registerNodes(workspace: Workspace) {
   registerMathNodes(workspace)
 
   workspace.registerNode('Number', NumberNode)
+  workspace.registerNode('Text', TextNode)
   workspace.registerNode('ToString', ToStringNode)
   workspace.registerNode('Output', DisplayNode)
   workspace.registerNode('ImageLoader', ImageLoaderNode)

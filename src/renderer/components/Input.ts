@@ -49,12 +49,16 @@ export class Input extends Konva.Group {
   declare _placeholderNode: Konva.Text
   declare _cursorLine: Konva.Rect
   declare _selRect: Konva.Rect
+  declare _composingNode: Konva.Text
 
   declare _val: string
   declare _committed: string
+  declare _composingText: string
   declare _cursorPos: number
   declare _selAnchor: number
   declare _editing: boolean
+  declare _composing: boolean
+  declare _scrollX: number
   declare _blinkTimer: ReturnType<typeof setInterval> | null
 
   declare _iw: number
@@ -65,9 +69,15 @@ export class Input extends Konva.Group {
   declare _onChange?: (value: string) => void
   declare _beforeChange?: (value: string) => string
 
+  declare _compBase: string
+  declare _hiddenInput: HTMLInputElement | null
   declare _keydownFn: (e: KeyboardEvent) => void
+  declare _wheelFn: (e: Konva.KonvaEventObject<WheelEvent>) => void
   declare _stageClickFn: (e: Konva.KonvaEventObject<MouseEvent>) => void
   declare _docClickFn: (e: MouseEvent) => void
+  declare _compStartFn: (e: CompositionEvent) => void
+  declare _compEndFn: (e: CompositionEvent) => void
+  declare _hiddenInputFn: (e: Event) => void
 
   constructor(config: InputConfig) {
     const {
@@ -100,7 +110,12 @@ export class Input extends Konva.Group {
     this._cursorPos = value.length
     this._selAnchor = -1
     this._editing = false
+    this._composing = false
+    this._composingText = ''
+    this._compBase = ''
+    this._scrollX = 0
     this._blinkTimer = null
+    this._hiddenInput = null
 
     const textY = (inputHeight - fontSize) / 2
 
@@ -113,6 +128,10 @@ export class Input extends Konva.Group {
       cornerRadius,
     })
     this.add(this._bg)
+    this.clipX(0)
+    this.clipY(0)
+    this.clipWidth(inputWidth)
+    this.clipHeight(inputHeight)
 
     this._selRect = new Konva.Rect({
       x: PADDING,
@@ -148,6 +167,16 @@ export class Input extends Konva.Group {
     })
     this.add(this._placeholderNode)
 
+    this._composingNode = new Konva.Text({
+      fontSize,
+      fontFamily,
+      fill: COLORS.TEXT_MUTED,
+      y: textY,
+      visible: false,
+      listening: false,
+    })
+    this.add(this._composingNode)
+
     this._cursorLine = new Konva.Rect({
       x: PADDING,
       y: textY,
@@ -162,7 +191,7 @@ export class Input extends Konva.Group {
     this._bg.on('click tap', (e) => {
       e.cancelBubble = true
       const relX = this.getRelativePointerPosition()?.x ?? 0
-      this._startEdit(this._posFromX(relX - PADDING))
+      this._startEdit(this._posFromX(relX - PADDING + this._scrollX))
     })
 
     this._keydownFn = this._onKeyDown.bind(this)
@@ -179,6 +208,50 @@ export class Input extends Konva.Group {
         this._stopEdit(true)
       }
     }
+
+    this._wheelFn = (e: Konva.KonvaEventObject<WheelEvent>) => {
+      if (!this._editing) return
+      const totalW = this._measure(this._val)
+      const maxScroll = Math.max(0, totalW + 2 * PADDING - this._iw)
+      if (maxScroll <= 0) return
+      e.evt.preventDefault()
+      this._scrollX = Math.max(0, Math.min(maxScroll, this._scrollX + e.evt.deltaX))
+      this._syncDisplay()
+    }
+
+    this._compStartFn = () => {
+      this._composing = true
+      this._compBase = this._hiddenInput?.value ?? ''
+    }
+    this._compEndFn = () => {
+      this._composing = false
+      if (this._hiddenInput) {
+        const text = this._hiddenInput.value.slice(this._compBase.length)
+        this._hiddenInput.value = ''
+        this._compBase = ''
+        this._composingText = ''
+        if (text) {
+          this._insertText(text)
+          this._syncDisplay()
+          this._startBlink()
+        }
+      }
+    }
+    this._hiddenInputFn = (e: Event) => {
+      if (this._composing) {
+        const input = e.target as HTMLInputElement
+        this._composingText = input.value.slice(this._compBase.length)
+        this._syncDisplay()
+        return
+      }
+      const input = e.target as HTMLInputElement
+      if (input.value) {
+        this._insertText(input.value)
+        input.value = ''
+        this._syncDisplay()
+        this._startBlink()
+      }
+    }
   }
 
   getValue(): string {
@@ -190,6 +263,7 @@ export class Input extends Konva.Group {
     this._committed = this._val
     this._cursorPos = this._val.length
     this._selAnchor = -1
+    this._scrollX = 0
     this._syncDisplay()
     this._onChange?.(this._val)
   }
@@ -254,27 +328,79 @@ export class Input extends Konva.Group {
     this._placeholderNode.visible(this._val.length === 0)
     this._syncCursor()
     this._syncSelection()
+    if (this._composingText) {
+      this._composingNode.text(this._composingText)
+      this._composingNode.x(PADDING + this._cursorX(this._cursorPos))
+      this._composingNode.visible(true)
+    } else {
+      this._composingNode.visible(false)
+    }
+    this._syncScroll()
     this.getLayer()?.batchDraw()
+  }
+
+  _syncScroll() {
+    const baseLocalX = this._cursorX(this._cursorPos)
+    const compW = this._composing ? this._measure(this._composingText) : 0
+    const cursorLocalX = baseLocalX + compW
+    const viewW = this._iw - 2 * PADDING
+    const totalW = this._measure(this._val)
+    const maxScroll = Math.max(0, totalW - viewW)
+
+    this._scrollX = Math.max(0, Math.min(maxScroll, this._scrollX))
+
+    if (cursorLocalX - this._scrollX > viewW) {
+      this._scrollX = cursorLocalX - viewW
+    } else if (cursorLocalX - this._scrollX < 0) {
+      this._scrollX = cursorLocalX
+    }
+
+    this._scrollX = Math.max(0, Math.min(maxScroll, this._scrollX))
+
+    const off = -this._scrollX
+    this._textNode.x(PADDING + off)
+    this._placeholderNode.x(PADDING + off)
+    this._cursorLine.x(PADDING + cursorLocalX + off)
+    if (this._composingText) {
+      this._composingNode.x(PADDING + baseLocalX + off)
+    }
+    const range = this._selRange()
+    if (range) {
+      this._selRect.x(PADDING + this._cursorX(range[0]) + off)
+    }
   }
 
   _syncCursor() {
     if (!this._editing) return
-    this._cursorLine.x(PADDING + this._cursorX(this._cursorPos))
+    const baseX = this._cursorX(this._cursorPos)
+    const compW = this._composing ? this._measure(this._composingText) : 0
+    this._cursorLine.x(PADDING + baseX + compW)
     this._cursorLine.visible(true)
+    this._syncHiddenPos()
+  }
+
+  _syncHiddenPos() {
+    if (!this._hiddenInput) return
+    const abs = this.getAbsolutePosition()
+    const scale = this.getAbsoluteScale()
+    const baseX = this._cursorX(this._cursorPos)
+    const x = abs.x + (PADDING + baseX - this._scrollX) * scale.x
+    this._hiddenInput.style.left = `${x}px`
+    this._hiddenInput.style.top = `${this._cursorLine.getAbsolutePosition().y}px`
   }
 
   _syncSelection() {
     const range = this._selRange()
     if (!range) {
       this._selRect.visible(false)
-      return
+    } else {
+      const [s, e] = range
+      const x0 = this._cursorX(s)
+      const x1 = this._cursorX(e)
+      this._selRect.x(PADDING + x0)
+      this._selRect.width(x1 - x0)
+      this._selRect.visible(true)
     }
-    const [s, e] = range
-    const x0 = this._cursorX(s)
-    const x1 = this._cursorX(e)
-    this._selRect.x(PADDING + x0)
-    this._selRect.width(x1 - x0)
-    this._selRect.visible(true)
   }
 
   _startBlink() {
@@ -299,10 +425,8 @@ export class Input extends Konva.Group {
       if (pos !== undefined) {
         this._cursorPos = pos
         this._selAnchor = -1
-        this._syncCursor()
-        this._syncSelection()
+        this._syncDisplay()
         this._startBlink()
-        this.getLayer()?.batchDraw()
       }
       return
     }
@@ -320,10 +444,22 @@ export class Input extends Konva.Group {
       const container = stage.container()
       container.setAttribute('tabindex', '0')
       container.focus()
+
+      this._hiddenInput = document.createElement('input')
+      this._hiddenInput.style.cssText =
+        'position:absolute;opacity:0;width:1px;height:1px;'
+      this._hiddenInput.setAttribute('autocomplete', 'off')
+      container.appendChild(this._hiddenInput)
+      this._syncHiddenPos()
+      this._hiddenInput.focus()
+      this._hiddenInput.addEventListener('compositionstart', this._compStartFn)
+      this._hiddenInput.addEventListener('compositionend', this._compEndFn)
+      this._hiddenInput.addEventListener('input', this._hiddenInputFn)
     }
 
     window.addEventListener('keydown', this._keydownFn)
     document.addEventListener('mousedown', this._docClickFn, true)
+    this.on('wheel', this._wheelFn)
 
     this._syncDisplay()
     this._startBlink()
@@ -340,6 +476,20 @@ export class Input extends Konva.Group {
 
     window.removeEventListener('keydown', this._keydownFn)
     document.removeEventListener('mousedown', this._docClickFn, true)
+    this.off('wheel', this._wheelFn)
+    this._composing = false
+    this._composingText = ''
+    this._compBase = ''
+    this._scrollX = 0
+    this._composingNode.visible(false)
+
+    if (this._hiddenInput) {
+      this._hiddenInput.removeEventListener('compositionstart', this._compStartFn)
+      this._hiddenInput.removeEventListener('compositionend', this._compEndFn)
+      this._hiddenInput.removeEventListener('input', this._hiddenInputFn)
+      this._hiddenInput.remove()
+      this._hiddenInput = null
+    }
 
     const stage = this.getStage()
     if (stage) {
@@ -357,6 +507,8 @@ export class Input extends Konva.Group {
   }
 
   _onKeyDown(e: KeyboardEvent) {
+    if (this._composing || e.isComposing) return
+
     const ctrl = e.ctrlKey || e.metaKey
     const shift = e.shiftKey
 
@@ -419,8 +571,7 @@ export class Input extends Konva.Group {
       } else if (!shift) {
         this._selAnchor = -1
       }
-      this._syncCursor()
-      this._syncSelection()
+      this._syncDisplay()
       this._startBlink()
       return
     }
@@ -446,8 +597,7 @@ export class Input extends Konva.Group {
       } else if (!shift) {
         this._selAnchor = -1
       }
-      this._syncCursor()
-      this._syncSelection()
+      this._syncDisplay()
       this._startBlink()
       return
     }
@@ -460,8 +610,7 @@ export class Input extends Konva.Group {
         this._selAnchor = -1
       }
       this._cursorPos = 0
-      this._syncCursor()
-      this._syncSelection()
+      this._syncDisplay()
       this._startBlink()
       return
     }
@@ -474,8 +623,7 @@ export class Input extends Konva.Group {
         this._selAnchor = -1
       }
       this._cursorPos = this._val.length
-      this._syncCursor()
-      this._syncSelection()
+      this._syncDisplay()
       this._startBlink()
       return
     }
@@ -484,8 +632,7 @@ export class Input extends Konva.Group {
       e.preventDefault()
       this._cursorPos = this._val.length
       this._selAnchor = 0
-      this._syncCursor()
-      this._syncSelection()
+      this._syncDisplay()
       this._startBlink()
       return
     }
@@ -525,9 +672,14 @@ export class Input extends Konva.Group {
 
     if (e.key.length === 1 && !ctrl && !e.altKey) {
       e.preventDefault()
-      this._insertText(e.key)
-      this._syncDisplay()
-      this._startBlink()
+      const ch = e.key
+      setTimeout(() => {
+        if (this._composing || !this._editing) return
+        this._insertText(ch)
+        if (this._hiddenInput) this._hiddenInput.value = ''
+        this._syncDisplay()
+        this._startBlink()
+      })
     }
   }
 
@@ -535,6 +687,7 @@ export class Input extends Konva.Group {
     if (this._editing) {
       this._stopEdit(false)
     }
+    this._hiddenInput = null
     return super.destroy()
   }
 }
