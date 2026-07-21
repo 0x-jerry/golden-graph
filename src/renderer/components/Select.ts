@@ -1,13 +1,12 @@
 import Konva from 'konva'
-import type { GroupConfig } from 'konva/lib/Group'
 import { COLORS } from '../constants'
-import { setActiveElement, deactivateActiveElement } from './active'
-import type { ActiveElement } from './active'
+import { FormElement } from './FormElement'
+import {
+  DEFAULT_HEIGHT,
+  PADDING,
+  type BaseFormConfig,
+} from './shared'
 
-const DEFAULT_HEIGHT = 24
-const DEFAULT_FONT_SIZE = 12
-const DEFAULT_FONT_FAMILY = 'Arial, sans-serif'
-const PADDING = 4
 const ARROW_SIZE = 6
 const ARROW_PADDING = 6
 const ITEM_HEIGHT = 24
@@ -18,18 +17,12 @@ export interface SelectOption {
   label: string
 }
 
-export interface SelectConfig extends GroupConfig {
+export interface SelectConfig extends BaseFormConfig {
   selectWidth: number
   selectHeight?: number
   options: (SelectOption | string)[]
   value?: string
   placeholder?: string
-  fontSize?: number
-  fontFamily?: string
-  fill?: string
-  stroke?: string
-  strokeWidth?: number
-  cornerRadius?: number
   maxVisibleItems?: number
   onChange?: (value: string) => void
 }
@@ -38,7 +31,7 @@ function normalizeOptions(opts: (SelectOption | string)[]): SelectOption[] {
   return opts.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
 }
 
-export class Select extends Konva.Group implements ActiveElement {
+export class Select extends FormElement {
   declare _bg: Konva.Rect
   declare _textNode: Konva.Text
   declare _placeholderNode: Konva.Text
@@ -48,13 +41,6 @@ export class Select extends Konva.Group implements ActiveElement {
   declare _val: string
   declare _focusedIndex: number
   declare _scrollTop: number
-  declare _open: boolean
-
-  declare _sw: number
-  declare _sh: number
-  declare _fs: number
-  declare _ff: string
-  declare _borderColor: string
   declare _maxVisible: number
   declare _onChange?: (value: string) => void
 
@@ -62,9 +48,8 @@ export class Select extends Konva.Group implements ActiveElement {
   declare _itemsGroup: Konva.Group | null
   declare _highlight: Konva.Rect | null
 
-  declare _keydownFn: (e: KeyboardEvent) => void
-  declare _stageClickFn: (e: Konva.KonvaEventObject<MouseEvent>) => void
-  declare _docClickFn: (e: MouseEvent) => void
+  declare _sw: number
+  declare _sh: number
 
   constructor(config: SelectConfig) {
     const {
@@ -73,10 +58,7 @@ export class Select extends Konva.Group implements ActiveElement {
       options,
       value = '',
       placeholder = '',
-      fontSize = DEFAULT_FONT_SIZE,
-      fontFamily = DEFAULT_FONT_FAMILY,
       fill = COLORS.BG,
-      stroke = COLORS.BORDER,
       strokeWidth = 1,
       cornerRadius = 2,
       maxVisibleItems = DEFAULT_MAX_VISIBLE,
@@ -88,21 +70,17 @@ export class Select extends Konva.Group implements ActiveElement {
 
     this._sw = selectWidth
     this._sh = selectHeight
-    this._fs = fontSize
-    this._ff = fontFamily
-    this._borderColor = stroke
     this._maxVisible = maxVisibleItems
     this._onChange = onChange
     this._opts = normalizeOptions(options)
     this._val = value
     this._focusedIndex = -1
     this._scrollTop = 0
-    this._open = false
     this._dropdown = null
     this._itemsGroup = null
     this._highlight = null
 
-    const textY = (selectHeight - fontSize) / 2
+    const textY = (selectHeight - this._fs) / 2
     const textW = selectWidth - ARROW_SIZE - ARROW_PADDING * 2 - PADDING
     const matched = this._opts.find((o) => o.value === value)
 
@@ -110,7 +88,7 @@ export class Select extends Konva.Group implements ActiveElement {
       width: selectWidth,
       height: selectHeight,
       fill,
-      stroke,
+      stroke: this._borderColor,
       strokeWidth,
       cornerRadius,
     })
@@ -118,8 +96,8 @@ export class Select extends Konva.Group implements ActiveElement {
 
     this._textNode = new Konva.Text({
       text: matched?.label ?? '',
-      fontSize,
-      fontFamily,
+      fontSize: this._fs,
+      fontFamily: this._ff,
       fill: COLORS.TEXT_PRIMARY,
       x: PADDING,
       y: textY,
@@ -130,8 +108,8 @@ export class Select extends Konva.Group implements ActiveElement {
 
     this._placeholderNode = new Konva.Text({
       text: placeholder,
-      fontSize,
-      fontFamily,
+      fontSize: this._fs,
+      fontFamily: this._ff,
       fill: COLORS.TEXT_MUTED,
       x: PADDING,
       y: textY,
@@ -155,7 +133,7 @@ export class Select extends Konva.Group implements ActiveElement {
 
     const toggle = (e: Konva.KonvaEventObject<Event>) => {
       e.cancelBubble = true
-      if (this._open) {
+      if (this._active) {
         this._close()
       } else {
         this._openDropdown()
@@ -164,19 +142,6 @@ export class Select extends Konva.Group implements ActiveElement {
     this._bg.on('click tap', toggle)
     this._textNode.on('click tap', toggle)
     this._placeholderNode.on('click tap', toggle)
-
-    this._keydownFn = this._onKeyDown.bind(this)
-    this._stageClickFn = () => {
-      if (this._open) this._close()
-    }
-    this._docClickFn = (e: MouseEvent) => {
-      if (!this._open) return
-      const stage = this.getStage()
-      if (!stage) return
-      if (!stage.container().contains(e.target as globalThis.Node)) {
-        this._close()
-      }
-    }
   }
 
   getValue(): string {
@@ -197,16 +162,15 @@ export class Select extends Konva.Group implements ActiveElement {
     const matched = this._opts.find((o) => o.value === this._val)
     this._textNode.text(matched?.label ?? '')
     this._placeholderNode.visible(!matched)
-    if (this._open) {
+    if (this._active) {
       this._buildDropdown()
     }
     this.getLayer()?.batchDraw()
   }
 
   _openDropdown() {
-    if (this._open) return
-    setActiveElement(this)
-    this._open = true
+    if (this._active) return
+    this._activate()
     this._bg.stroke(COLORS.ACCENT)
 
     this._focusedIndex = this._opts.findIndex((o) => o.value === this._val)
@@ -224,17 +188,6 @@ export class Select extends Konva.Group implements ActiveElement {
     } else {
       this._scrollTop = 0
     }
-
-    const stage = this.getStage()
-    if (stage) {
-      stage.on('click tap', this._stageClickFn)
-      const container = stage.container()
-      container.setAttribute('tabindex', '0')
-      container.focus()
-    }
-
-    window.addEventListener('keydown', this._keydownFn)
-    document.addEventListener('mousedown', this._docClickFn, true)
 
     this._buildDropdown()
     this.getLayer()?.batchDraw()
@@ -405,25 +358,16 @@ export class Select extends Konva.Group implements ActiveElement {
   }
 
   _close() {
-    if (!this._open) return
-    this._open = false
+    if (!this._active) return
 
     this._bg.stroke(this._borderColor)
     this._destroyDropdown()
 
-    window.removeEventListener('keydown', this._keydownFn)
-    document.removeEventListener('mousedown', this._docClickFn, true)
-
-    const stage = this.getStage()
-    if (stage) {
-      stage.off('click tap', this._stageClickFn)
-    }
-
     this.getLayer()?.batchDraw()
-    deactivateActiveElement(this)
+    this._deactivate()
   }
 
-  _onKeyDown(e: KeyboardEvent) {
+  protected _onKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       e.preventDefault()
       this._close()
@@ -440,7 +384,7 @@ export class Select extends Konva.Group implements ActiveElement {
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (!this._open) {
+      if (!this._active) {
         this._openDropdown()
         return
       }
@@ -451,7 +395,7 @@ export class Select extends Konva.Group implements ActiveElement {
 
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      if (!this._open) {
+      if (!this._active) {
         this._openDropdown()
         return
       }
@@ -462,7 +406,7 @@ export class Select extends Konva.Group implements ActiveElement {
 
     if (e.key === 'PageDown') {
       e.preventDefault()
-      if (this._open) {
+      if (this._active) {
         const next = Math.min(this._focusedIndex + this._maxVisible, this._opts.length - 1)
         this._setFocus(next)
       }
@@ -471,7 +415,7 @@ export class Select extends Konva.Group implements ActiveElement {
 
     if (e.key === 'PageUp') {
       e.preventDefault()
-      if (this._open) {
+      if (this._active) {
         const prev = Math.max(this._focusedIndex - this._maxVisible, 0)
         this._setFocus(prev)
       }
@@ -479,16 +423,11 @@ export class Select extends Konva.Group implements ActiveElement {
     }
   }
 
-  deactivate(): void {
-    if (this._open) {
-      this._close()
-    }
+  protected _onStageClick(): void {
+    this._close()
   }
 
-  destroy(): this {
-    if (this._open) {
-      this._close()
-    }
-    return super.destroy()
+  protected _onOutsideClick(): void {
+    this._close()
   }
 }

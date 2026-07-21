@@ -1,51 +1,26 @@
 import Konva from 'konva'
-import type { GroupConfig } from 'konva/lib/Group'
 import { COLORS } from '../constants'
-import { setActiveElement, deactivateActiveElement } from './active'
-import type { ActiveElement } from './active'
+import { FormElement } from './FormElement'
+import {
+  DEFAULT_HEIGHT,
+  PADDING,
+  measureTextWidth,
+  type BaseFormConfig,
+} from './shared'
 
-const DEFAULT_HEIGHT = 24
-const DEFAULT_FONT_SIZE = 12
-const DEFAULT_FONT_FAMILY = 'Arial, sans-serif'
-const PADDING = 4
 const CURSOR_WIDTH = 1
 const BLINK_INTERVAL = 530
 
-let measureCtx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null = null
-
-function getMeasureCtx(): OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D {
-  if (!measureCtx) {
-    if (typeof OffscreenCanvas !== 'undefined') {
-      measureCtx = new OffscreenCanvas(0, 0).getContext('2d')!
-    } else {
-      measureCtx = document.createElement('canvas').getContext('2d')!
-    }
-  }
-  return measureCtx
-}
-
-function measureTextWidth(text: string, fontSize: number, fontFamily: string): number {
-  const ctx = getMeasureCtx()
-  ctx.font = `${fontSize}px ${fontFamily}`
-  return ctx.measureText(text).width
-}
-
-export interface InputConfig extends GroupConfig {
+export interface InputConfig extends BaseFormConfig {
   inputWidth: number
   inputHeight?: number
   value?: string
   placeholder?: string
-  fontSize?: number
-  fontFamily?: string
-  fill?: string
-  stroke?: string
-  strokeWidth?: number
-  cornerRadius?: number
   onChange?: (value: string) => void
   beforeChange?: (value: string) => string
 }
 
-export class Input extends Konva.Group implements ActiveElement {
+export class Input extends FormElement {
   declare _bg: Konva.Rect
   declare _textNode: Konva.Text
   declare _placeholderNode: Konva.Text
@@ -58,25 +33,18 @@ export class Input extends Konva.Group implements ActiveElement {
   declare _composingText: string
   declare _cursorPos: number
   declare _selAnchor: number
-  declare _editing: boolean
   declare _composing: boolean
   declare _scrollX: number
   declare _blinkTimer: ReturnType<typeof setInterval> | null
 
   declare _iw: number
   declare _ih: number
-  declare _fs: number
-  declare _ff: string
-  declare _borderColor: string
   declare _onChange?: (value: string) => void
   declare _beforeChange?: (value: string) => string
 
   declare _compBase: string
   declare _hiddenInput: HTMLInputElement | null
-  declare _keydownFn: (e: KeyboardEvent) => void
   declare _wheelFn: (e: Konva.KonvaEventObject<WheelEvent>) => void
-  declare _stageClickFn: (e: Konva.KonvaEventObject<MouseEvent>) => void
-  declare _docClickFn: (e: MouseEvent) => void
   declare _compStartFn: (e: CompositionEvent) => void
   declare _compEndFn: (e: CompositionEvent) => void
   declare _hiddenInputFn: (e: Event) => void
@@ -87,10 +55,7 @@ export class Input extends Konva.Group implements ActiveElement {
       inputHeight = DEFAULT_HEIGHT,
       value = '',
       placeholder = '',
-      fontSize = DEFAULT_FONT_SIZE,
-      fontFamily = DEFAULT_FONT_FAMILY,
       fill = COLORS.BG,
-      stroke = COLORS.BORDER,
       strokeWidth = 1,
       cornerRadius = 2,
       onChange,
@@ -102,16 +67,12 @@ export class Input extends Konva.Group implements ActiveElement {
 
     this._iw = inputWidth
     this._ih = inputHeight
-    this._fs = fontSize
-    this._ff = fontFamily
-    this._borderColor = stroke
     this._onChange = onChange
     this._beforeChange = beforeChange
     this._val = beforeChange ? beforeChange(value) : value
     this._committed = this._val
-    this._cursorPos = value.length
+    this._cursorPos = this._val.length
     this._selAnchor = -1
-    this._editing = false
     this._composing = false
     this._composingText = ''
     this._compBase = ''
@@ -119,13 +80,13 @@ export class Input extends Konva.Group implements ActiveElement {
     this._blinkTimer = null
     this._hiddenInput = null
 
-    const textY = (inputHeight - fontSize) / 2
+    const textY = (inputHeight - this._fs) / 2
 
     this._bg = new Konva.Rect({
       width: inputWidth,
       height: inputHeight,
       fill,
-      stroke,
+      stroke: this._borderColor,
       strokeWidth,
       cornerRadius,
     })
@@ -139,7 +100,7 @@ export class Input extends Konva.Group implements ActiveElement {
       x: PADDING,
       y: textY,
       width: 0,
-      height: fontSize,
+      height: this._fs,
       fill: COLORS.SELECTION_FILL,
       visible: false,
       listening: false,
@@ -148,8 +109,8 @@ export class Input extends Konva.Group implements ActiveElement {
 
     this._textNode = new Konva.Text({
       text: value,
-      fontSize,
-      fontFamily,
+      fontSize: this._fs,
+      fontFamily: this._ff,
       fill: COLORS.TEXT_PRIMARY,
       x: PADDING,
       y: textY,
@@ -159,8 +120,8 @@ export class Input extends Konva.Group implements ActiveElement {
 
     this._placeholderNode = new Konva.Text({
       text: placeholder,
-      fontSize,
-      fontFamily,
+      fontSize: this._fs,
+      fontFamily: this._ff,
       fill: COLORS.TEXT_MUTED,
       x: PADDING,
       y: textY,
@@ -170,8 +131,8 @@ export class Input extends Konva.Group implements ActiveElement {
     this.add(this._placeholderNode)
 
     this._composingNode = new Konva.Text({
-      fontSize,
-      fontFamily,
+      fontSize: this._fs,
+      fontFamily: this._ff,
       fill: COLORS.TEXT_MUTED,
       y: textY,
       visible: false,
@@ -183,7 +144,7 @@ export class Input extends Konva.Group implements ActiveElement {
       x: PADDING,
       y: textY,
       width: CURSOR_WIDTH,
-      height: fontSize,
+      height: this._fs,
       fill: COLORS.TEXT_PRIMARY,
       visible: false,
       listening: false,
@@ -205,23 +166,8 @@ export class Input extends Konva.Group implements ActiveElement {
       this._startBlink()
     })
 
-    this._keydownFn = this._onKeyDown.bind(this)
-    this._stageClickFn = () => {
-      if (this._editing) {
-        this._stopEdit(true)
-      }
-    }
-    this._docClickFn = (e: MouseEvent) => {
-      if (!this._editing) return
-      const stage = this.getStage()
-      if (!stage) return
-      if (!stage.container().contains(e.target as globalThis.Node)) {
-        this._stopEdit(true)
-      }
-    }
-
     this._wheelFn = (e: Konva.KonvaEventObject<WheelEvent>) => {
-      if (!this._editing) return
+      if (!this._active) return
       const totalW = this._measure(this._val)
       const maxScroll = Math.max(0, totalW + 2 * PADDING - this._iw)
       if (maxScroll <= 0) return
@@ -382,7 +328,7 @@ export class Input extends Konva.Group implements ActiveElement {
   }
 
   _syncCursor() {
-    if (!this._editing) return
+    if (!this._active) return
     const baseX = this._cursorX(this._cursorPos)
     const compW = this._composing ? this._measure(this._composingText) : 0
     this._cursorLine.x(PADDING + baseX + compW)
@@ -432,9 +378,7 @@ export class Input extends Konva.Group implements ActiveElement {
   }
 
   _startEdit(pos?: number) {
-    setActiveElement(this)
-
-    if (this._editing) {
+    if (this._active) {
       if (pos !== undefined) {
         this._cursorPos = pos
         this._selAnchor = -1
@@ -444,7 +388,7 @@ export class Input extends Konva.Group implements ActiveElement {
       return
     }
 
-    this._editing = true
+    this._activate()
     this._committed = this._val
     this._cursorPos = pos ?? this._val.length
     this._selAnchor = -1
@@ -453,16 +397,11 @@ export class Input extends Konva.Group implements ActiveElement {
 
     const stage = this.getStage()
     if (stage) {
-      stage.on('click tap', this._stageClickFn)
-      const container = stage.container()
-      container.setAttribute('tabindex', '0')
-      container.focus()
-
       this._hiddenInput = document.createElement('input')
       this._hiddenInput.style.cssText =
         'position:absolute;opacity:0;width:1px;height:1px;'
       this._hiddenInput.setAttribute('autocomplete', 'off')
-      container.appendChild(this._hiddenInput)
+      stage.container().appendChild(this._hiddenInput)
       this._syncHiddenPos()
       this._hiddenInput.focus()
       this._hiddenInput.addEventListener('compositionstart', this._compStartFn)
@@ -470,8 +409,6 @@ export class Input extends Konva.Group implements ActiveElement {
       this._hiddenInput.addEventListener('input', this._hiddenInputFn)
     }
 
-    window.addEventListener('keydown', this._keydownFn)
-    document.addEventListener('mousedown', this._docClickFn, true)
     this.on('wheel', this._wheelFn)
 
     this._syncDisplay()
@@ -479,17 +416,14 @@ export class Input extends Konva.Group implements ActiveElement {
   }
 
   _stopEdit(commit: boolean) {
-    if (!this._editing) return
-    this._editing = false
+    if (!this._active) return
 
     this._stopBlink()
     this._selRect.visible(false)
 
     this._bg.stroke(this._borderColor)
 
-    window.removeEventListener('keydown', this._keydownFn)
-    document.removeEventListener('mousedown', this._docClickFn, true)
-    this.off('wheel', this._wheelFn)
+    this.on('wheel', this._wheelFn)
     this._composing = false
     this._composingText = ''
     this._compBase = ''
@@ -504,11 +438,6 @@ export class Input extends Konva.Group implements ActiveElement {
       this._hiddenInput = null
     }
 
-    const stage = this.getStage()
-    if (stage) {
-      stage.off('click tap', this._stageClickFn)
-    }
-
     if (!commit) {
       this._val = this._committed
     } else if (this._val !== this._committed) {
@@ -518,11 +447,11 @@ export class Input extends Konva.Group implements ActiveElement {
 
     this._selAnchor = -1
     this._syncDisplay()
-    deactivateActiveElement(this)
+    this._deactivate()
   }
 
-  _onKeyDown(e: KeyboardEvent) {
-    if (this._composing || e.isComposing) return
+  protected _onKeyDown(e: KeyboardEvent) {
+    if (this._composing || e.isComposing || e.keyCode === 229) return
 
     const ctrl = e.ctrlKey || e.metaKey
     const shift = e.shiftKey
@@ -539,173 +468,177 @@ export class Input extends Konva.Group implements ActiveElement {
       return
     }
 
-    if (e.key === 'Backspace') {
-      e.preventDefault()
-      if (!this._deleteSelection()) {
-        if (this._cursorPos > 0) {
-          const pos = this._cursorPos
-          this._setVal(this._val.slice(0, pos - 1) + this._val.slice(pos))
-          this._cursorPos = Math.min(pos - 1, this._val.length)
-        }
-      }
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (e.key === 'Delete') {
-      e.preventDefault()
-      if (!this._deleteSelection()) {
-        const pos = this._cursorPos
-        this._setVal(this._val.slice(0, pos) + this._val.slice(pos + 1))
-        this._cursorPos = Math.min(pos, this._val.length)
-      }
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      if (shift) {
-        if (this._selAnchor < 0) this._selAnchor = this._cursorPos
-      } else {
-        this._selAnchor = -1
-      }
-      if (this._cursorPos > 0) {
-        if (!shift) {
-          const range = this._selRange()
-          if (range) {
-            this._cursorPos = range[0]
-          } else {
-            this._cursorPos--
-          }
-        } else {
-          this._cursorPos--
-        }
-      } else if (!shift) {
-        this._selAnchor = -1
-      }
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (e.key === 'ArrowRight') {
-      e.preventDefault()
-      if (shift) {
-        if (this._selAnchor < 0) this._selAnchor = this._cursorPos
-      } else {
-        this._selAnchor = -1
-      }
-      if (this._cursorPos < this._val.length) {
-        if (!shift) {
-          const range = this._selRange()
-          if (range) {
-            this._cursorPos = range[1]
-          } else {
-            this._cursorPos++
-          }
-        } else {
-          this._cursorPos++
-        }
-      } else if (!shift) {
-        this._selAnchor = -1
-      }
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (e.key === 'Home') {
-      e.preventDefault()
-      if (shift) {
-        if (this._selAnchor < 0) this._selAnchor = this._cursorPos
-      } else {
-        this._selAnchor = -1
-      }
-      this._cursorPos = 0
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (e.key === 'End') {
-      e.preventDefault()
-      if (shift) {
-        if (this._selAnchor < 0) this._selAnchor = this._cursorPos
-      } else {
-        this._selAnchor = -1
-      }
-      this._cursorPos = this._val.length
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (ctrl && e.key === 'a') {
-      e.preventDefault()
-      this._cursorPos = this._val.length
-      this._selAnchor = 0
-      this._syncDisplay()
-      this._startBlink()
-      return
-    }
-
-    if (ctrl && e.key === 'c') {
-      e.preventDefault()
-      const range = this._selRange()
-      if (range) {
-        navigator.clipboard.writeText(this._val.slice(range[0], range[1]))
-      }
-      return
-    }
-
-    if (ctrl && e.key === 'x') {
-      e.preventDefault()
-      const range = this._selRange()
-      if (range) {
-        navigator.clipboard.writeText(this._val.slice(range[0], range[1]))
-        this._deleteSelection()
-        this._syncDisplay()
-        this._startBlink()
-      }
-      return
-    }
-
-    if (ctrl && e.key === 'v') {
-      e.preventDefault()
-      navigator.clipboard.readText().then((text) => {
-        if (text) {
-          this._insertText(text)
-          this._syncDisplay()
-          this._startBlink()
-        }
-      })
-      return
-    }
+    if (this._handleEditingKey(e, ctrl, shift)) return
 
     if (e.key.length === 1 && !ctrl && !e.altKey) {
       e.preventDefault()
-      const ch = e.key
-      setTimeout(() => {
-        if (this._composing || !this._editing) return
-        this._insertText(ch)
-        if (this._hiddenInput) this._hiddenInput.value = ''
-        this._syncDisplay()
-        this._startBlink()
-      })
+      this._insertText(e.key)
+      if (this._hiddenInput) this._hiddenInput.value = ''
+      this._syncDisplay()
+      this._startBlink()
     }
   }
 
-  deactivate(): void {
-    if (this._editing) {
-      this._stopEdit(true)
+  private _handleEditingKey(e: KeyboardEvent, ctrl: boolean, shift: boolean): boolean {
+    if (e.key === 'Backspace') return this._handleBackspace(e)
+    if (e.key === 'Delete') return this._handleDelete(e)
+    if (e.key === 'ArrowLeft') return this._handleArrowLeft(e, shift)
+    if (e.key === 'ArrowRight') return this._handleArrowRight(e, shift)
+    if (e.key === 'Home') return this._handleHome(e, shift)
+    if (e.key === 'End') return this._handleEnd(e, shift)
+    if (ctrl && e.key === 'a') return this._handleSelectAll(e)
+    if (ctrl && e.key === 'c') return this._handleCopy(e)
+    if (ctrl && e.key === 'x') return this._handleCut(e)
+    if (ctrl && e.key === 'v') return this._handlePaste(e)
+    return false
+  }
+
+  private _handleBackspace(e: KeyboardEvent): boolean {
+    e.preventDefault()
+    if (!this._deleteSelection()) {
+      if (this._cursorPos > 0) {
+        const pos = this._cursorPos
+        this._setVal(this._val.slice(0, pos - 1) + this._val.slice(pos))
+        this._cursorPos = Math.min(pos - 1, this._val.length)
+      }
     }
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleDelete(e: KeyboardEvent): boolean {
+    e.preventDefault()
+    if (!this._deleteSelection()) {
+      const pos = this._cursorPos
+      this._setVal(this._val.slice(0, pos) + this._val.slice(pos + 1))
+      this._cursorPos = Math.min(pos, this._val.length)
+    }
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleArrowLeft(e: KeyboardEvent, shift: boolean): boolean {
+    e.preventDefault()
+    if (shift) {
+      if (this._selAnchor < 0) this._selAnchor = this._cursorPos
+      if (this._cursorPos > 0) {
+        this._cursorPos--
+      }
+    } else {
+      const range = this._selRange()
+      this._selAnchor = -1
+      if (range) {
+        this._cursorPos = range[0]
+      } else if (this._cursorPos > 0) {
+        this._cursorPos--
+      }
+    }
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleArrowRight(e: KeyboardEvent, shift: boolean): boolean {
+    e.preventDefault()
+    if (shift) {
+      if (this._selAnchor < 0) this._selAnchor = this._cursorPos
+      if (this._cursorPos < this._val.length) {
+        this._cursorPos++
+      }
+    } else {
+      const range = this._selRange()
+      this._selAnchor = -1
+      if (range) {
+        this._cursorPos = range[1]
+      } else if (this._cursorPos < this._val.length) {
+        this._cursorPos++
+      }
+    }
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleHome(e: KeyboardEvent, shift: boolean): boolean {
+    e.preventDefault()
+    if (shift) {
+      if (this._selAnchor < 0) this._selAnchor = this._cursorPos
+    } else {
+      this._selAnchor = -1
+    }
+    this._cursorPos = 0
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleEnd(e: KeyboardEvent, shift: boolean): boolean {
+    e.preventDefault()
+    if (shift) {
+      if (this._selAnchor < 0) this._selAnchor = this._cursorPos
+    } else {
+      this._selAnchor = -1
+    }
+    this._cursorPos = this._val.length
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleSelectAll(e: KeyboardEvent): boolean {
+    e.preventDefault()
+    this._cursorPos = this._val.length
+    this._selAnchor = 0
+    this._syncDisplay()
+    this._startBlink()
+    return true
+  }
+
+  private _handleCopy(e: KeyboardEvent): boolean {
+    e.preventDefault()
+    const range = this._selRange()
+    if (range) {
+      navigator.clipboard.writeText(this._val.slice(range[0], range[1]))
+    }
+    return true
+  }
+
+  private _handleCut(e: KeyboardEvent): boolean {
+    e.preventDefault()
+    const range = this._selRange()
+    if (range) {
+      navigator.clipboard.writeText(this._val.slice(range[0], range[1]))
+      this._deleteSelection()
+      this._syncDisplay()
+      this._startBlink()
+    }
+    return true
+  }
+
+  private _handlePaste(e: KeyboardEvent): boolean {
+    e.preventDefault()
+    navigator.clipboard.readText().then((text) => {
+      if (text) {
+        this._insertText(text)
+        this._syncDisplay()
+        this._startBlink()
+      }
+    }).catch(() => {})
+    return true
+  }
+
+  protected _onStageClick(): void {
+    this._stopEdit(true)
+  }
+
+  protected _onOutsideClick(): void {
+    this._stopEdit(true)
   }
 
   destroy(): this {
-    if (this._editing) {
+    if (this._active) {
       this._stopEdit(false)
     }
     this._hiddenInput = null

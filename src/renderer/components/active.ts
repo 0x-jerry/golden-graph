@@ -1,21 +1,21 @@
-export interface ActiveElement {
+export interface IActiveElement {
   deactivate(): void
 }
 
-let current: ActiveElement | null = null
+let current: IActiveElement | null = null
 
-export function getActiveElement(): ActiveElement | null {
+export function getActiveElement(): IActiveElement | null {
   return current
 }
 
-export function setActiveElement(element: ActiveElement): void {
+export function setActiveElement(element: IActiveElement): void {
   if (current === element) return
   const prev = current
   current = element
   prev?.deactivate()
 }
 
-export function deactivateActiveElement(element: ActiveElement): void {
+export function deactivateActiveElement(element: IActiveElement): void {
   if (current !== element) return
   current = null
   element.deactivate()
