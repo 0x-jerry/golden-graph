@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../../core'
-import { COLORS } from '../constants'
-import { closeOverlayOnCoordChange, positionOverlay } from './overlay'
+import { Select } from '../components/Select'
+import type { SelectOption } from '../components/Select'
 import { availableWidth } from './utils'
 import type { HandleModule } from './types'
 
@@ -9,153 +9,39 @@ export const type = 'select'
 
 const INPUT_HEIGHT = 18
 
-let sharedSelect: HTMLSelectElement | null = null
-let currentHandle: NodeHandle | null = null
-let unsubscribeCoord: (() => void) | null = null
+const selectMap = new WeakMap<Konva.Group, Select>()
 
-function getSharedSelect(): HTMLSelectElement {
-  if (!sharedSelect) {
-    sharedSelect = document.createElement('select')
-    sharedSelect.style.cssText = `
-      box-sizing: border-box;
-      position: fixed;
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      color: ${COLORS.TEXT_PRIMARY};
-      padding: 0 4px;
-      background: ${COLORS.BG};
-      border-color: transparent;
-      outline: none;
-      box-sizing: border-box;
-      z-index: 9999;
-      display: none;
-    `
-    document.body.appendChild(sharedSelect)
-
-    sharedSelect.addEventListener('blur', finishEdit)
-    sharedSelect.addEventListener('change', () => {
-      sharedSelect!.blur()
-    })
-    sharedSelect.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (currentHandle) {
-          sharedSelect!.value = String(currentHandle.getRealValue() ?? '')
-        }
-        sharedSelect!.blur()
-      }
-    })
-  }
-  return sharedSelect
-}
-
-function finishEdit() {
-  if (!currentHandle || !sharedSelect) return
-  currentHandle.setValue(sharedSelect.value)
-  hideSharedSelect()
-}
-
-function hideSharedSelect() {
-  if (sharedSelect) {
-    sharedSelect.style.display = 'none'
-  }
-  currentHandle = null
-  unsubscribeCoord?.()
-  unsubscribeCoord = null
-}
-
-export function dispose() {
-  sharedSelect?.remove()
-  sharedSelect = null
-  currentHandle = null
-  unsubscribeCoord?.()
-  unsubscribeCoord = null
-}
-
-function openDropdown(select: HTMLSelectElement) {
-  if (typeof select.showPicker === 'function') {
-    try {
-      select.showPicker()
-      return
-    } catch {
-      // requires transient user activation — fall through to the legacy hack
-    }
-  }
-  select.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-}
-
-function startEdit(handle: NodeHandle, valueText: Konva.Text) {
-  const select = getSharedSelect()
-
-  if (!positionOverlay(select, valueText, valueText.width(), INPUT_HEIGHT)) return
-
-  const options = handle.getOptions<{ type: string, options?: Array<{ value: string, label: string }> | string[] }>()
-  select.innerHTML = ''
-
-  if (options.options) {
-    for (const opt of options.options) {
-      const option = document.createElement('option')
-      if (typeof opt === 'string') {
-        option.value = opt
-        option.textContent = opt
-      } else {
-        option.value = opt.value
-        option.textContent = opt.label
-      }
-      select.appendChild(option)
-    }
-  }
-
-  select.value = String(handle.getRealValue() ?? '')
-
-  currentHandle = handle
-  unsubscribeCoord?.()
-  unsubscribeCoord = closeOverlayOnCoordChange(handle, () => select.blur())
-
-  select.focus()
-  openDropdown(select)
+function readOptions(handle: NodeHandle): (SelectOption | string)[] {
+  const opts = handle.getOptions<{ type: string, options?: (SelectOption | string)[] }>()
+  return opts.options ?? []
 }
 
 export const create: HandleModule['create'] = (handle) => {
   const group = new Konva.Group()
   const w = availableWidth(handle)
 
-  const inputBg = new Konva.Rect({
-    name: 'input-bg',
-    width: w,
-    height: INPUT_HEIGHT,
-    fill: COLORS.BG,
-    stroke: COLORS.BORDER,
-    strokeWidth: 1,
-    cornerRadius: 2,
-  })
-  group.add(inputBg)
-
-  const valueText = new Konva.Text({
-    name: 'value',
-    text: String(handle.getValue() ?? ''),
+  const select = new Select({
+    selectWidth: w,
+    selectHeight: INPUT_HEIGHT,
+    options: readOptions(handle),
+    value: String(handle.getValue() ?? ''),
     fontSize: 12,
-    fill: COLORS.TEXT_PRIMARY,
-    width: w,
-    height: INPUT_HEIGHT,
-    align: 'left',
-    verticalAlign: 'middle',
-    padding: 4,
+    onChange: (v) => {
+      handle.setValue(v)
+    },
   })
-  group.add(valueText)
-
-  inputBg.on('click', () => {
-    startEdit(handle, valueText)
-  })
-  valueText.on('click', () => {
-    startEdit(handle, valueText)
-  })
+  group.add(select)
+  selectMap.set(group, select)
 
   return group
 }
 
 export const update: HandleModule['update'] = (group, handle) => {
-  const valueText = group.findOne<Konva.Text>('.value')
-  if (valueText) {
-    valueText.text(String(handle.getValue() ?? ''))
+  const select = selectMap.get(group)
+  if (select) {
+    select.setOptions(readOptions(handle))
+    select.setValue(String(handle.getValue() ?? ''))
   }
 }
+
+export function dispose() {}
