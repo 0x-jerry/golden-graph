@@ -12,6 +12,7 @@ import {
   LAYOUT,
   DRAG_TYPE,
   NODE_BODY_PADDING,
+  NODE_SHAPE,
   ZOOM_MIN,
   ZOOM_MAX,
   ELEMENT_TYPE,
@@ -130,7 +131,10 @@ export class InteractionManager {
         ) {
           this._onNodeSelect(hit.id)
         }
-        this._startNodeDrag(hit.id)
+        const name = target.name()
+        if (name === NODE_SHAPE.HEADER || name === NODE_SHAPE.NAME) {
+          this._startNodeDrag(hit.id)
+        }
       } else {
         this._startGroupDrag(hit.id)
       }

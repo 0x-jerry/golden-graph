@@ -44,7 +44,11 @@ export class Input extends FormElement {
 
   declare _compBase: string
   declare _hiddenInput: HTMLInputElement | null
+  declare _dragging: boolean
+  declare _didDrag: boolean
   declare _wheelFn: (e: Konva.KonvaEventObject<WheelEvent>) => void
+  declare _stageMoveFn: (e: Konva.KonvaEventObject<MouseEvent>) => void
+  declare _stageUpFn: (e: Konva.KonvaEventObject<MouseEvent>) => void
   declare _compStartFn: (e: CompositionEvent) => void
   declare _compEndFn: (e: CompositionEvent) => void
   declare _hiddenInputFn: (e: Event) => void
@@ -79,6 +83,8 @@ export class Input extends FormElement {
     this._scrollX = 0
     this._blinkTimer = null
     this._hiddenInput = null
+    this._dragging = false
+    this._didDrag = false
 
     const textY = (inputHeight - this._fs) / 2
 
@@ -151,7 +157,21 @@ export class Input extends FormElement {
     })
     this.add(this._cursorLine)
 
-    this._bg.on('click tap', (e) => {
+    this._bg.on('mousedown touchstart', (e) => {
+      e.cancelBubble = true
+      const relX = this.getRelativePointerPosition()?.x ?? 0
+      const pos = this._posFromX(relX - PADDING + this._scrollX)
+      this._startEdit(pos)
+      this._selAnchor = pos
+      this._dragging = true
+      const stage = this.getStage()
+      if (stage) {
+        stage.on('mousemove touchmove', this._stageMoveFn)
+        stage.on('mouseup touchend', this._stageUpFn)
+      }
+    })
+
+    this._bg.on('tap', (e) => {
       e.cancelBubble = true
       const relX = this.getRelativePointerPosition()?.x ?? 0
       this._startEdit(this._posFromX(relX - PADDING + this._scrollX))
@@ -174,6 +194,24 @@ export class Input extends FormElement {
       e.evt.preventDefault()
       this._scrollX = Math.max(0, Math.min(maxScroll, this._scrollX + e.evt.deltaX))
       this._syncDisplay()
+    }
+
+    this._stageMoveFn = () => {
+      if (!this._dragging) return
+      this._didDrag = true
+      const relX = this.getRelativePointerPosition()?.x ?? 0
+      this._cursorPos = this._posFromX(relX - PADDING + this._scrollX)
+      this._syncDisplay()
+      this._startBlink()
+    }
+
+    this._stageUpFn = () => {
+      this._dragging = false
+      const stage = this.getStage()
+      if (stage) {
+        stage.off('mousemove touchmove', this._stageMoveFn)
+        stage.off('mouseup touchend', this._stageUpFn)
+      }
     }
 
     this._compStartFn = () => {
@@ -332,7 +370,6 @@ export class Input extends FormElement {
     const baseX = this._cursorX(this._cursorPos)
     const compW = this._composing ? this._measure(this._composingText) : 0
     this._cursorLine.x(PADDING + baseX + compW)
-    this._cursorLine.visible(true)
     this._syncHiddenPos()
   }
 
@@ -630,6 +667,10 @@ export class Input extends FormElement {
   }
 
   protected _onStageClick(): void {
+    if (this._didDrag) {
+      this._didDrag = false
+      return
+    }
     this._stopEdit(true)
   }
 
