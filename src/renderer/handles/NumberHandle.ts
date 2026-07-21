@@ -18,10 +18,14 @@ function getSharedInput(): HTMLInputElement {
     sharedInput = document.createElement('input')
     sharedInput.type = 'number'
     sharedInput.style.cssText = `
+      box-sizing: border-box;
       position: fixed;
+      font-family: Arial, sans-serif;
       font-size: 12px;
+      color: ${COLORS.TEXT_PRIMARY};
       padding: 0 4px;
-      border: 1px solid ${COLORS.ACCENT};
+      background: ${COLORS.BG};
+      border-color: transparent;
       outline: none;
       box-sizing: border-box;
       z-index: 9999;

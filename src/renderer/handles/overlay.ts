@@ -25,11 +25,18 @@ export function positionOverlay(
   const scale = stage.scaleX()
   const rect = container.getBoundingClientRect()
 
-  el.style.left = `${rect.left + absPos.x - 2 * scale}px`
-  el.style.top = `${rect.top + absPos.y - 2 * scale}px`
-  el.style.width = `${width * scale + 4}px`
-  el.style.height = `${height * scale + 2}px`
+  const innerOffset = {
+    x: 1,
+    y: 1,
+  }
+
+  el.style.left = `${rect.left + absPos.x + innerOffset.x * scale}px`
+  el.style.top = `${rect.top + absPos.y + innerOffset.y * scale}px`
+  el.style.width = `${(width - innerOffset.x * 2) * scale}px`
+  el.style.height = `${(height - innerOffset.y * 2) * scale}px`
   el.style.fontSize = `${12 * scale}px`
+  el.style.borderWidth = `${scale}px`
+  el.style.borderRadius = `${2 * scale}px`
   el.style.display = 'block'
 
   return true

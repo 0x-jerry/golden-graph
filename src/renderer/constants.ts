@@ -77,8 +77,8 @@ export const HANDLE_CONTENT_Y_OFFSET = 8
 export const HANDLE_NAME_WIDTH = 60
 export const HANDLE_NAME_GAP = 6
 export const EXECUTOR_SHADOW_BLUR = 10
-export const ZOOM_MIN = 0.01
-export const ZOOM_MAX = 2
+export const ZOOM_MIN = 0.1
+export const ZOOM_MAX = 4
 
 /**
  * Zoom step for a given scale — finer steps when zoomed out.
