@@ -67,8 +67,8 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   label.offsetY(label.height() / 2)
 
   if (handle.position === HandlePosition.Right) {
-    label.x(LAYOUT.NODE_WIDTH - HANDLE_CONTENT_X)
-    label.offsetX(label.width())
+    label.x(LAYOUT.NODE_WIDTH - HANDLE_CONTENT_X - HANDLE_NAME_WIDTH)
+    label.align('right')
   } else {
     label.x(
       handle.position === HandlePosition.Left
