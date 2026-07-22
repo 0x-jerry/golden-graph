@@ -1,7 +1,7 @@
 import Konva from 'konva'
 import type { NodeHandle } from '../../core'
-import { Select } from '../components/Select'
-import type { SelectOption } from '../components/Select'
+import { Select } from '../components/select'
+import type { SelectOption } from '../components/select'
 import { availableWidth } from './utils'
 import type { HandleModule } from './types'
 

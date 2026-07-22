@@ -1,5 +1,5 @@
 import Konva from 'konva'
-import { Input } from '../components/Input'
+import { Input } from '../components/input'
 import { availableWidth } from './utils'
 import type { HandleModule } from './types'
 

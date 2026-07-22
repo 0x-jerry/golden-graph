@@ -14,7 +14,12 @@ import { createEdge, updateEdge } from './EdgeRenderer'
 import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
 import { InteractionManager } from './InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
-import { createNode, updateNode, destroyNode, getHandleIndex } from './NodeRenderer'
+import {
+  createNode,
+  updateNode,
+  destroyNode,
+  getHandleIndex,
+} from './NodeRenderer'
 import { updateHandle } from './HandleRenderer'
 import { disposeHandleEditors } from './handles'
 import {
@@ -26,9 +31,14 @@ import {
 } from './constants'
 import { Disposable } from '../utils/Disposable'
 import type { IRect } from '../utils/RectBox'
+import { ActiveElementManager } from './ActiveElementManager'
 
 export interface KonvaGraphRendererOptions {
-  onContextMenu?: (ctx: ContextMenuContext, evt: PointerEvent, menus: CoreMenuItem[]) => void
+  onContextMenu?: (
+    ctx: ContextMenuContext,
+    evt: PointerEvent,
+    menus: CoreMenuItem[],
+  ) => void
 }
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
@@ -47,12 +57,17 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _interaction: InteractionManager
   _resizeObserver: ResizeObserver
   _disposed = false
+  _activeElementManager: ActiveElementManager
 
   get stage(): Konva.Stage {
     return this._stage
   }
 
-  constructor(container: HTMLElement, workspace: Workspace, options?: KonvaGraphRendererOptions) {
+  constructor(
+    container: HTMLElement,
+    workspace: Workspace,
+    options?: KonvaGraphRendererOptions,
+  ) {
     this._ws = workspace
 
     this._stage = new Konva.Stage({
@@ -60,6 +75,10 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       width: container.clientWidth,
       height: container.clientHeight,
     })
+
+    this._activeElementManager = new ActiveElementManager(this._stage)
+    this._stage.setAttr(ActiveElementManager.key, this._activeElementManager)
+    this._activeElementManager.init()
 
     this._gridLayer = createCoordLayer(workspace.coord)
     this._groupLayer = new Konva.Layer({ name: LAYER_NAME.GROUPS })
@@ -442,6 +461,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   dispose() {
     this._disposed = true
+
+    this._activeElementManager.dispose()
     this._disposers.dispose()
     this._interaction.dispose()
     this._resizeObserver.disconnect()
