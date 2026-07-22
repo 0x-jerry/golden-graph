@@ -73,6 +73,10 @@ export class Input extends FormElement {
       stage.off('mousemove touchmove', this._stageMoveFn)
       stage.off('mouseup touchend', this._stageUpFn)
     }
+
+    if (this._active) {
+      this._hidden.focus()
+    }
   }
 
   constructor(config: InputConfig) {

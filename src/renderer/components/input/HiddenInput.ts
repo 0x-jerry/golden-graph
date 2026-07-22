@@ -4,44 +4,68 @@ export interface HiddenInputEvents {
 }
 
 export class HiddenInput {
-  _input: HTMLInputElement | null = null
-  _events: HiddenInputEvents
+  static _sharedInput: HTMLInputElement | null = null
+  static _active: HiddenInput | null = null
 
-  _composing = false
-  _composingText = ''
-  _compBase = ''
-
-  _compStartFn = () => {
-    this._composing = true
-    this._compBase = this._input?.value ?? ''
+  static _ensureSharedInput(): HTMLInputElement {
+    if (!HiddenInput._sharedInput) {
+      const input = document.createElement('input')
+      input.style.cssText =
+        'position:absolute;opacity:0;width:1px;height:1px;left:-9999px;top:-9999px;'
+      input.setAttribute('autocomplete', 'off')
+      input.addEventListener('compositionstart', HiddenInput._compStartFn)
+      input.addEventListener('compositionend', HiddenInput._compEndFn)
+      input.addEventListener('input', HiddenInput._inputFn)
+      HiddenInput._sharedInput = input
+    }
+    return HiddenInput._sharedInput
   }
 
-  _compEndFn = () => {
-    this._composing = false
-    if (this._input) {
-      const text = this._input.value.slice(this._compBase.length)
-      this._input.value = ''
-      this._compBase = ''
-      this._composingText = ''
+  static _compStartFn = () => {
+    const active = HiddenInput._active
+    const input = HiddenInput._sharedInput
+    if (active && input) {
+      active._composing = true
+      active._compBase = input.value
+    }
+  }
+
+  static _compEndFn = () => {
+    const active = HiddenInput._active
+    const input = HiddenInput._sharedInput
+    if (active && input) {
+      active._composing = false
+      const text = input.value.slice(active._compBase.length)
+      input.value = ''
+      active._compBase = ''
+      active._composingText = ''
       if (text) {
-        this._events.onInsert(text)
+        active._events.onInsert(text)
       }
     }
   }
 
-  _inputFn = (e: Event) => {
+  static _inputFn = (e: Event) => {
     const input = e.target as HTMLInputElement
-    if (this._composing) {
-      this._composingText = input.value.slice(this._compBase.length)
-      this._events.onCompose(this._composingText)
+    const active = HiddenInput._active
+    if (!active) return
+    if (active._composing) {
+      active._composingText = input.value.slice(active._compBase.length)
+      active._events.onCompose(active._composingText)
       return
     }
     if (input.value) {
       const text = input.value
       input.value = ''
-      this._events.onInsert(text)
+      active._events.onInsert(text)
     }
   }
+
+  _events: HiddenInputEvents
+
+  _composing = false
+  _composingText = ''
+  _compBase = ''
 
   constructor(events: HiddenInputEvents) {
     this._events = events
@@ -56,41 +80,34 @@ export class HiddenInput {
   }
 
   attach(container: HTMLElement) {
-    const input = document.createElement('input')
-    input.style.cssText = 'position:absolute;opacity:0;width:1px;height:1px;'
-    input.setAttribute('autocomplete', 'off')
-    container.appendChild(input)
-    input.addEventListener('compositionstart', this._compStartFn)
-    input.addEventListener('compositionend', this._compEndFn)
-    input.addEventListener('input', this._inputFn)
-    this._input = input
+    const input = HiddenInput._ensureSharedInput()
+    if (input.parentElement !== container) {
+      container.appendChild(input)
+    }
+    HiddenInput._active = this
   }
 
   focus() {
-    setTimeout(() => {
-      this._input?.focus()
+    requestAnimationFrame(() => {
+      HiddenInput._sharedInput?.focus()
     })
   }
 
   setPosition(x: number, y: number) {
-    if (!this._input) return
-    this._input.style.left = `${x}px`
-    this._input.style.top = `${y}px`
+    if (!HiddenInput._sharedInput) return
+    HiddenInput._sharedInput.style.left = `${x}px`
+    HiddenInput._sharedInput.style.top = `${y}px`
   }
 
   clear() {
-    if (this._input) {
-      this._input.value = ''
+    if (HiddenInput._sharedInput) {
+      HiddenInput._sharedInput.value = ''
     }
   }
 
   detach() {
-    if (this._input) {
-      this._input.removeEventListener('compositionstart', this._compStartFn)
-      this._input.removeEventListener('compositionend', this._compEndFn)
-      this._input.removeEventListener('input', this._inputFn)
-      this._input.remove()
-      this._input = null
+    if (HiddenInput._active === this) {
+      HiddenInput._active = null
     }
     this._composing = false
     this._composingText = ''
