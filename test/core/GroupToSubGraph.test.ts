@@ -1,36 +1,39 @@
 import { describe, expect, it } from 'vitest'
-import { Group, HandlePosition, Node, Workspace } from '../../src/core'
+import {
+  Group,
+  HandlePosition,
+  Workspace,
+  type INodeSchema,
+} from '../../src/core'
 
-class NumberNode extends Node {
-  static nodeName = 'Number'
-  constructor() {
-    super()
-    this._type = 'Number'
-    this.addHandle({
+const numberSchema: INodeSchema = {
+  type: 'Number',
+  name: 'Number',
+  handles: [
+    {
       key: 'value',
       name: 'Value',
       type: 'number',
       position: HandlePosition.Right,
       value: 1,
-    })
-  }
+    },
+  ],
 }
 
-class SumNode extends Node {
-  static nodeName = 'Sum'
-  constructor() {
-    super()
-    this._type = 'Sum'
-    this.addHandle({ key: 'a', name: 'A', type: 'number', position: HandlePosition.Left })
-    this.addHandle({ key: 'b', name: 'B', type: 'number', position: HandlePosition.Left })
-    this.addHandle({ key: 'out', name: 'Out', type: 'number', position: HandlePosition.Right })
-  }
+const sumSchema: INodeSchema = {
+  type: 'Sum',
+  name: 'Sum',
+  handles: [
+    { key: 'a', name: 'A', type: 'number', position: HandlePosition.Left },
+    { key: 'b', name: 'B', type: 'number', position: HandlePosition.Left },
+    { key: 'out', name: 'Out', type: 'number', position: HandlePosition.Right },
+  ],
 }
 
 function createWs() {
   const ws = new Workspace()
-  ws.registerNode('Number', NumberNode)
-  ws.registerNode('Sum', SumNode)
+  ws.registerNodeSchema(numberSchema)
+  ws.registerNodeSchema(sumSchema)
   return ws
 }
 

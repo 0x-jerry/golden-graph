@@ -3,116 +3,107 @@ import { HandlePosition } from './HandlePosition'
 import { toReadonly } from './helper'
 import { Node, NodeType } from './Node'
 import type { INodeHandleConfig } from './NodeHandle'
+import type { INodeSchema } from './NodeSchema'
 import type { IPersistent } from './Persistent'
 import type { IDisposable, ISubGraph } from './types'
 import { Workspace } from './Workspace'
 
-export class SubGraphInputNode extends Node {
-  static type = 'subgraph.input'
-  static nodeName = 'Input'
-  static internal = true
+export const SUBGRAPH_INPUT_NODE_TYPE = 'subgraph.input'
+export const SUBGRAPH_OUTPUT_NODE_TYPE = 'subgraph.output'
 
-  constructor() {
-    super()
-    this._type = SubGraphInputNode.type
-    this.setNodeType(NodeType.Entry)
-
-    this.addHandle({
+/**
+ * Schema of the subgraph interface input node (entry point inside a
+ * subgraph workspace). Registered automatically by every `Workspace`.
+ */
+export const subGraphInputNodeSchema: INodeSchema = {
+  type: SUBGRAPH_INPUT_NODE_TYPE,
+  name: 'Input',
+  internal: true,
+  nodeType: NodeType.Entry,
+  handles: [
+    {
       name: 'Output',
       key: 'Output',
       type: '*',
       position: HandlePosition.Right,
-    })
-
-    this.addHandle({
+    },
+    {
       name: 'Name',
       key: 'Name',
       type: 'string',
-    })
-
+    },
     // todo, use a select component
-    this.addHandle({
+    {
       name: 'Type',
       key: 'Type',
       type: 'string',
-    })
-
-    this.addHandle({
+    },
+    {
       name: 'Required',
       key: 'Required',
       type: 'boolean',
       value: false,
-    })
-  }
-
-  toHandleConfig(): INodeHandleConfig {
-    const conf: INodeHandleConfig = {
-      name: this.getData('Name'),
-      key: this.getData('Name'),
-      type: this.getData('Type'),
-      position: HandlePosition.Left,
-    }
-
-    return conf
-  }
-
-  getInputName() {
-    return String(this.getData('Name'))
-  }
-
-  setOutputValue(value: unknown) {
-    this.setData('Output', value)
-  }
+    },
+  ],
 }
 
-export class SubGraphOutputNode extends Node {
-  static type = 'subgraph.output'
-  static nodeName = 'Output'
-  static internal = true
-
-  constructor() {
-    super()
-    this._type = SubGraphOutputNode.type
-
-    this.addHandle({
+/**
+ * Schema of the subgraph interface output node (result of a subgraph
+ * workspace). Registered automatically by every `Workspace`.
+ */
+export const subGraphOutputNodeSchema: INodeSchema = {
+  type: SUBGRAPH_OUTPUT_NODE_TYPE,
+  name: 'Output',
+  internal: true,
+  handles: [
+    {
       name: 'Value',
       key: 'Value',
       type: '*',
       position: HandlePosition.Left,
-    })
-
-    this.addHandle({
+    },
+    {
       name: 'Name',
       key: 'Name',
       type: 'string',
-    })
-
-    this.addHandle({
+    },
+    {
       name: 'Type',
       key: 'Type',
       type: 'string',
       value: 'string',
-    })
+    },
+  ],
+}
+
+export function isSubGraphInputNode(node: Node) {
+  return node.type === SUBGRAPH_INPUT_NODE_TYPE
+}
+
+export function isSubGraphOutputNode(node: Node) {
+  return node.type === SUBGRAPH_OUTPUT_NODE_TYPE
+}
+
+function subGraphInputToHandleConfig(node: Node): INodeHandleConfig {
+  const conf: INodeHandleConfig = {
+    name: node.getData('Name'),
+    key: node.getData('Name'),
+    type: node.getData('Type'),
+    position: HandlePosition.Left,
   }
 
-  getOutputName() {
-    return String(this.getData('Name'))
+  return conf
+}
+
+function subGraphOutputToHandleConfig(node: Node): INodeHandleConfig {
+  const conf: INodeHandleConfig = {
+    name: node.getData('Name'),
+    key: node.getData('Name'),
+    type: node.getData('Type'),
+    position: HandlePosition.Right,
   }
 
-  getOutputValue() {
-    return this.getData('Value')
-  }
-
-  toHandleConfig(): INodeHandleConfig {
-    const conf: INodeHandleConfig = {
-      name: this.getData('Name'),
-      key: this.getData('Name'),
-      type: this.getData('Type'),
-      position: HandlePosition.Right,
-    }
-
-    return conf
-  }
+  return conf
 }
 
 /**
@@ -123,7 +114,7 @@ class VirtualWorkspace extends Workspace {
     super()
 
     for (const [name, factory] of ws.nodeRegister) {
-      this.registerNode(name, factory)
+      this._nodeRegister.set(name, factory)
     }
 
     this.fromJSON({
@@ -157,46 +148,22 @@ export class SubGraph implements IPersistent<ISubGraph>, IDisposable {
 
   constructor(parentWorkspace: Workspace) {
     this._workspace = new VirtualWorkspace(parentWorkspace)
-
-    this.workspace.registerNode(SubGraphInputNode.type, SubGraphInputNode)
-    this.workspace.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)
   }
 
   buildNode(): Node {
-    const inputs = this.workspace.nodes.filter(
-      (node) => node instanceof SubGraphInputNode,
-    )
+    const inputs = this.workspace.nodes.filter(isSubGraphInputNode)
 
-    const outputs = this.workspace.nodes.filter(
-      (node) => node instanceof SubGraphOutputNode,
-    )
+    const outputs = this.workspace.nodes.filter(isSubGraphOutputNode)
 
     const node = new Node()
     node.setSubGraphId(this.id)
 
     for (const output of outputs) {
-      node.addHandle(output.toHandleConfig())
+      node.addHandle(subGraphOutputToHandleConfig(output))
     }
 
     for (const input of inputs) {
-      node.addHandle(input.toHandleConfig())
-    }
-
-    node.onProcess = async () => {
-      const data = node.getAllData()
-
-      for (const input of inputs) {
-        const name = input.getInputName()
-        input.setOutputValue(data[name])
-      }
-
-      await this.workspace.execute()
-
-      for (const output of outputs) {
-        const name = output.getOutputName()
-        const value = output.getOutputValue()
-        node.setData(name, value)
-      }
+      node.addHandle(subGraphInputToHandleConfig(input))
     }
 
     this._node = node

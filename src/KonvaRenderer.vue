@@ -7,7 +7,7 @@ import WorkspaceToolbar from './components/WorkspaceToolbar.vue'
 import ContextMenu from './components/ContextMenu.vue'
 
 export interface KonvaRendererProps {
-  setup?: (ws: IWorkspace) => void
+  setup?: (ws: IWorkspace) => void | Promise<void>
   showToolbar?: boolean
   showContextMenu?: boolean
 }

@@ -1,21 +1,21 @@
-import { HandlePosition, Node, NodeType } from '../../../../src'
+import { HandlePosition, NodeType } from '../../../../src/core'
+import type { INodeDefinition } from '../../../../src/backend'
 
-export class ImageLoaderNode extends Node {
-  static override nodeName = 'Image Loader'
-
-  constructor() {
-    super()
-
-    this.setNodeType(NodeType.Entry)
-
-    this.addHandle({
-      key: 'output',
-      name: 'Image',
-      position: HandlePosition.Right,
-      type: 'image',
-      options: {
+export const imageLoaderDefinition: INodeDefinition = {
+  schema: {
+    type: 'ImageLoader',
+    name: 'Image Loader',
+    nodeType: NodeType.Entry,
+    handles: [
+      {
+        key: 'output',
+        name: 'Image',
+        position: HandlePosition.Right,
         type: 'image',
+        options: {
+          type: 'image',
+        },
       },
-    })
-  }
+    ],
+  },
 }

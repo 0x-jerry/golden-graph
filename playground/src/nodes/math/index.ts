@@ -1,6 +1,4 @@
-import type { Workspace } from '../../../../src'
-import { MathOpNode } from './Op'
+import type { INodeDefinition } from '../../../../src/backend'
+import { mathOpDefinition } from './Op'
 
-export function registerMathNodes(workspace: Workspace) {
-  workspace.registerNode('Math.Op', MathOpNode)
-}
+export const mathDefinitions: INodeDefinition[] = [mathOpDefinition]

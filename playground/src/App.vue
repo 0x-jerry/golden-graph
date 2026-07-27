@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef } from 'vue';
+import { computed, nextTick, useTemplateRef } from 'vue'
 import { KonvaRenderer, Workspace } from '../../src'
 import { setup as _setup } from './editor'
 
@@ -7,17 +7,17 @@ const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
 
 const cacheKey = 'graph-save-data'
 
-const workspace = computed(() => instance.value?.workspace);
+const workspace = computed(() => instance.value?.workspace)
 
-function setup(ws: Workspace) {
-  _setup(ws)
+async function setup(ws: Workspace) {
+  await _setup(ws)
   ws.setDebug(true)
 
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
   let isPending = false
 
-  events.forEach(event => {
+  events.forEach((event) => {
     ws.events.on(event, () => {
       execute()
     })
@@ -50,7 +50,7 @@ function save() {
 
   const data = ws.toJSON()
 
-  localStorage.setItem(cacheKey, JSON.stringify(data));
+  localStorage.setItem(cacheKey, JSON.stringify(data))
 }
 
 async function load() {
@@ -58,11 +58,10 @@ async function load() {
   if (!ws) {
     return
   }
-  const data = localStorage.getItem(cacheKey);
+  const data = localStorage.getItem(cacheKey)
   if (!data) {
     return
   }
-
 
   ws.clear()
 
@@ -107,8 +106,12 @@ async function loadFromJSON() {
       <button @click="save">Save</button>
       <button @click="load">Load</button>
       <button @click="loadFromJSON">Load From JSON</button>
-      <button @click="workspace?.setDebug(!workspace?.state.debug)">Debug: {{ workspace?.state.debug }}</button>
-      <button :disabled="workspace?.executorState.isProcessing" @click="run">Run</button>
+      <button @click="workspace?.setDebug(!workspace?.state.debug)">
+        Debug: {{ workspace?.state.debug }}
+      </button>
+      <button :disabled="workspace?.executorState.isProcessing" @click="run">
+        Run
+      </button>
     </div>
 
     <div class="graph-render-content">

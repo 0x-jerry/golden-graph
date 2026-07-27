@@ -1,66 +1,91 @@
 import { describe, it, expect } from 'vitest'
-import { HandlePosition, Node, NodeType, Workspace, Group } from '../../src/core'
+import {
+  HandlePosition,
+  Node,
+  NodeType,
+  Workspace,
+  Group,
+  type INodeSchema,
+} from '../../src/core'
+import type { INodeDefinition } from '../../src/backend'
+import { DirectExecutorBackend } from '../helpers/DirectExecutorBackend'
 import { getNodesBounding } from '../../src/core/domHelper'
 
-class GroupTestNode extends Node {
-  constructor() {
-    super()
-    this.addHandle({
+const groupTestNodeSchema: INodeSchema = {
+  type: 'test',
+  name: 'test',
+  handles: [
+    {
       name: 'Input',
       key: 'input',
       type: 'string',
       position: HandlePosition.Left,
-    })
-
-    this.addHandle({
+    },
+    {
       name: 'Output',
       key: 'output',
       type: 'string',
       position: HandlePosition.Right,
-    })
-  }
+    },
+  ],
 }
 
-class SourceNode extends Node {
-  constructor() {
-    super()
-    this._type = 'Source'
-    this.setNodeType(NodeType.Entry)
-    this.addHandle({ key: 'out', position: HandlePosition.Right, type: 'number', value: 1 })
-  }
-  onProcess = () => {
+const sourceSchema: INodeSchema = {
+  type: 'Source',
+  name: 'Source',
+  nodeType: NodeType.Entry,
+  handles: [
+    { key: 'out', position: HandlePosition.Right, type: 'number', value: 1 },
+  ],
+}
+
+const processSchema: INodeSchema = {
+  type: 'Process',
+  name: 'Process',
+  handles: [
+    { key: 'in', position: HandlePosition.Left, type: 'number' },
+    { key: 'out', position: HandlePosition.Right, type: 'number' },
+  ],
+}
+
+const sinkSchema: INodeSchema = {
+  type: 'Sink',
+  name: 'Sink',
+  handles: [{ key: 'in', position: HandlePosition.Left, type: 'number' }],
+}
+
+const executeDefinitions: INodeDefinition[] = [
+  {
+    schema: sourceSchema,
     // no-op: emits existing value
-  }
-}
-
-class ProcessNode extends Node {
-  constructor() {
-    super()
-    this._type = 'Process'
-    this.addHandle({ key: 'in', position: HandlePosition.Left, type: 'number' })
-    this.addHandle({ key: 'out', position: HandlePosition.Right, type: 'number' })
-  }
-  onProcess = () => {
-    const n = this.getData<number>('in') ?? 0
-    this.setData('out', n + 1)
-  }
-}
-
-class SinkNode extends Node {
-  constructor() {
-    super()
-    this._type = 'Sink'
-    this.addHandle({ key: 'in', position: HandlePosition.Left, type: 'number' })
-  }
-}
+    execute: () => {},
+  },
+  {
+    schema: processSchema,
+    execute: (ctx) => {
+      const n = ctx.getData<number>('in') ?? 0
+      ctx.setData('out', n + 1)
+    },
+  },
+  {
+    schema: sinkSchema,
+    execute: () => {},
+  },
+]
 
 describe('Workspace', () => {
   it('register/add/connect/query/remove edges', () => {
     const ws = new Workspace()
-    class A extends Node { constructor() { super(); this._type = 'A'; this.addHandle({ key: 'o', position: HandlePosition.Right, type: 'number' }) } }
-    class B extends Node { constructor() { super(); this._type = 'B'; this.addHandle({ key: 'i', position: HandlePosition.Left, type: 'number' }) } }
-    ws.registerNode('A', A)
-    ws.registerNode('B', B)
+    ws.registerNodeSchema({
+      type: 'A',
+      name: 'A',
+      handles: [{ key: 'o', position: HandlePosition.Right, type: 'number' }],
+    })
+    ws.registerNodeSchema({
+      type: 'B',
+      name: 'B',
+      handles: [{ key: 'i', position: HandlePosition.Left, type: 'number' }],
+    })
     const a = ws.addNode('A')
     const b = ws.addNode('B')
     const edge = ws.connect(a.getHandle('o')!, b.getHandle('i')!)!
@@ -74,17 +99,16 @@ describe('Workspace', () => {
   it('getNodesBounding throws when node DOM missing', () => {
     const ws = new Workspace()
     // register and add one node without DOM
-    class A extends Node { constructor() { super(); this._type = 'A'; } }
-    ws.registerNode('A', A)
+    ws.registerNodeSchema({ type: 'A', name: 'A', handles: [] })
     const a = ws.addNode('A', { pos: { x: 10, y: 20 } })
     expect(() => getNodesBounding([a])).toThrow()
   })
 
   it('execute processes graph and propagates values', async () => {
-    const ws = new Workspace()
-    ws.registerNode('Source', SourceNode)
-    ws.registerNode('Process', ProcessNode)
-    ws.registerNode('Sink', SinkNode)
+    const ws = new Workspace({
+      executorBackend: new DirectExecutorBackend(executeDefinitions),
+    })
+    await ws.loadNodeSchemasFromBackend()
 
     const s = ws.addNode('Source', { pos: { x: 0, y: 0 } })
     const p = ws.addNode('Process', { pos: { x: 0, y: 0 } })
@@ -104,11 +128,11 @@ describe('Workspace', () => {
 
   it('toJSON/fromJSON roundtrip', () => {
     const ws = new Workspace()
-    ws.registerNode('Source', SourceNode)
+    ws.registerNodeSchema(sourceSchema)
     const s = ws.addNode('Source')
     const json = ws.toJSON()
     const ws2 = new Workspace()
-    ws2.registerNode('Source', SourceNode)
+    ws2.registerNodeSchema(sourceSchema)
     ws2.fromJSON(json)
     expect(ws2.nodes.length).toBe(1)
     expect(ws2.nodes[0]!.type).toBe(s.type)
@@ -116,7 +140,7 @@ describe('Workspace', () => {
 
   it('should convert group to subgraph', () => {
     const ws = new Workspace()
-    ws.registerNode('test', GroupTestNode)
+    ws.registerNodeSchema(groupTestNodeSchema)
 
     // Create nodes
     const nodeA = ws.addNode('test')
@@ -187,7 +211,7 @@ describe('Workspace', () => {
 
   it('should handle internal edges correctly', () => {
     const ws = new Workspace()
-    ws.registerNode('test', GroupTestNode)
+    ws.registerNodeSchema(groupTestNodeSchema)
 
     const n1 = ws.addNode('test')
     const n2 = ws.addNode('test')
@@ -217,27 +241,24 @@ describe('Workspace', () => {
   it('should handle duplicate handle names when converting group to subgraph', () => {
     const ws = new Workspace()
 
-    class TestNode extends Node {
-      static nodeName = 'MyNode'
-
-      constructor() {
-        super()
-        this.addHandle({
+    ws.registerNodeSchema({
+      type: 'test',
+      name: 'MyNode',
+      handles: [
+        {
           name: 'Input',
           key: 'input',
           type: 'string',
           position: HandlePosition.Left,
-        })
-        this.addHandle({
+        },
+        {
           name: 'Output',
           key: 'output',
           type: 'string',
           position: HandlePosition.Right,
-        })
-      }
-    }
-
-    ws.registerNode('test', TestNode)
+        },
+      ],
+    })
 
     // Create two internal nodes with same name
     const n1 = ws.addNode('test')
@@ -285,7 +306,7 @@ describe('Workspace', () => {
 
   it('should merge inputs from same external handle', () => {
     const ws = new Workspace()
-    ws.registerNode('test', GroupTestNode)
+    ws.registerNodeSchema(groupTestNodeSchema)
 
     const n1 = ws.addNode('test')
     n1.id = 1001
@@ -326,4 +347,3 @@ describe('Workspace', () => {
     expect(internalEdges.length).toBe(2)
   })
 })
-

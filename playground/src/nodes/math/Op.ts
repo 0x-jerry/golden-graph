@@ -1,50 +1,47 @@
-import { HandlePosition, Node } from '../../../../src'
+import { HandlePosition } from '../../../../src/core'
+import type { INodeDefinition } from '../../../../src/backend'
 
-export class MathOpNode extends Node {
-  static override nodeName = 'Math - Op'
-
-  constructor() {
-    super()
-
-    this.addHandle({
-      key: 's',
-      name: 'Sum',
-      position: HandlePosition.Right,
-      type: 'number',
-      value: 0,
-    })
-
-    this.addHandle({
-      key: 'op',
-      name: 'Op',
-      value: '+',
-      options: {
-        type: 'select',
-        options: ['+', '-', '*', '/'],
+export const mathOpDefinition: INodeDefinition = {
+  schema: {
+    type: 'Math.Op',
+    name: 'Math - Op',
+    handles: [
+      {
+        key: 's',
+        name: 'Sum',
+        position: HandlePosition.Right,
+        type: 'number',
+        value: 0,
       },
-    })
-
-    this.addHandle({
-      key: 'a',
-      name: 'A',
-      position: HandlePosition.Left,
-      type: 'number',
-      value: 0,
-    })
-
-    this.addHandle({
-      key: 'b',
-      name: 'B',
-      position: HandlePosition.Left,
-      type: 'number',
-      value: 0,
-    })
-  }
-
-  override onProcess = () => {
-    const a = this.getData<number>('a') ?? 0
-    const b = this.getData<number>('b') ?? 0
-    const op = this.getData<string>('op') ?? '+'
+      {
+        key: 'op',
+        name: 'Op',
+        value: '+',
+        options: {
+          type: 'select',
+          options: ['+', '-', '*', '/'],
+        },
+      },
+      {
+        key: 'a',
+        name: 'A',
+        position: HandlePosition.Left,
+        type: 'number',
+        value: 0,
+      },
+      {
+        key: 'b',
+        name: 'B',
+        position: HandlePosition.Left,
+        type: 'number',
+        value: 0,
+      },
+    ],
+  },
+  execute: (ctx) => {
+    const a = ctx.getData<number>('a') ?? 0
+    const b = ctx.getData<number>('b') ?? 0
+    const op = ctx.getData<string>('op') ?? '+'
 
     let s = 0
     if (op === '+') {
@@ -57,6 +54,6 @@ export class MathOpNode extends Node {
       s = a / b
     }
 
-    this.setData('s', s)
-  }
+    ctx.setData('s', s)
+  },
 }

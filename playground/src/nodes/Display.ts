@@ -1,20 +1,21 @@
-import { HandlePosition, Node } from '../../../src'
+import { HandlePosition } from '../../../src/core'
+import type { INodeDefinition } from '../../../src/backend'
 
-export class DisplayNode extends Node {
-  static override nodeName = 'Display'
-
-  constructor() {
-    super()
-
-    this.addHandle({
-      key: 'input',
-      name: 'Input',
-      position: HandlePosition.Left,
-      type: '*',
-      value: '',
-      options: {
-        type: 'display',
+export const displayDefinition: INodeDefinition = {
+  schema: {
+    type: 'Output',
+    name: 'Display',
+    handles: [
+      {
+        key: 'input',
+        name: 'Input',
+        position: HandlePosition.Left,
+        type: '*',
+        value: '',
+        options: {
+          type: 'display',
+        },
       },
-    })
-  }
+    ],
+  },
 }

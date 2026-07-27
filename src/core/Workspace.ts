@@ -9,13 +9,13 @@ import { uniq } from 'lodash-es'
 import { CoordSystem } from './CoordSystem'
 import { Edge } from './Edge'
 import { Executor } from './Executor'
+import type { ExecutorBackend } from './ExecutorBackend'
 import { Group } from './Group'
 import { convertGroupToSubGraph } from './GroupToSubGraph'
 import {
   createIncrementIdGenerator,
   edgeLocKey,
   toReadonly,
-  type Factory,
 } from './helper'
 import {
   type Node,
@@ -24,9 +24,14 @@ import {
   NodeType,
 } from './Node'
 import type { NodeHandle } from './NodeHandle'
+import { nodeClassFromSchema, type INodeSchema } from './NodeSchema'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
-import { SubGraph, SubGraphInputNode, SubGraphOutputNode } from './SubGraph'
+import {
+  SubGraph,
+  subGraphInputNodeSchema,
+  subGraphOutputNodeSchema,
+} from './SubGraph'
 import type {
   IDisposable,
   INodeHandleLoc,
@@ -82,6 +87,15 @@ interface IWorkspaceData {
   data: IWorkspace
 }
 
+export interface WorkspaceOptions {
+  /**
+   * Optional executor backend. When provided, `execute()` runs the
+   * workflow on the backend (e.g. a Web Worker, or any remote service
+   * implementing the executor protocol) instead of in-process.
+   */
+  executorBackend?: ExecutorBackend
+}
+
 export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   readonly version = '1.0.0'
   readonly id = nanoid()
@@ -103,7 +117,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   _nodeRegister = new Register<NodeConstructor>()
 
-  _executor = new Executor(this)
+  _executor: Executor
 
   _workspaceDataStack: IWorkspaceData[] = []
 
@@ -117,11 +131,13 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     activeType: ActiveType.None,
   }
 
-  constructor() {
+  constructor(options?: WorkspaceOptions) {
+    this._executor = new Executor(this, options?.executorBackend)
+
     // Internal node types must always be registered so that `fromJSON`
     // (e.g. `enterSubGraph`) can restore subgraph interface nodes.
-    this.registerNode(SubGraphInputNode.type, SubGraphInputNode)
-    this.registerNode(SubGraphOutputNode.type, SubGraphOutputNode)
+    this.registerNodeSchema(subGraphInputNodeSchema)
+    this.registerNodeSchema(subGraphOutputNodeSchema)
   }
 
   get state() {
@@ -168,8 +184,46 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     this._renderer = renderer
   }
 
-  registerNode<T extends Node>(type: string, node: Factory<T>) {
-    this._nodeRegister.set(type, node as unknown as NodeConstructor)
+  /**
+   * Attach (or replace) the executor backend after construction. The
+   * backend serves node schemas via `getNodeSchemas()` and runs
+   * workflows on `execute()`.
+   */
+  setExecutorBackend(backend: ExecutorBackend) {
+    this._executor.backend = backend
+  }
+
+  /**
+   * Register a node by its JSON schema. The workspace only uses the
+   * schema to render generic node instances — the matching execute
+   * function lives on the backend that served the schema.
+   */
+  registerNodeSchema(schema: INodeSchema) {
+    this._nodeRegister.set(schema.type, nodeClassFromSchema(schema))
+  }
+
+  /**
+   * Fetch all node schemas from the configured executor backend and
+   * register them for rendering. Call this once after attaching a
+   * backend, before adding nodes to the graph.
+   */
+  async loadNodeSchemasFromBackend() {
+    const backend = this._executor.backend
+
+    if (!backend) {
+      throw new Error(
+        'Can not load node schemas: no executor backend is configured. ' +
+          'Pass `executorBackend` to the Workspace options.',
+      )
+    }
+
+    const schemas = await backend.getNodeSchemas()
+
+    for (const schema of schemas) {
+      this.registerNodeSchema(schema)
+    }
+
+    return schemas
   }
 
   moveActiveNodes(delta: IVec2) {
@@ -583,6 +637,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   dispose() {
     this.events.off()
+    this._executor.backend?.dispose?.()
   }
 
   toJSON(): IWorkspace {

@@ -187,8 +187,6 @@ export class Node implements IPersistent<INode> {
     return this.handles.filter((n) => n.position === position)
   }
 
-  onProcess?: (instance: this) => unknown
-
   move(x: number, y: number) {
     this._state.pos.x += x
     this._state.pos.y += y

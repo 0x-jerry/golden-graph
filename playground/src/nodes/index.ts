@@ -1,17 +1,16 @@
-import type { Workspace } from '../../../src'
-import { DisplayNode } from './Display'
-import { ImageLoaderNode } from './images/ImageLoader'
-import { registerMathNodes } from './math'
-import { NumberNode } from './Number'
-import { TextNode } from './Text'
-import { ToStringNode } from './ToString'
+import type { INodeDefinition } from '../../../src/backend'
+import { displayDefinition } from './Display'
+import { imageLoaderDefinition } from './images/ImageLoader'
+import { mathDefinitions } from './math'
+import { numberDefinition } from './Number'
+import { textDefinition } from './Text'
+import { toStringDefinition } from './ToString'
 
-export function registerNodes(workspace: Workspace) {
-  registerMathNodes(workspace)
-
-  workspace.registerNode('Number', NumberNode)
-  workspace.registerNode('Text', TextNode)
-  workspace.registerNode('ToString', ToStringNode)
-  workspace.registerNode('Output', DisplayNode)
-  workspace.registerNode('ImageLoader', ImageLoaderNode)
-}
+export const nodeDefinitions: INodeDefinition[] = [
+  ...mathDefinitions,
+  numberDefinition,
+  textDefinition,
+  toStringDefinition,
+  displayDefinition,
+  imageLoaderDefinition,
+]

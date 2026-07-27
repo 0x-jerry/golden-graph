@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { ActiveType, HandlePosition, Node, Workspace } from '../../src/core'
+import {
+  ActiveType,
+  HandlePosition,
+  Workspace,
+  type INodeSchema,
+} from '../../src/core'
 
-class FlowNode extends Node {
-  static nodeName = 'Flow'
-  constructor() {
-    super()
-    this._type = 'Flow'
-    this.addHandle({ key: 'in', position: HandlePosition.Left, type: 'number' })
-    this.addHandle({ key: 'out', position: HandlePosition.Right, type: 'number', value: 42 })
-  }
+const flowSchema: INodeSchema = {
+  type: 'Flow',
+  name: 'Flow',
+  handles: [
+    { key: 'in', position: HandlePosition.Left, type: 'number' },
+    { key: 'out', position: HandlePosition.Right, type: 'number', value: 42 },
+  ],
 }
 
 function createWs() {
   const ws = new Workspace()
-  ws.registerNode('Flow', FlowNode)
+  ws.registerNodeSchema(flowSchema)
   return ws
 }
 

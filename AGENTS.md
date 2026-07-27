@@ -31,19 +31,44 @@ bun vitest run -t "should add node"
 
 ```
 src/
-  index.ts              # library entry — re-exports core/* + KonvaRenderer + KonvaGraphRenderer
+  index.ts              # library entry — re-exports core/* + backend/* + KonvaRenderer + KonvaGraphRenderer
   KonvaRenderer.vue     # top-level component, own & provide Workspace
-  core/                 # plain TS model: Workspace, Node, Edge, Group, SubGraph, Executor, CoordSystem
+  core/                 # plain TS model: Workspace, Node, Edge, Group, SubGraph, NodeSchema, Executor (facade), ExecutorBackend (protocol), CoordSystem
+  backend/              # execution side: WorkflowExecutor (JSON-native engine), WorkerExecutorBackend (main-thread driver), ExecutorWorkerHost (worker-side endpoint)
   renderer/             # Konva rendering: KonvaGraphRenderer, InteractionManager, ContextMenuBuilder, types
   hooks/                # Vue composables: useWorkspace, useCoordSystem, useWorkspaceEvent, useContextMenuState
   components/           # Vue components: ContextMenu.vue, WorkspaceToolbar.vue
   handles/              # handle rendering components
-test/                   # mirrors src/ structure
+test/                   # mirrors src/ structure; test/helpers/ holds shared test utilities
 ```
 
 ### Core → Vue boundary
 
 - `src/core/` **must have zero Vue imports** — no `reactive`, `shallowRef`, `toValue`, etc.
+- `src/backend/` may import from `src/core/`, never the reverse (core only references the `ExecutorBackend` *interface*, which lives in `src/core/ExecutorBackend.ts`).
+
+### Node definitions & execution
+
+High-level data flow (every hop is plain JSON):
+
+```
+[backend: node definitions { schema, execute }]
+        │ getNodeSchemas() ── JSON ──▶
+[frontend: registerNodeSchema() → generic render-only nodes; user builds the graph]
+        │ execute(): ExecuteRequest{ snapshot, entryNodeIds, debug } ── JSON ──▶
+[backend: WorkflowExecutor walks the snapshot JSON directly]
+        │ progress / handle-updates / finish ── JSON ──▶
+[frontend: mirrors progress + applies writes via node.setData()]
+```
+
+- **The backend owns node definitions** — `INodeDefinition = { schema: INodeSchema, execute }` (`src/backend/WorkflowExecutor.ts`). The schema is the JSON node shape (type, name, handles, nodeType); the execute function receives a minimal `NodeExecutionContext` (`getData` resolves inputs through edges, `setData` writes outputs).
+- **The frontend never executes.** `Executor` (core) is only a facade: re-entrancy guard, `executor:changed` state, applying streamed writes. `ws.execute()` throws when no backend is configured. Schema-registered nodes carry no execute logic.
+- Setup flow: `new Workspace({ executorBackend })` → `await ws.loadNodeSchemasFromBackend()` → add nodes by type.
+- The protocol (`ExecutorBackendRequest` / `ExecutorBackendResponse` in `src/core/ExecutorBackend.ts`) is plain JSON, so any out-of-process backend (any language, e.g. over WebSocket) can implement it. `WorkflowExecutor`'s semantics are the reference contract to replicate: stack traversal with dependency re-queuing, input resolution through edges, a diff cache keyed by node id (per graph level), subgraph expansion (inject `subgraph.input` values by `Name`, run nested workspace, read `subgraph.output` `Value`s back), debug pacing.
+- `WorkerExecutorBackend` + `ExecutorWorkerHost` (in `src/backend/`) are the reference backend: the host holds the definitions, serves schemas, and runs `WorkflowExecutor` on each snapshot — **no `Workspace` mirror**. Nested subgraph workspaces get lazily-created child executors, each with its own diff cache.
+- Subgraph interface nodes (`subgraph.input` / `subgraph.output`) are core-owned schemas (`subGraphInputNodeSchema` / `subGraphOutputNodeSchema` in `src/core/SubGraph.ts`), auto-registered by every `Workspace`.
+- Constraints: execute functions must be worker-safe (no DOM) and handle values must be structured-cloneable.
+- Worker entry files are consumer-side (the library can't bundle consumer node code): `new ExecutorWorkerHost(nodeDefinitions)`.
 
 ### Context menu flow
 

@@ -1,8 +1,14 @@
-import type { Workspace } from '../../src'
-import { registerNodes } from './nodes'
+import { WorkerExecutorBackend } from '../../src/backend'
+import type { Workspace } from '../../src/core'
 
-export function setup(workspace: Workspace) {
-  registerNodes(workspace)
+export async function setup(workspace: Workspace) {
+  const worker = new Worker(
+    new URL('./executor.worker.ts', import.meta.url),
+    { type: 'module' },
+  )
+  workspace.setExecutorBackend(new WorkerExecutorBackend(worker))
+
+  await workspace.loadNodeSchemasFromBackend()
 
   const n1 = workspace.addNode('Number', {
     pos: {
