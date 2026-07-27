@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { HandlePosition, Node } from '../../src/core'
+import { HandlePosition, Node } from '../src'
 
 class TNode extends Node {
   constructor() {
@@ -12,7 +12,12 @@ describe('Node', () => {
   it('addHandle and get/query handles', () => {
     const n = new TNode()
     n.addHandle({ key: 'input', type: 'number', position: HandlePosition.Left })
-    n.addHandle({ key: 'output', type: 'number', position: HandlePosition.Right, value: 5 })
+    n.addHandle({
+      key: 'output',
+      type: 'number',
+      position: HandlePosition.Right,
+      value: 5,
+    })
     expect(n.getHandle('input')!.isLeft).toBe(true)
     expect(n.queryHandles(HandlePosition.Right)).toHaveLength(1)
     expect(n.getData('output')).toBe(5)
@@ -26,4 +31,3 @@ describe('Node', () => {
     expect(n.pos).toEqual({ x: 1, y: 2 })
   })
 })
-

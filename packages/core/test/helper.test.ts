@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createIncrementIdGenerator, isIntersected } from '../../src/core/helper'
+import { createIncrementIdGenerator, isIntersected } from '../src/helper'
 
 describe('helper', () => {
   it('createIncrementIdGenerator works', () => {
@@ -24,4 +24,3 @@ describe('helper', () => {
     expect(isIntersected(a, b, eq)).toBe(true)
   })
 })
-

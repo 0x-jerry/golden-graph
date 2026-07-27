@@ -6,7 +6,7 @@ import {
   Workspace,
   Group,
   type INodeSchema,
-} from '../../src/core'
+} from '../src'
 // import type { INodeDefinition } from '../../src/backend'
 // import { DirectExecutorBackend } from '../helpers/DirectExecutorBackend'
 // import { getNodesBounding } from '../../src/core/domHelper'
@@ -174,12 +174,14 @@ describe('Workspace', () => {
     const subGraph = ws.subGraphs[0]
 
     // 3. Node B should be in SubGraph
-    expect(subGraph!.workspace.nodes.find(n => n.id === nodeB.id)).toBeDefined()
-    expect(ws.nodes.find(n => n.id === nodeB.id)).toBeUndefined()
+    expect(
+      subGraph!.workspace.nodes.find((n) => n.id === nodeB.id),
+    ).toBeDefined()
+    expect(ws.nodes.find((n) => n.id === nodeB.id)).toBeUndefined()
 
     // 4. SubGraph should have Input and Output nodes
-    const sgInput = subGraph!.workspace.nodes.find(n => n.name === 'Input')
-    const sgOutput = subGraph!.workspace.nodes.find(n => n.name === 'Output')
+    const sgInput = subGraph!.workspace.nodes.find((n) => n.name === 'Input')
+    const sgOutput = subGraph!.workspace.nodes.find((n) => n.name === 'Output')
     expect(sgInput).toBeDefined()
     expect(sgOutput).toBeDefined()
 
@@ -193,7 +195,9 @@ describe('Workspace', () => {
     expect(subGraph!.workspace.queryEdges(bOutput.loc).length).toBe(1)
 
     // 6. Check Main Workspace Connections
-    const sgNode = ws.nodes.find(n => n instanceof Node && n !== nodeA && n !== nodeC)
+    const sgNode = ws.nodes.find(
+      (n) => n instanceof Node && n !== nodeA && n !== nodeC,
+    )
     expect(sgNode).toBeDefined()
 
     // A -> SubGraphNode
@@ -301,7 +305,9 @@ describe('Workspace', () => {
     expect(new Set(names).size).toBe(2)
     expect(names).toContain('MyNode_Input')
     // The exact second name depends on implementation, but likely MyNode_Input_1
-    expect(names.some((n) => n !== 'MyNode_Input' && n.startsWith('MyNode_Input'))).toBe(true)
+    expect(
+      names.some((n) => n !== 'MyNode_Input' && n.startsWith('MyNode_Input')),
+    ).toBe(true)
   })
 
   it('should merge inputs from same external handle', () => {
@@ -338,7 +344,9 @@ describe('Workspace', () => {
 
     const subGraph = ws.subGraphs[0]!
     // Should have 1 Input Node inside
-    const inputNodes = subGraph.workspace.nodes.filter(n => n.name === 'Input')
+    const inputNodes = subGraph.workspace.nodes.filter(
+      (n) => n.name === 'Input',
+    )
     expect(inputNodes.length).toBe(1)
 
     // That single input node should connect to BOTH n1 and n2 inside

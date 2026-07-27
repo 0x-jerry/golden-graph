@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  Group,
-  HandlePosition,
-  Workspace,
-  type INodeSchema,
-} from '../../src/core'
+import { Group, HandlePosition, Workspace, type INodeSchema } from '../src'
 
 const numberSchema: INodeSchema = {
   type: 'Number',

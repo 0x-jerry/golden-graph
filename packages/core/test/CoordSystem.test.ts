@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CoordSystem } from '../../src/core/CoordSystem'
+import { CoordSystem } from '../src'
 
 describe('CoordSystem', () => {
   it('move applies inverse scale', () => {

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ActiveType,
-  HandlePosition,
-  Workspace,
-  type INodeSchema,
-} from '../../src/core'
+import { ActiveType, HandlePosition, Workspace, type INodeSchema } from '../src'
 
 const flowSchema: INodeSchema = {
   type: 'Flow',

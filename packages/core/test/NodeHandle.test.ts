@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { HandlePosition, Node, NodeHandle, NodeHandleType } from '../../src/core'
+import { HandlePosition, Node, NodeHandle, NodeHandleType } from '../src'
 
 class TestNode extends Node {
   static nodeName = 'Test'
@@ -35,15 +35,30 @@ describe('NodeHandle', () => {
     const h2 = new NodeHandle()
     h1.setNode(a)
     h2.setNode(b)
-    h1.fromConfig({ key: 'out', position: HandlePosition.Right, type: ['number'] })
-    h2.fromConfig({ key: 'in', position: HandlePosition.Left, type: ['number'] })
+    h1.fromConfig({
+      key: 'out',
+      position: HandlePosition.Right,
+      type: ['number'],
+    })
+    h2.fromConfig({
+      key: 'in',
+      position: HandlePosition.Left,
+      type: ['number'],
+    })
     expect(h1.canConnectTo(h2)).toBe(true)
 
-    h2.fromConfig({ key: 'in', position: HandlePosition.Left, type: ['string'] })
+    h2.fromConfig({
+      key: 'in',
+      position: HandlePosition.Left,
+      type: ['string'],
+    })
     expect(h1.canConnectTo(h2)).toBe(false)
 
-    h1.fromConfig({ key: 'out', position: HandlePosition.Right, type: [NodeHandleType.All] })
+    h1.fromConfig({
+      key: 'out',
+      position: HandlePosition.Right,
+      type: [NodeHandleType.All],
+    })
     expect(h1.canConnectTo(h2)).toBe(true)
   })
 })
-

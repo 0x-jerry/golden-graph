@@ -1,4 +1,4 @@
-import type { IDisposable, IDisposableFn } from '../core'
+import type { IDisposable, IDisposableFn } from "./types"
 
 export class Disposable {
   _fns: Set<IDisposableFn | IDisposable> = new Set()

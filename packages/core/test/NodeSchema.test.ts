@@ -5,7 +5,7 @@ import {
   Workspace,
   nodeClassFromSchema,
   type INodeSchema,
-} from '../../src/core'
+} from '../src'
 
 const numberSchema: INodeSchema = {
   type: 'Number',
