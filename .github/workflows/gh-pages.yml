@@ -12,7 +12,4 @@ jobs:
       contents: write
     with:
       build-cmd: bun run play:build
-      upload-folder: playground/dist
-
-
-
+      upload-folder: packages/playground/dist

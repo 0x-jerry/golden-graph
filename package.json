@@ -12,7 +12,9 @@
   },
   "scripts": {
     "dev": "bun run play",
-    "play": "bun run --filter playground dev"
+    "test": "bun run --filter @0x-jerry/* test",
+    "play": "bun run --filter playground dev",
+    "play:build": "bun run --filter playground build"
   },
   "devDependencies": {
     "@0x-jerry/x-release": "^3.0.5",
