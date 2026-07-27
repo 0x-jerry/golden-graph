@@ -5,7 +5,7 @@ import {
   type INodeDefinition,
   type WorkerLike,
   type WorkerScopeLike,
-} from '../../src'
+} from '../src'
 import { HandlePosition, NodeType, Workspace } from '@0x-jerry/golden-graph'
 
 const calls: string[] = []

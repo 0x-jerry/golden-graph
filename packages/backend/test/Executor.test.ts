@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { HandlePosition, NodeType, Workspace } from '@0x-jerry/golden-graph'
-import type { INodeDefinition } from '../../src'
-import { DirectExecutorBackend } from '../helpers/DirectExecutorBackend'
+import type { INodeDefinition } from '../src'
+import { DirectExecutorBackend } from './helpers/DirectExecutorBackend'
 
 const calls: string[] = []
 

@@ -12,7 +12,7 @@ import {
   WorkflowExecutor,
   type INodeDefinition,
   type WorkflowExecutorEvents,
-} from '../../src'
+} from '../src'
 
 const calls: string[] = []
 
