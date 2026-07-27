@@ -1,0 +1,36 @@
+{
+  "name": "@0x-jerry/golden-graph-backend",
+  "version": "0.0.0",
+  "description": "",
+  "type": "module",
+  "license": "MIT",
+  "author": "0x-jerry <x.jerry.wang@gmail.com>",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsdown",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/bun": "latest",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^26.1.1",
+    "tsdown": "^0.22.14",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@0x-jerry/utils": "^6.5.0",
+    "lodash-es": "^4.18.1",
+    "@0x-jerry/golden-graph": "workspace:*"
+  }
+}

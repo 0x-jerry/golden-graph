@@ -1,0 +1,40 @@
+{
+  "name": "@0x-jerry/golden-graph",
+  "version": "0.0.0",
+  "description": "",
+  "type": "module",
+  "license": "MIT",
+  "author": "0x-jerry <x.jerry.wang@gmail.com>",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsdown",
+    "prepublishOnly": "bun run build",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@0x-jerry/x-release": "^3.0.5",
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/bun": "latest",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^26.1.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@0x-jerry/utils": "^6.5.0",
+    "@0x-jerry/vue-kit": "^2.3.1",
+    "lodash-es": "^4.18.1"
+  }
+}
