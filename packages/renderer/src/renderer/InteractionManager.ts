@@ -111,7 +111,13 @@ export class InteractionManager {
       return { type: hit.type, id: hit.id }
     }
 
-    return { type: ContextMenuTargetType.Canvas }
+    const ctx: ContextMenuContext = { type: ContextMenuTargetType.Canvas }
+    const pos = this._stage.getPointerPosition()
+    if (pos) {
+      ctx.pos = this._ws.coord.convertScreenCoord(pos)
+    }
+
+    return ctx
   }
 
   _onPointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {

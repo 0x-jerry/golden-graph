@@ -8,7 +8,7 @@ export function buildDefaultContextMenu(
 ): CoreMenuItem[] {
   switch (ctx.type) {
     case ContextMenuTargetType.Canvas:
-      return canvasMenu(ws)
+      return canvasMenu(ws, ctx)
     case ContextMenuTargetType.Node:
       return nodeMenu(ws, ctx.id!)
     case ContextMenuTargetType.Group:
@@ -16,7 +16,7 @@ export function buildDefaultContextMenu(
   }
 }
 
-function canvasMenu(ws: Workspace): CoreMenuItem[] {
+function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
   return [
     {
       label: 'Add Node',
@@ -24,7 +24,7 @@ function canvasMenu(ws: Workspace): CoreMenuItem[] {
         .filter(([, ctor]) => !ctor.internal)
         .map(([type]) => ({
           label: type,
-          action: () => ws.addNode(type),
+          action: () => ws.addNode(type, ctx.pos ? { pos: ctx.pos } : undefined),
         })),
     },
   ]

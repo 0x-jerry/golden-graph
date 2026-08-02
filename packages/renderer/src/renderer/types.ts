@@ -25,6 +25,8 @@ export interface ContextMenuContext {
   type: ContextMenuTargetType
   /** Target element id */
   id?: number
+  /** Pointer position in workspace coordinates (canvas target only) */
+  pos?: { x: number; y: number }
 }
 
 export interface CoreMenuItem {
