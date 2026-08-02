@@ -675,21 +675,35 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     }
 
     for (const node of data.nodes) {
+      // Build and fully restore the node (id, position, data) BEFORE it is
+      // registered and `node:added` fires. Creating it via `addNode` /
+      // `addRawNode` first would emit the event with a temporary id and a
+      // zero position — the renderer would keep a stale node group that is
+      // never updated (position stays 0,0) and can never be hit-tested.
+      let n: Node
+
       if (node.subGraphId) {
         const subGraph = this._subGraphs.find((g) => g.id === node.subGraphId)
         if (!subGraph) {
           throw new Error(`Can not find SubGraph by id ${node.subGraphId}`)
         }
 
-        const subGraphNode = subGraph.buildNode()
-        this.addRawNode(subGraphNode)
-
-        subGraphNode.fromJSON(node)
+        n = subGraph.buildNode()
       } else {
-        const n = this.addNode(node.type)
+        const factory = this._nodeRegister.get(node.type)
+        if (!factory) {
+          throw new Error(`Node [${node.type}] is not registered!`)
+        }
 
-        n.fromJSON(node)
+        n = new factory()
+        n._type = node.type
       }
+
+      n.setWorkspace(this)
+      n.fromJSON(node)
+
+      this._nodes.push(n)
+      this.events.emit('node:added', n)
     }
 
     for (const edgeData of data.edges) {

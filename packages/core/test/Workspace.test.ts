@@ -138,6 +138,32 @@ describe('Workspace', () => {
     expect(ws2.nodes[0]!.type).toBe(s.type)
   })
 
+  it('fromJSON emits node:added with the final id and position', () => {
+    const ws = new Workspace()
+    ws.registerNodeSchema(sourceSchema)
+    const n = ws.addNode('Source', { pos: { x: 10, y: 20 } })
+    const json = ws.toJSON()
+
+    const ws2 = new Workspace()
+    ws2.registerNodeSchema(sourceSchema)
+
+    const added: Array<{ id: number; pos: { x: number; y: number } }> = []
+    ws2.events.on('node:added', (node) => {
+      added.push({ id: node.id, pos: { ...node.pos } })
+    })
+
+    ws2.fromJSON(json)
+
+    // The `node:added` event must carry the restored id/position, not a
+    // temporary id or a zero position — the renderer relies on it to create
+    // a hit-testable node group.
+    expect(added).toHaveLength(1)
+    expect(added[0]!.id).toBe(n.id)
+    expect(added[0]!.pos).toEqual({ x: 10, y: 20 })
+    expect(ws2.nodes[0]!.id).toBe(n.id)
+    expect(ws2.nodes[0]!.pos).toEqual({ x: 10, y: 20 })
+  })
+
   it('should convert group to subgraph', () => {
     const ws = new Workspace()
     ws.registerNodeSchema(groupTestNodeSchema)
