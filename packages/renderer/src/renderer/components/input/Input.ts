@@ -220,6 +220,11 @@ export class Input extends FormElement {
       this._syncDisplay()
       this._startBlink()
     })
+
+    // Register the wheel handler exactly once. The handler is a no-op while
+    // inactive, so keeping it bound for the element's lifetime is safe and
+    // avoids listener accumulation across edit sessions.
+    this.on('wheel', this._wheelFn)
   }
 
   getValue(): string {
@@ -357,8 +362,6 @@ export class Input extends FormElement {
       this._hidden.focus()
     }
 
-    this.on('wheel', this._wheelFn)
-
     this._syncDisplay()
     this._startBlink()
   }
@@ -371,7 +374,6 @@ export class Input extends FormElement {
 
     this._bg.stroke(this._borderColor)
 
-    this.on('wheel', this._wheelFn)
     this._hidden.detach()
     this._scrollX = 0
     this._composingNode.visible(false)
@@ -385,6 +387,12 @@ export class Input extends FormElement {
 
     this._model.clearSelection()
     this._syncDisplay()
+
+    // Fully end the edit session: release the global keydown listener and
+    // reset the active state so Enter/Escape/destroy stop editing instead
+    // of leaving a stray bound listener that keeps mutating the value.
+    this._unbindEvents()
+    this._active = false
   }
 
   protected _onKeyDown(e: KeyboardEvent) {
@@ -397,9 +405,9 @@ export class Input extends FormElement {
   }
 
   destroy(): this {
-    if (this._active) {
-      this._stopEdit(false)
-    }
+    // Revert any in-progress edit and fully release the session
+    // (`_stopEdit` unbinds the window listener and resets `_active`).
+    this._stopEdit(false)
     this._hidden.detach()
     return super.destroy()
   }

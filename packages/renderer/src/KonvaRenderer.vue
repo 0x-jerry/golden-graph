@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 import type { Workspace as IWorkspace } from '@0x-jerry/golden-graph'
 import { KonvaGraphRenderer } from './renderer'
 import { useContextMenuState, useWorkspace } from './hooks'
@@ -24,20 +24,31 @@ const ctxMenu = useContextMenuState()
 
 let renderer: KonvaGraphRenderer | null = null
 
-onMounted(() => {
+onMounted(async () => {
   const el = containerRef.value
   if (!el) return
 
-  props.setup?.(ws)
-
+  // Create the renderer FIRST so `workspace.setRenderer(this)` is in place
+  // before `setup` runs — `setup` may call `ws.addGroup()` which requires a
+  // renderer, and node/edge additions during setup are then rendered live.
   renderer = new KonvaGraphRenderer(el, ws, {
     onContextMenu: (_ctx, evt, menus) => {
       ctxMenu.show(evt.clientX, evt.clientY, menus)
     },
   })
+
+  try {
+    await props.setup?.(ws)
+  } catch (error) {
+    console.error('KonvaRenderer setup failed:', error)
+  }
 })
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
+  // Dispose the renderer BEFORE the workspace: `useWorkspace.provide()`
+  // registers `ws.dispose()` on `onUnmounted`, which tears down the event
+  // emitter and terminates the worker — the renderer must unsubscribe from
+  // the still-alive emitter first so its disposal actually runs.
   renderer?.dispose()
 })
 

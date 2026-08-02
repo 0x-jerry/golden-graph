@@ -57,6 +57,11 @@ function renderValue(group: Konva.Group, handle: NodeHandle) {
     const img = new Image()
     img.src = value
     img.onload = () => {
+      // A newer value may have been rendered while this image was loading —
+      // drop the stale result so old images don't stack on top of new ones.
+      if (group.getAttr(VALUE_ATTR) !== value) {
+        return
+      }
       const scale = Math.min(1, MAX_WIDTH / img.width)
       const konvaImage = new Konva.Image({
         image: img,

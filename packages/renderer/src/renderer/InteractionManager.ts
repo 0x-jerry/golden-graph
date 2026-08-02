@@ -24,6 +24,11 @@ export interface InteractionManagerOptions {
   stage: Konva.Stage
   ws: Workspace
   edgeLayer: Konva.Layer
+  /**
+   * Top-most content layer — the rubber-band selection rect is drawn here
+   * so it stays visible above nodes/edges/groups.
+   */
+  nodeLayer: Konva.Layer
   onNodeSelect: (id: number) => void
   onContextMenu?: (
     ctx: ContextMenuContext,
@@ -35,6 +40,7 @@ export interface InteractionManagerOptions {
 export class InteractionManager {
   _stage: Konva.Stage
   _ws: Workspace
+  _nodeLayer: Konva.Layer
   _connectionLine: ConnectionLine
 
   _dragType: string | null = null
@@ -60,6 +66,7 @@ export class InteractionManager {
   constructor(opts: InteractionManagerOptions) {
     this._stage = opts.stage
     this._ws = opts.ws
+    this._nodeLayer = opts.nodeLayer
     this._connectionLine = new ConnectionLine(opts.edgeLayer)
     this._onNodeSelect = opts.onNodeSelect
     this._onContextMenu = opts.onContextMenu
@@ -390,7 +397,7 @@ export class InteractionManager {
         listening: false,
         visible: false,
       })
-      this._stage.getLayers()[0]?.add(this._selectionRect)
+      this._nodeLayer.add(this._selectionRect)
     }
   }
 

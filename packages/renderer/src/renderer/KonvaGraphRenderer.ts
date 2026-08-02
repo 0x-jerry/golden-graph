@@ -99,6 +99,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       stage: this._stage,
       ws: workspace,
       edgeLayer: this._edgeLayer,
+      nodeLayer: this._nodeLayer,
       onNodeSelect: (id) => {
         workspace.setActiveIds(ActiveType.Node, [id])
       },

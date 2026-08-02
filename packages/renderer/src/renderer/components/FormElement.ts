@@ -63,9 +63,9 @@ export abstract class FormElement
   }
 
   destroy(): this {
-    if (this._active) {
-      this._deactivate()
-    }
+    // `deactivate()` is idempotent (guarded by `_active`) and runs the full
+    // teardown: `_deactivate()` + `_unbindEvents()` + reset `_active`.
+    this.deactivate()
     return super.destroy()
   }
 }

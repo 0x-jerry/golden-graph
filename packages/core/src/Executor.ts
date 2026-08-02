@@ -59,9 +59,9 @@ export class Executor {
         },
         (event) => this._handleBackendEvent(event),
       )
-    } catch (error) {
-      throw new Error(String(error), { cause: error })
     } finally {
+      // Errors propagate to the caller as-is — no re-wrapping that would
+      // stringify the original error and lose its name/stack.
       this._state.isProcessing = false
       this._state.currentNodeId = -1
       this.ws.events.emit('executor:changed', this._state)

@@ -17,24 +17,43 @@ async function setup(ws: Workspace) {
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
   let isPending = false
+  let isExecuting = false
 
   events.forEach((event) => {
     ws.events.on(event, () => {
-      execute()
+      // Values written back by the executor while a run is in progress must
+      // not schedule another run — otherwise non-idempotent graphs (random
+      // values, clocks, ...) re-trigger execution forever.
+      if (ws.executorState.isProcessing) {
+        return
+      }
+
+      isPending = true
+      if (!isExecuting) {
+        void execute()
+      }
     })
   })
 
   async function execute() {
-    if (ws.executorState.isProcessing) {
+    if (isExecuting) {
       isPending = true
       return
     }
 
-    await ws.execute()
+    isExecuting = true
+    isPending = false
+
+    try {
+      await ws.execute()
+    } catch (error) {
+      console.error('Workspace execution failed:', error)
+    } finally {
+      isExecuting = false
+    }
 
     if (isPending) {
-      isPending = false
-      execute()
+      void execute()
     }
   }
 }
@@ -80,7 +99,11 @@ async function run() {
     return
   }
 
-  await ws.execute()
+  try {
+    await ws.execute()
+  } catch (error) {
+    console.error('Workspace execution failed:', error)
+  }
 }
 
 async function loadFromJSON() {
@@ -90,13 +113,20 @@ async function loadFromJSON() {
   }
 
   const json = window.prompt('Input JSON String')
+  if (!json) {
+    return
+  }
 
-  const data = JSON.parse(json || '')
+  try {
+    const data = JSON.parse(json)
 
-  ws.clear()
+    ws.clear()
 
-  await nextTick()
-  ws.fromJSON(data)
+    await nextTick()
+    ws.fromJSON(data)
+  } catch (error) {
+    console.error('Failed to load workspace from JSON:', error)
+  }
 }
 </script>
 

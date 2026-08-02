@@ -229,6 +229,22 @@ export class WorkflowExecutor {
         await this._processSubGraphNode(index, node, ctx)
       } else {
         const def = this._definitions.get(node.type)
+
+        // Subgraph interface nodes are handled by `_processSubGraphNode` /
+        // schema injection and legitimately have no definition. Any other
+        // node without a registered definition is a silent no-op today —
+        // fail loudly instead so misconfigured graphs are easy to find.
+        if (
+          !def &&
+          node.type !== SUBGRAPH_INPUT_NODE_TYPE &&
+          node.type !== SUBGRAPH_OUTPUT_NODE_TYPE
+        ) {
+          throw new Error(
+            `Can not execute node type [${node.type}] (node id ${node.id}): ` +
+              'no definition is registered on the backend',
+          )
+        }
+
         await def?.execute?.(ctx)
       }
 

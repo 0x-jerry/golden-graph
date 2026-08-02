@@ -10,7 +10,12 @@ import {
   ELEMENT_TYPE,
   ATTR,
 } from './constants'
-import { renderHandle, updateHandle, destroyHandle } from './HandleRenderer'
+import {
+  renderHandle,
+  updateHandle,
+  destroyHandle,
+  getHandleGroup,
+} from './HandleRenderer'
 
 export function computeNodeHeight(node: Node): number {
   const handleCount = node.handles.length || 1
@@ -95,6 +100,14 @@ export function updateNode(group: Konva.Group, node: Node): void {
   node.handles.forEach((handle) => {
     const hi = getHandleIndex(node, handle)
     if (hi < 0) return
+
+    // Handles added after the node was created have no Konva group yet —
+    // render them and insert into the node group so the new row shows up.
+    if (!getHandleGroup(handle)) {
+      group.add(renderHandle(handle, hi))
+      return
+    }
+
     updateHandle(handle, hi)
   })
 }

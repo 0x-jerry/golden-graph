@@ -101,24 +101,37 @@ function handleEditingKey(
 function copySelection(model: TextModel) {
   const text = model.selectedText()
   if (text !== null) {
-    navigator.clipboard.writeText(text)
+    getClipboard()?.writeText(text).catch(() => {})
   }
 }
 
 function cutSelection(model: TextModel): boolean {
   const text = model.selectedText()
   if (text === null) return false
-  navigator.clipboard.writeText(text)
+  getClipboard()?.writeText(text).catch(() => {})
   model.deleteSelection()
   return true
 }
 
 function pasteText(model: TextModel, env: InputKeyEnv) {
-  navigator.clipboard.readText().then((text) => {
-    if (text) {
-      model.insertText(text)
-      env.sync()
-      env.blink()
-    }
-  }).catch(() => {})
+  const clipboard = getClipboard()
+  if (!clipboard) return
+  clipboard
+    .readText()
+    .then((text) => {
+      if (text) {
+        model.insertText(text)
+        env.sync()
+        env.blink()
+      }
+    })
+    .catch(() => {})
+}
+
+/**
+ * `navigator.clipboard` is undefined on insecure origins (http/file) and in
+ * some browsers — feature-detect instead of throwing inside a keydown handler.
+ */
+function getClipboard(): Clipboard | undefined {
+  return typeof navigator !== 'undefined' ? navigator.clipboard : undefined
 }

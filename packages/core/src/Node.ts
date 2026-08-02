@@ -126,7 +126,12 @@ export class Node implements IPersistent<INode> {
     const handle = this.getHandle(key)
 
     if (!handle) {
-      throw new Error(`Can not find handle by key: ${key}`)
+      // Tolerate stale keys (e.g. loading JSON whose handle was removed from
+      // the schema) instead of aborting the whole restore.
+      console.warn(
+        `Can not find handle by key: [${key}] on node type [${this.type}], value is ignored`,
+      )
+      return
     }
 
     handle.setValue(value)
