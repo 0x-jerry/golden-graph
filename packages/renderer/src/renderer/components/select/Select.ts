@@ -121,7 +121,11 @@ export class Select extends FormElement {
     const toggle = (e: Konva.KonvaEventObject<Event>) => {
       e.cancelBubble = true
       if (this._active) {
-        this._close()
+        // Fully end the edit session: `deactivate()` runs `_deactivate()` →
+        // `_close()`, then unbinds the window keydown listener and resets
+        // `_active`. Without that, the next click would see `_active === true`
+        // and call `_close()` again instead of reopening the dropdown.
+        this.deactivate()
       } else {
         this._openDropdown()
       }
@@ -222,7 +226,10 @@ export class Select extends FormElement {
     const opt = this._opts[index]
     if (!opt) return
     this.setValue(opt.value)
-    this._close()
+    // `deactivate()` (not just `_close()`) so the Select returns to the
+    // inactive state — otherwise a subsequent click on the box would toggle
+    // it closed instead of reopening the dropdown.
+    this.deactivate()
   }
 
   _close() {
