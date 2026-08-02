@@ -418,6 +418,10 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       if (body) {
         body.stroke(isActive ? COLORS.ACCENT : COLORS.BORDER)
       }
+      const resize = group.findOne<Konva.Group>(SEL.RESIZE)
+      if (resize) {
+        resize.visible(isActive)
+      }
     }
 
     for (const [groupId, group] of this._groupGroups) {

@@ -23,6 +23,12 @@ export interface INode {
   subGraphId?: number
 
   pos: IVec2
+
+  /**
+   * Optional size override. `x`/`y` of `0` mean "auto" — the renderer falls
+   * back to its default layout width / content-driven height.
+   */
+  size?: IVec2
 }
 
 export interface INodeHandleLoc {

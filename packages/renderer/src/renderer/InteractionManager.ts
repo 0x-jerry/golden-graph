@@ -9,15 +9,16 @@ import { ConnectionLine } from './ConnectionLine'
 import { getJointPos } from './EdgeRenderer'
 import {
   COLORS,
-  LAYOUT,
   DRAG_TYPE,
-  NODE_BODY_PADDING,
+  NODE_MIN_WIDTH,
   NODE_SHAPE,
   ZOOM_MIN,
   ZOOM_MAX,
   ELEMENT_TYPE,
   ATTR,
   getZoomStep,
+  getNodeWidth,
+  getNodeHeight,
 } from './constants'
 
 export interface InteractionManagerOptions {
@@ -135,6 +136,26 @@ export class InteractionManager {
       }
     }
 
+    const resizeGrip = target.findAncestor(
+      (n: Konva.Node) => n.name() === NODE_SHAPE.RESIZE,
+    )
+    if (resizeGrip) {
+      const nodeGroup = resizeGrip.findAncestor(
+        (n: Konva.Node) => n.name() === ELEMENT_TYPE.NODE,
+      )
+      const nodeId = Number(nodeGroup?.getAttr(ATTR.ELEMENT_ID))
+      if (nodeId) {
+        if (
+          this._ws.state.activeType !== ActiveType.Node ||
+          !this._ws.isActive(nodeId)
+        ) {
+          this._onNodeSelect(nodeId)
+        }
+        this._startNodeResize(nodeId)
+      }
+      return
+    }
+
     const hit = this._hitTarget(target)
     if (hit) {
       if (hit.type === ContextMenuTargetType.Node) {
@@ -189,6 +210,10 @@ export class InteractionManager {
     if (this._dragType === DRAG_TYPE.SELECTION) {
       this._handleSelectionDrag(pos)
       return
+    }
+
+    if (this._dragType === DRAG_TYPE.RESIZE) {
+      this._handleNodeResize(pos)
     }
   }
 
@@ -334,6 +359,35 @@ export class InteractionManager {
     }
   }
 
+  // --- Node Resize ---
+
+  _startNodeResize(nodeId: number) {
+    const pos = this._stage.getPointerPosition()
+    if (!pos) return
+
+    this._dragType = DRAG_TYPE.RESIZE
+    this._dragNodeId = nodeId
+    this._dragLastPos = { x: pos.x, y: pos.y }
+  }
+
+  _handleNodeResize(screenPos: { x: number; y: number }) {
+    const node = this._ws.getNode(this._dragNodeId)
+    if (!node) return
+
+    const dx = (screenPos.x - this._dragLastPos.x) / this._ws.coord.scale
+    const dy = (screenPos.y - this._dragLastPos.y) / this._ws.coord.scale
+    this._dragLastPos = { x: screenPos.x, y: screenPos.y }
+
+    node.setSize({
+      // Baseline from the effective width so an auto-width node doesn't jump
+      // straight to the minimum when the first drag goes left.
+      x: Math.max(NODE_MIN_WIDTH, getNodeWidth(node) + dx),
+      // `size.y` of 0 means auto height — the renderer never shrinks the
+      // body below its content height.
+      y: Math.max(0, node.size.y + dy),
+    })
+  }
+
   // --- Group Drag ---
 
   _startGroupDrag(groupId: number) {
@@ -452,12 +506,8 @@ export class InteractionManager {
       if (
         node.pos.x >= tl.x &&
         node.pos.y >= tl.y &&
-        node.pos.x + LAYOUT.NODE_WIDTH <= br.x &&
-        node.pos.y +
-          LAYOUT.HEADER_HEIGHT +
-          node.handles.length * LAYOUT.HANDLE_ROW_HEIGHT +
-          NODE_BODY_PADDING <=
-          br.y
+        node.pos.x + getNodeWidth(node) <= br.x &&
+        node.pos.y + getNodeHeight(node) <= br.y
       ) {
         selectedNodeIds.push(node.id)
       }

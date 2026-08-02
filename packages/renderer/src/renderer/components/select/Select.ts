@@ -139,6 +139,30 @@ export class Select extends FormElement {
     return this._val
   }
 
+  /**
+   * Resize the select box (e.g. when its node is resized). Reflows the
+   * background, text and arrow to the new width.
+   */
+  setWidth(width: number) {
+    if (width === this._sw) return
+    this._sw = width
+    this._bg.width(width)
+    const textW = width - ARROW_SIZE - ARROW_PADDING * 2 - PADDING
+    this._textNode.width(textW)
+    this._placeholderNode.width(textW)
+    const ax = width - ARROW_SIZE - ARROW_PADDING
+    const ay = this._sh / 2 - 2
+    this._arrow.points([
+      ax,
+      ay,
+      ax + ARROW_SIZE / 2,
+      ay + 4,
+      ax + ARROW_SIZE,
+      ay,
+    ])
+    this.getLayer()?.batchDraw()
+  }
+
   setValue(value: string) {
     this._val = value
     const opt = this._opts.find((o) => o.value === value)

@@ -41,6 +41,7 @@ export const update: HandleModule['update'] = (group, handle) => {
   if (select) {
     select.setOptions(readOptions(handle))
     select.setValue(String(handle.getValue() ?? ''))
+    select.setWidth(availableWidth(handle))
   }
 }
 

@@ -40,6 +40,12 @@ export class Node implements IPersistent<INode> {
       x: 0,
       y: 0,
     },
+    // 0 / 0 = auto: the renderer falls back to its default layout width and
+    // content-driven height.
+    size: {
+      x: 0,
+      y: 0,
+    },
   }
 
   _workspace?: Workspace
@@ -56,6 +62,10 @@ export class Node implements IPersistent<INode> {
 
   get pos() {
     return toReadonly(this._state.pos)
+  }
+
+  get size() {
+    return toReadonly(this._state.size)
   }
 
   get workspace() {
@@ -204,8 +214,14 @@ export class Node implements IPersistent<INode> {
     this._workspace?.events.emit('node:changed', this)
   }
 
+  setSize(size: IVec2) {
+    this._state.size.x = size.x
+    this._state.size.y = size.y
+    this._workspace?.events.emit('node:changed', this)
+  }
+
   toJSON(): INode {
-    return {
+    const json: INode = {
       id: this.id,
       type: this._type,
       data: this.getAllRealData(),
@@ -215,12 +231,25 @@ export class Node implements IPersistent<INode> {
         y: this._state.pos.y,
       },
     }
+
+    // Only persist explicit sizes — `0` means auto and is the default.
+    if (this._state.size.x > 0 || this._state.size.y > 0) {
+      json.size = { ...this._state.size }
+    }
+
+    return json
   }
 
   fromJSON(data: INode): void {
     this.id = data.id
     this._state.pos.x = data.pos.x
     this._state.pos.y = data.pos.y
+
+    // `size` is optional so old JSON without it still loads.
+    if (data.size) {
+      this._state.size.x = data.size.x
+      this._state.size.y = data.size.y
+    }
 
     this.setAllData(data.data || {})
 

@@ -1,3 +1,5 @@
+import type { Node } from '@0x-jerry/golden-graph'
+
 export const LAYOUT = {
   NODE_WIDTH: 200,
   HEADER_HEIGHT: 30,
@@ -32,6 +34,7 @@ export const NODE_SHAPE = {
   HEADER: 'header',
   NAME: 'name',
   CONTENT: 'content',
+  RESIZE: 'resize',
 } as const
 
 export const ELEMENT_TYPE = {
@@ -58,6 +61,7 @@ export const DRAG_TYPE = {
   GROUP: 'group',
   CANVAS: 'canvas',
   SELECTION: 'selection',
+  RESIZE: 'resize',
 } as const
 
 export const SEL = {
@@ -65,9 +69,16 @@ export const SEL = {
   HEADER: '.header',
   NAME: '.name',
   CONTENT: '.content',
+  RESIZE: '.resize',
 } as const
 
 export const NODE_BODY_PADDING = 8
+
+/** Minimum node width a user can resize a node down to. */
+export const NODE_MIN_WIDTH = 120
+
+/** Size of the corner resize grip (drawn as a triangle). */
+export const RESIZE_HANDLE_SIZE = 12
 export const BEZIER_MIN_OFFSET = 10
 export const BEZIER_MAX_OFFSET = 200
 export const EDGE_HIT_STROKE = 20
@@ -85,4 +96,25 @@ export const ZOOM_MAX = 4
  */
 export function getZoomStep(scale: number) {
   return scale > 1 ? 0.05 : scale > 0.1 ? 0.025 : 0.01
+}
+
+/**
+ * Effective node width. Falls back to the default layout width when the node
+ * has no explicit size (`size.x <= 0`).
+ */
+export function getNodeWidth(node: Node): number {
+  return node.size.x > 0 ? node.size.x : LAYOUT.NODE_WIDTH
+}
+
+/**
+ * Effective node height. Never smaller than the content-driven height
+ * (header + handle rows + padding), even when `size.y` is set.
+ */
+export function getNodeHeight(node: Node): number {
+  const handleCount = node.handles.length || 1
+  const contentHeight =
+    LAYOUT.HEADER_HEIGHT +
+    handleCount * LAYOUT.HANDLE_ROW_HEIGHT +
+    NODE_BODY_PADDING
+  return Math.max(node.size.y, contentHeight)
 }

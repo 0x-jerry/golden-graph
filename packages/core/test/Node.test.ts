@@ -30,4 +30,34 @@ describe('Node', () => {
     n.moveTo(1, 2)
     expect(n.pos).toEqual({ x: 1, y: 2 })
   })
+
+  it('size defaults to auto (0, 0)', () => {
+    const n = new TNode()
+    expect(n.size).toEqual({ x: 0, y: 0 })
+  })
+
+  it('setSize and JSON round-trip', () => {
+    const n = new TNode()
+    n.setSize({ x: 320, y: 140 })
+
+    expect(n.size).toEqual({ x: 320, y: 140 })
+
+    const json = n.toJSON()
+    expect(json.size).toEqual({ x: 320, y: 140 })
+
+    const restored = new TNode()
+    restored.fromJSON(json)
+    expect(restored.size).toEqual({ x: 320, y: 140 })
+  })
+
+  it('toJSON omits size when it is auto', () => {
+    const n = new TNode()
+    expect(n.toJSON().size).toBeUndefined()
+  })
+
+  it('fromJSON tolerates missing size (old files)', () => {
+    const n = new TNode()
+    n.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
+    expect(n.size).toEqual({ x: 0, y: 0 })
+  })
 })

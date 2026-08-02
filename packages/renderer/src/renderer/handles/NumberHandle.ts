@@ -38,6 +38,7 @@ export const update: HandleModule['update'] = (group, handle) => {
   const input = inputMap.get(group)
   if (input) {
     input.setValue(String(handle.getValue() ?? ''))
+    input.setWidth(availableWidth(handle))
   }
 }
 

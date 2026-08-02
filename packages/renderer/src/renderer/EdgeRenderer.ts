@@ -9,6 +9,7 @@ import {
   EDGE_HIT_STROKE,
   ELEMENT_TYPE,
   ATTR,
+  getNodeWidth,
 } from './constants'
 
 export function getJointPos(handle: NodeHandle): { x: number; y: number } {
@@ -23,7 +24,7 @@ export function getJointPos(handle: NodeHandle): { x: number; y: number } {
     LAYOUT.HANDLE_ROW_HEIGHT / 2
 
   if (handle.isRight) {
-    return { x: handle.node.pos.x + LAYOUT.NODE_WIDTH, y }
+    return { x: handle.node.pos.x + getNodeWidth(handle.node), y }
   }
   return { x: handle.node.pos.x, y }
 }

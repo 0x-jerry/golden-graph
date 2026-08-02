@@ -238,6 +238,19 @@ export class Input extends FormElement {
     this._onChange?.(this._model.value)
   }
 
+  /**
+   * Resize the input box (e.g. when its node is resized). Keeps the clip
+   * region, background and scroll state in sync with the new width.
+   */
+  setWidth(width: number) {
+    if (width === this._iw) return
+    this._iw = width
+    this._bg.width(width)
+    this.clipWidth(width)
+    this._syncScroll()
+    this.getLayer()?.batchDraw()
+  }
+
   _syncDisplay() {
     this._textNode.text(this._model.value)
     this._placeholderNode.visible(this._model.value.length === 0)

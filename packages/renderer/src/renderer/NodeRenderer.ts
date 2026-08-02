@@ -7,6 +7,9 @@ import {
   NODE_SHAPE,
   SEL,
   NODE_BODY_PADDING,
+  RESIZE_HANDLE_SIZE,
+  getNodeWidth,
+  getNodeHeight,
   ELEMENT_TYPE,
   ATTR,
 } from './constants'
@@ -26,8 +29,42 @@ export function computeNodeHeight(node: Node): number {
   )
 }
 
+function renderResizeHandle(): Konva.Group {
+  const size = RESIZE_HANDLE_SIZE
+  const grip = new Konva.Group({
+    name: NODE_SHAPE.RESIZE,
+    // Shown only while the node is selected (see KonvaGraphRenderer._syncState).
+    visible: false,
+  })
+
+  // Generous invisible hit area so the tiny triangle is easy to grab.
+  const hit = new Konva.Rect({
+    x: -10,
+    y: -10,
+    width: size + 20,
+    height: size + 20,
+    fill: 'transparent',
+    cursor: 'nwse-resize',
+    name: NODE_SHAPE.RESIZE,
+  })
+  grip.add(hit)
+
+  const triangle = new Konva.Line({
+    points: [0, size, size, size, size, 0],
+    closed: true,
+    fill: COLORS.ACCENT,
+    stroke: COLORS.BG,
+    strokeWidth: 1,
+    listening: false,
+  })
+  grip.add(triangle)
+
+  return grip
+}
+
 export function createNode(node: Node): Konva.Group {
-  const height = computeNodeHeight(node)
+  const width = getNodeWidth(node)
+  const height = getNodeHeight(node)
   const g = new Konva.Group({
     x: node.pos.x,
     y: node.pos.y,
@@ -36,7 +73,7 @@ export function createNode(node: Node): Konva.Group {
   })
 
   const body = new Konva.Rect({
-    width: LAYOUT.NODE_WIDTH,
+    width,
     height,
     fill: COLORS.BG,
     stroke: COLORS.BORDER,
@@ -46,7 +83,7 @@ export function createNode(node: Node): Konva.Group {
   g.add(body)
 
   const header = new Konva.Rect({
-    width: LAYOUT.NODE_WIDTH,
+    width,
     height: LAYOUT.HEADER_HEIGHT,
     fill: COLORS.HEADER_BG,
     name: NODE_SHAPE.HEADER,
@@ -59,7 +96,7 @@ export function createNode(node: Node): Konva.Group {
     fill: COLORS.TEXT_PRIMARY,
     x: 8,
     y: 7,
-    width: LAYOUT.NODE_WIDTH - 16,
+    width: width - 16,
     name: NODE_SHAPE.NAME,
   })
   g.add(nameText)
@@ -79,6 +116,11 @@ export function createNode(node: Node): Konva.Group {
     g.add(hg)
   })
 
+  const resize = renderResizeHandle()
+  resize.x(width - RESIZE_HANDLE_SIZE)
+  resize.y(height - RESIZE_HANDLE_SIZE)
+  g.add(resize)
+
   return g
 }
 
@@ -91,10 +133,28 @@ export function updateNode(group: Konva.Group, node: Node): void {
     nameText.text(node.name)
   }
 
-  const height = computeNodeHeight(node)
+  const width = getNodeWidth(node)
+  const height = getNodeHeight(node)
+
   const body = group.findOne(SEL.BODY) as Konva.Rect
   if (body) {
+    body.width(width)
     body.height(height)
+  }
+
+  const header = group.findOne(SEL.HEADER) as Konva.Rect
+  if (header) {
+    header.width(width)
+  }
+
+  if (nameText) {
+    nameText.width(width - 16)
+  }
+
+  const resize = group.findOne(SEL.RESIZE) as Konva.Group | undefined
+  if (resize) {
+    resize.x(width - RESIZE_HANDLE_SIZE)
+    resize.y(height - RESIZE_HANDLE_SIZE)
   }
 
   node.handles.forEach((handle) => {
