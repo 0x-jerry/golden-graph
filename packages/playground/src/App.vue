@@ -18,6 +18,7 @@ async function setup(ws: Workspace) {
 
   let isPending = false
   let isExecuting = false
+  let isScheduled = false
 
   events.forEach((event) => {
     ws.events.on(event, () => {
@@ -29,8 +30,20 @@ async function setup(ws: Workspace) {
       }
 
       isPending = true
-      if (!isExecuting) {
-        void execute()
+
+      // Defer the run to the next task instead of executing synchronously
+      // inside the event handler. Mutations applied in the same synchronous
+      // block (e.g. `clear()` + `fromJSON()` in `load()`) must all be
+      // visible before the workspace snapshot is taken — otherwise the run
+      // would execute a partial graph and its handle write-backs could
+      // overwrite the freshly loaded data.
+      if (!isExecuting && !isScheduled) {
+        isScheduled = true
+
+        setTimeout(() => {
+          isScheduled = false
+          void execute()
+        }, 0)
       }
     })
   })
@@ -83,10 +96,20 @@ async function load() {
     return
   }
 
-  ws.clear()
+  // Mirror `save()`: the saved data is always the top-level graph, so exit
+  // any active subgraph before replacing the workspace content.
+  while (ws.isActiveSubGraph) {
+    ws.exitSubGraph()
+  }
 
-  await nextTick()
-  ws.fromJSON(JSON.parse(data))
+  try {
+    ws.clear()
+
+    await nextTick()
+    ws.fromJSON(JSON.parse(data))
+  } catch (error) {
+    console.error('Failed to load workspace from storage:', error)
+  }
 }
 
 function clear() {
