@@ -33,6 +33,12 @@ bun vitest run -t "should add node"
 
 **No root `bun build` or `bun check`** — run per-package.
 
+Playground has **no `check` script** — typecheck it directly (vue-tsc is fetched via bunx, it is not in playground devDeps):
+
+```bash
+cd packages/playground && bunx vue-tsc --noEmit
+```
+
 ## Monorepo structure
 
 ```
@@ -61,7 +67,9 @@ Dependency direction: `renderer` → `core`, `backend` → `core`, `playground` 
 - `verbatimModuleSyntax: true` — enums are runtime values: import with `import`, not `import type`. Interfaces/types use `import type`.
 - `noUnusedLocals: true`, `noUnusedParameters: true` — compiler errors on dead code
 - `noUncheckedIndexedAccess: true` — `arr[0]` returns `T | undefined`, null check required
-- `_` prefixed methods/properties are private — never access from outside the class
+- `_` prefixed members are private-by-convention: intra-package code may touch them (e.g. `SubGraph` reads `workspace._nodeRegister`, `VirtualWorkspace` copies `ws._idGenerator.current()`), but extension code must use public APIs (`addNode`, `queryEdges`, `registerNodeSchema`, `nextId`)
+- Connection rules (`NodeHandle.canConnectTo`): same position or same node → blocked; `'*'` on either side → allowed; otherwise type-set intersection decides
+- Enums are runtime numbers (JSON-safe, needed for schema round-trips): `HandlePosition None=0/Left=1/Right=2`, `NodeType None=0/Entry=1`, `ActiveType None=0/Node=1/Group=2/Edge=3`
 - Test files import `describe`/`it`/`expect` explicitly despite `globals: true`
 - `tsconfig` includes `"types": ["bun"]` — `Bun` globals available in source
 
@@ -81,3 +89,85 @@ Uses `@0x-jerry/vue-kit`'s `defineContext`:
 - `useWorkspace.provide()` = **create + provide** — runs the factory, calls `provide()`, returns the value
 
 Root component (`KonvaRenderer.vue`) calls `.provide()`; children call the bare function.
+
+## Adding a node
+
+Node definitions are owned by the **backend/playground**, not the renderer:
+
+```ts
+export interface INodeDefinition {
+  schema: INodeSchema // JSON-safe, survives JSON round-trip
+  execute?: (ctx: NodeExecutionContext) => unknown | Promise<unknown>
+}
+```
+
+- `INodeSchema` fields: `type` (unique id, e.g. `'Math.Op'`), `name` (header + "Add Node" menu label), `description?`, `internal?` (hidden from menu), `nodeType?` (`NodeType.Entry = 1` marks execution start), `handles: INodeHandleConfig[]`
+- `INodeHandleConfig` fields: `key` (unique within node, required for `getData`), `type` (data type(s) for connection matching, `'*'` = anything), `name` (label; empty name reserves no fixed column), `position` (`Left` = input, `Right` = output, `None` = layout-only row), `value` (initial), `options` (render props incl. `options.type`)
+- `options.type` selects the render component: `'text' | 'number' | 'select' | 'image' | 'display'` (registered in renderer `handles/index.ts`); select choices come from `options.options`
+- `ctx.getData(key)` resolves inputs through incoming edges; `ctx.setData(key, value)` writes run state and streams a `handle-updates` event to the frontend
+- `execute` runs **in a Web Worker** — no DOM; handle values must be structured-cloneable. `execute` is optional (Entry sources / Display sinks can omit it)
+
+Registration flow: `packages/playground/src/nodes/index.ts` array → worker entry `new ExecutorWorkerHost(nodeDefinitions)` → frontend `await workspace.loadNodeSchemasFromBackend()` → `registerNodeSchema` builds a render-only `Node` subclass. Minimal example (mirror `packages/playground/src/nodes/math/Op.ts`):
+
+```ts
+import { HandlePosition } from '@0x-jerry/golden-graph'
+import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
+
+export const addDefinition: INodeDefinition = {
+  schema: {
+    type: 'Math.Add',
+    name: 'Math - Add',
+    handles: [
+      { key: 'a', name: 'A', position: HandlePosition.Left, type: 'number', value: 0 },
+      { key: 'b', name: 'B', position: HandlePosition.Left, type: 'number', value: 0 },
+      { key: 'out', name: 'Sum', position: HandlePosition.Right, type: 'number', value: 0 },
+    ],
+  },
+  execute: (ctx) => {
+    const a = ctx.getData<number>('a') ?? 0
+    const b = ctx.getData<number>('b') ?? 0
+    ctx.setData('out', a + b)
+  },
+}
+```
+
+Then add it to `nodes/index.ts`. No renderer changes needed unless you add a new `options.type`.
+
+## Renderer (Konva + Vue)
+
+- **Layer order** (bottom → top): grid → groups → edges → nodes. The rubber-band selection rect is drawn into the node layer so it stays visible (`InteractionManager` takes a `nodeLayer`).
+- **Workspace events drive rendering** — all mutations flow through workspace APIs → typed `ws.events` → renderer; there is no direct model↔Konva sync. `KonvaGraphRenderer._subscribe` listens to `node:added/removed/changed`, `edge:added/removed`, `group:added/removed/changed`, `coord:changed`, `state:changed`, `executor:changed`, `handle:updated`, `handle:connection-changed` — all wrapped in a `Disposable`.
+- **`ATTR.ELEMENT_ID`** stores node id on node groups, group id on group groups, edge id on edge groups, and **handle key** on handle groups. `InteractionManager._hitTarget` / `getJointInfo` read it for hit-testing.
+- **Handle modules** (`renderer/handles/`): each file exports `type` + `HandleModule = { create(handle, options): Konva.Group; update?; destroy? }`; registered via `HandleComponentRegistry` in `handles/index.ts`, resolved by `getHandleModule(options.type)`. Module instances are cached per-handle in WeakMaps.
+- **Form elements** (`renderer/components/`): `FormElement extends Konva.Group` — `_activate()` binds a **window keydown** listener and registers as the stage's active element; `deactivate()` is the idempotent full teardown; `destroy()` calls `deactivate()` then `super.destroy()`. `Input` uses a singleton `HiddenInput` positioned over the stage container; key handling in `input/keyboard.ts` via `InputKeyEnv = { sync, blink, commit, cancel, clearHidden }` — Enter → `commit()`, Escape → `cancel()`, IME composition is ignored (`e.isComposing || e.keyCode === 229`).
+- **Coord transform**: stage scale = `coord.scale`; stage x/y = `coord.origin * scale`; use `coord.convertScreenCoord` / `convertToScreenCoord` for pointer↔workspace math.
+- **Edges** are cubic beziers (`clamp(dx/2, 10, 200)` control offset, `hitStrokeWidth: 20`) with a close button at the midpoint (`EdgeRenderer`).
+
+## Executor protocol (plain JSON)
+
+- Frontend → backend: `{ type: 'execute', req: ExecuteRequest }` | `{ type: 'list-node-schemas' }`. Backend → frontend: `progress` | `handle-updates` | `finish` (with `error?`) | `node-schemas`.
+- `ExecuteRequest = { snapshot: IWorkspace; entryNodeIds: number[]; debug: boolean }` — the backend walks the snapshot directly, no `Workspace` instance.
+- Backend contract: `getNodeSchemas()`, `execute(req, onEvent)` (resolves when all events delivered, rejects on failure), optional `dispose()`.
+- `WorkerLike` / `WorkerScopeLike` are structural subsets of the DOM worker types — keeps backends testable in jsdom and in-process.
+- `WorkflowExecutor` is stack-based from entry nodes, re-queuing until all upstream nodes processed; **diff cache keyed by node id** (ids are stable across snapshots) — a node re-runs only when its fully-resolved data changed; `MAX_ITERATIONS = 100_000` loop guard; debug mode sleeps 100 ms per changed node; unknown node types throw at runtime (subgraph interface nodes excluded); nested subgraphs get lazy child executors with silent events.
+
+## Ids & data
+
+- Node/edge/group ids start at 1 (`createIncrementIdGenerator`), persist in `toJSON` via `extra.incrementID`, and are **stable across snapshots** — the backend diff cache relies on this.
+- `Node.toJSON().data` = structuredClone of real (non-edge-resolved) values.
+- `ws.events.on(...)` returns an unsubscribe fn — feed it into a `Disposable`.
+
+## Tests
+
+- Environments: core/backend `edge-runtime`, renderer `jsdom`. Tests import `describe`/`it`/`expect` explicitly.
+- Backend test builders (`WorkflowExecutor.test.ts`): `node(id, type, data?, extra?)`, `edge(from, to)` (auto ids), `graph(partial)` (fills defaults), `createExecutor(collected)` captures progress/updates.
+- `DirectExecutorBackend` (test helper) runs `WorkflowExecutor` in-process and structuredClones payloads like the worker transport; `WorkerExecutor.test.ts` builds in-process `WorkerScopeLike`/`WorkerLike` loopbacks.
+
+## Pitfalls
+
+- **Dispose ordering**: the renderer must unsubscribe before `ws.dispose()` tears down the emitter and terminates the worker — `KonvaRenderer.vue` disposes the renderer in `onBeforeUnmount`, before `useWorkspace.provide()`'s `onUnmounted(ws.dispose)` runs.
+- `Workspace.disabled` = `state.disabled || executorState.isProcessing` — gate UI during runs.
+- Keyless/position-less handles are legal (render as layout-only rows after positioned ones) but only one per node is safe (key defaults to `''`).
+- `addNode(type)` throws when the type is not registered; `setData` on a stale key only warns.
+- Playground save/load (`App.vue`) does `ws.clear()` + `await nextTick()` before `fromJSON` so the Konva stage clears first; auto-run skips events while `ws.executorState.isProcessing` (executor back-writes must not re-trigger runs).
+- The `NodeHandle` doc comment mentions `getHandleComponent()` — the real renderer function is `getHandleModule()`.
