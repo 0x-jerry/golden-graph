@@ -21,6 +21,8 @@ export const COLORS = {
   EDGE: '#ef4646',
   EDGE_WIDTH: 3,
   JOINT_DEFAULT: '#000000',
+  /** Joint fill while a connection drag is hovering a compatible handle. */
+  JOINT_HIGHLIGHT: '#16a34a',
   GROUP_BG: 'rgba(213, 213, 213, 0.67)',
   GROUP_BORDER: '#b0b0b0',
   GRID_COLOR: '#cccccc',

@@ -7,6 +7,7 @@ import { ContextMenuTargetType } from './types'
 import { buildDefaultContextMenu } from './ContextMenuBuilder'
 import { ConnectionLine } from './ConnectionLine'
 import { getJointPos } from './EdgeRenderer'
+import { setJointHighlight } from './HandleRenderer'
 import {
   COLORS,
   DRAG_TYPE,
@@ -51,6 +52,7 @@ export class InteractionManager {
 
   _isConnecting = false
   _connectHandle: NodeHandle | null = null
+  _connectTargetHandle: NodeHandle | null = null
 
   _selectionStarted = false
   _selectionX1 = 0
@@ -273,6 +275,11 @@ export class InteractionManager {
 
     this._connectHandle = startHandle
     this._isConnecting = true
+    this._connectTargetHandle = null
+
+    // Keep the source joint highlighted for the whole gesture so it is clear
+    // which handle the drag started from.
+    setJointHighlight(startHandle, true)
 
     const pos = this._stage.getPointerPosition()
     if (!pos) return
@@ -290,11 +297,45 @@ export class InteractionManager {
     const jointPos = getJointPos(this._connectHandle)
 
     this._connectionLine.update(jointPos, wsPos)
+    this._updateConnectHover()
+  }
+
+  /**
+   * Highlight the joint under the pointer when it is compatible with the
+   * source handle (same rule as `Workspace.canConnect`); otherwise clear any
+   * previous hover highlight.
+   */
+  _updateConnectHover() {
+    if (!this._connectHandle) return
+
+    const targetHandle = this._findHandleAtPointer()
+    const nextTarget =
+      targetHandle && this._connectHandle.canConnectTo(targetHandle)
+        ? targetHandle
+        : null
+
+    if (nextTarget === this._connectTargetHandle) return
+
+    if (this._connectTargetHandle) {
+      setJointHighlight(this._connectTargetHandle, false)
+    }
+    if (nextTarget) {
+      setJointHighlight(nextTarget, true)
+    }
+    this._connectTargetHandle = nextTarget
   }
 
   _endConnecting() {
     this._isConnecting = false
     this._connectionLine.hide()
+
+    if (this._connectHandle) {
+      setJointHighlight(this._connectHandle, false)
+    }
+    if (this._connectTargetHandle) {
+      setJointHighlight(this._connectTargetHandle, false)
+      this._connectTargetHandle = null
+    }
 
     if (!this._connectHandle) return
 

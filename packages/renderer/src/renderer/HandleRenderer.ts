@@ -18,6 +18,8 @@ import { getHandleModule } from './handles'
 
 const handleGroupMap = new WeakMap<NodeHandle, Konva.Group>()
 const handleModuleMap = new WeakMap<NodeHandle, string>()
+/** Joints highlighted during a connection drag (source + compatible target). */
+const jointHighlightMap = new WeakMap<NodeHandle, boolean>()
 
 function handleY(index: number): number {
   return (
@@ -61,6 +63,28 @@ function layoutContent(
   }
 }
 
+function jointFill(handle: NodeHandle): string {
+  if (jointHighlightMap.get(handle)) {
+    return COLORS.JOINT_HIGHLIGHT
+  }
+  return handle.isConnected ? COLORS.ACCENT : COLORS.JOINT_DEFAULT
+}
+
+/**
+ * Highlight / un-highlight a joint during a connection drag. The highlight
+ * survives `updateHandle` calls (which otherwise re-derive the fill from the
+ * connection state) until explicitly cleared or the handle is destroyed.
+ */
+export function setJointHighlight(handle: NodeHandle, highlighted: boolean) {
+  jointHighlightMap.set(handle, highlighted)
+
+  const group = handleGroupMap.get(handle)
+  const joint = group?.findOne('.joint') as Konva.Circle | undefined
+  if (joint) {
+    joint.fill(jointFill(handle))
+  }
+}
+
 export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
   const group = new Konva.Group({
     name: ELEMENT_TYPE.HANDLE,
@@ -76,7 +100,7 @@ export function renderHandle(handle: NodeHandle, index: number): Konva.Group {
       x: handle.position === HandlePosition.Left ? 0 : getNodeWidth(handle.node),
       y: handleY(index),
       radius: LAYOUT.JOINT_RADIUS,
-      fill: COLORS.JOINT_DEFAULT,
+      fill: jointFill(handle),
       stroke: COLORS.BORDER,
       strokeWidth: 1,
       name: ELEMENT_TYPE.JOINT,
@@ -129,11 +153,7 @@ export function updateHandle(handle: NodeHandle, index: number): void {
   if (joint) {
     joint.y(handleY(index))
     joint.x(handle.position === HandlePosition.Left ? 0 : getNodeWidth(handle.node))
-    if (handle.isConnected) {
-      joint.fill(COLORS.ACCENT)
-    } else {
-      joint.fill(COLORS.JOINT_DEFAULT)
-    }
+    joint.fill(jointFill(handle))
   }
 
   const label = group.findOne('.label') as Konva.Text
@@ -157,6 +177,7 @@ export function updateHandle(handle: NodeHandle, index: number): void {
 export function destroyHandle(handle: NodeHandle): void {
   handleGroupMap.delete(handle)
   handleModuleMap.delete(handle)
+  jointHighlightMap.delete(handle)
 }
 
 export function getHandleGroup(handle: NodeHandle): Konva.Group | undefined {
