@@ -382,9 +382,11 @@ export class InteractionManager {
       // Baseline from the effective width so an auto-width node doesn't jump
       // straight to the minimum when the first drag goes left.
       x: Math.max(NODE_MIN_WIDTH, getNodeWidth(node) + dx),
-      // `size.y` of 0 means auto height — the renderer never shrinks the
-      // body below its content height.
-      y: Math.max(0, node.size.y + dy),
+      // Baseline from the effective height: an auto-height node (`size.y` = 0)
+      // renders at its content height, so without this the first ~content
+      // height pixels of downward drag would produce no visible change. The
+      // renderer still clamps the body so it never shrinks below content.
+      y: Math.max(0, getNodeHeight(node) + dy),
     })
   }
 

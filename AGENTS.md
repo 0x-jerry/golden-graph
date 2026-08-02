@@ -155,7 +155,7 @@ Then add it to `nodes/index.ts`. No renderer changes needed unless you add a new
 
 - Node/edge/group ids start at 1 (`createIncrementIdGenerator`), persist in `toJSON` via `extra.incrementID`, and are **stable across snapshots** — the backend diff cache relies on this.
 - `Node.toJSON().data` = structuredClone of real (non-edge-resolved) values.
-- `Node.size` is optional (`0`/missing = auto): the renderer's `getNodeWidth` falls back to `LAYOUT.NODE_WIDTH`, `getNodeHeight` never goes below the content height (header + handle rows). `node.setSize({ x, y })` emits `node:changed`; right-side joints, labels, edge attach points (`getJointPos`) and handle content widths all follow `node.size.x`. The corner resize grip is rendered per-node and shown only while selected (`_syncState`), driven by `DRAG_TYPE.RESIZE` in `InteractionManager`.
+- `Node.size` is optional (`0`/missing = auto): the renderer's `getNodeWidth` falls back to `LAYOUT.NODE_WIDTH`, `getNodeHeight` never goes below the content height (header + handle rows). `node.setSize({ x, y })` emits `node:changed`; right-side joints, labels, edge attach points (`getJointPos`) and handle content widths all follow `node.size.x`. A corner resize grip is rendered per-node and shown only while selected (`_syncState`), driven by `DRAG_TYPE.RESIZE` in `InteractionManager`, which baselines from the effective `getNodeWidth`/`getNodeHeight` so an auto-sized node grows immediately on drag.
 - `ws.events.on(...)` returns an unsubscribe fn — feed it into a `Disposable`.
 
 ## Tests
