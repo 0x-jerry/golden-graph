@@ -6,8 +6,8 @@ import type { ContextMenuContext, CoreMenuItem } from './types'
 import { ContextMenuTargetType } from './types'
 import { buildDefaultContextMenu } from './ContextMenuBuilder'
 import { ConnectionLine } from './ConnectionLine'
-import { getJointPos } from './EdgeRenderer'
-import { setJointHighlight } from './HandleRenderer'
+import { getJointPos } from './EdgeView'
+import { setJointHighlight } from './HandleView'
 import {
   COLORS,
   DRAG_TYPE,

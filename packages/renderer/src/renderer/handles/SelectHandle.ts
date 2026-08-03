@@ -3,46 +3,50 @@ import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Select } from '../components/select'
 import type { SelectOption } from '../components/select'
 import { availableWidth } from './utils'
-import type { HandleModule } from './types'
+import { HandleModule } from './types'
 
-export const type = 'select'
+export class SelectHandle extends HandleModule {
+  static type = 'select'
 
-const INPUT_HEIGHT = 18
+  _selectMap = new WeakMap<Konva.Group, Select>()
 
-const selectMap = new WeakMap<Konva.Group, Select>()
+  create: HandleModule['create'] = (handle) => {
+    const group = new Konva.Group()
+    const w = availableWidth(handle)
 
-function readOptions(handle: NodeHandle): (SelectOption | string)[] {
-  const opts = handle.getOptions<{ type: string, options?: (SelectOption | string)[] }>()
-  return opts.options ?? []
-}
+    const select = new Select({
+      selectWidth: w,
+      selectHeight: INPUT_HEIGHT,
+      options: readOptions(handle),
+      value: String(handle.getValue() ?? ''),
+      fontSize: 12,
+      onChange: (v) => {
+        handle.setValue(v)
+      },
+    })
+    group.add(select)
+    this._selectMap.set(group, select)
 
-export const create: HandleModule['create'] = (handle) => {
-  const group = new Konva.Group()
-  const w = availableWidth(handle)
+    return group
+  }
 
-  const select = new Select({
-    selectWidth: w,
-    selectHeight: INPUT_HEIGHT,
-    options: readOptions(handle),
-    value: String(handle.getValue() ?? ''),
-    fontSize: 12,
-    onChange: (v) => {
-      handle.setValue(v)
-    },
-  })
-  group.add(select)
-  selectMap.set(group, select)
+  update: HandleModule['update'] = (group, handle) => {
+    const select = this._selectMap.get(group)
+    if (select) {
+      select.setOptions(readOptions(handle))
+      select.setValue(String(handle.getValue() ?? ''))
+      select.setWidth(availableWidth(handle))
+    }
+  }
 
-  return group
-}
-
-export const update: HandleModule['update'] = (group, handle) => {
-  const select = selectMap.get(group)
-  if (select) {
-    select.setOptions(readOptions(handle))
-    select.setValue(String(handle.getValue() ?? ''))
-    select.setWidth(availableWidth(handle))
+  destroy: HandleModule['destroy'] = (group) => {
+    this._selectMap.delete(group)
   }
 }
 
-export function dispose() {}
+const INPUT_HEIGHT = 18
+
+function readOptions(handle: NodeHandle): (SelectOption | string)[] {
+  const opts = handle.getOptions<{ type: string; options?: (SelectOption | string)[] }>()
+  return opts.options ?? []
+}

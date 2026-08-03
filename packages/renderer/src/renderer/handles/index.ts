@@ -1,18 +1,24 @@
 import { HandleComponentRegistry } from '@0x-jerry/golden-graph'
 import type { HandleModule } from './types'
 
-import * as TextHandle from './TextHandle'
-import * as NumberHandle from './NumberHandle'
-import * as SelectHandle from './SelectHandle'
-import * as DisplayHandle from './DisplayHandle'
-import * as ImageHandle from './ImageHandle'
+import { TextHandle } from './TextHandle'
+import { NumberHandle } from './NumberHandle'
+import { SelectHandle } from './SelectHandle'
+import { DisplayHandle } from './DisplayHandle'
+import { ImageHandle } from './ImageHandle'
+
+const textHandle = new TextHandle()
+const numberHandle = new NumberHandle()
+const selectHandle = new SelectHandle()
+const displayHandle = new DisplayHandle()
+const imageHandle = new ImageHandle()
 
 const registry = new HandleComponentRegistry<HandleModule>()
-  .register(TextHandle.type, TextHandle)
-  .register(NumberHandle.type, NumberHandle)
-  .register(SelectHandle.type, SelectHandle)
-  .register(DisplayHandle.type, DisplayHandle)
-  .register(ImageHandle.type, ImageHandle)
+  .register(TextHandle.type, textHandle)
+  .register(NumberHandle.type, numberHandle)
+  .register(SelectHandle.type, selectHandle)
+  .register(DisplayHandle.type, displayHandle)
+  .register(ImageHandle.type, imageHandle)
 
 export const getHandleModule = (type: string) => registry.get(type)
 
@@ -21,8 +27,5 @@ export const getHandleModule = (type: string) => registry.get(type)
  * modules. Should be called when the renderer is disposed.
  */
 export function disposeHandleEditors() {
-  TextHandle.dispose()
-  NumberHandle.dispose()
-  SelectHandle.dispose()
-  ImageHandle.dispose()
+  imageHandle.dispose()
 }

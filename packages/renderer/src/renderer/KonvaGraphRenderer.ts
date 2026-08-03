@@ -9,26 +9,15 @@ import type {
   IRenderer,
 } from '@0x-jerry/golden-graph'
 import { ActiveType, Disposable } from '@0x-jerry/golden-graph'
-import { createCoordLayer } from './CoordLayer'
-import { createEdge, updateEdge } from './EdgeRenderer'
-import { createGroup, updateGroup, destroyGroup } from './GroupRenderer'
+import { CoordLayer } from './CoordLayer'
+import { EdgeView } from './EdgeView'
+import { GroupView } from './GroupView'
 import { InteractionManager } from './InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
-import {
-  createNode,
-  updateNode,
-  destroyNode,
-  getHandleIndex,
-} from './NodeRenderer'
-import { updateHandle } from './HandleRenderer'
+import { NodeView, getHandleIndex } from './NodeView'
+import { getHandleView } from './HandleView'
 import { disposeHandleEditors } from './handles'
-import {
-  COLORS,
-  SEL,
-  ATTR,
-  LAYER_NAME,
-  EXECUTOR_SHADOW_BLUR,
-} from './constants'
+import { LAYER_NAME } from './constants'
 import type { IRect } from '../utils/RectBox'
 import { ActiveElementManager } from './ActiveElementManager'
 
@@ -42,16 +31,16 @@ export interface KonvaGraphRendererOptions {
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _stage: Konva.Stage
-  _gridLayer: Konva.Layer
+  _gridLayer: CoordLayer
   _groupLayer: Konva.Layer
   _edgeLayer: Konva.Layer
   _nodeLayer: Konva.Layer
   _disposers = new Disposable()
   _ws: Workspace
 
-  _nodeGroups = new Map<number, Konva.Group>()
-  _edgeGroups = new Map<number, Konva.Group>()
-  _groupGroups = new Map<number, Konva.Group>()
+  _nodeViews = new Map<number, NodeView>()
+  _edgeViews = new Map<number, EdgeView>()
+  _groupViews = new Map<number, GroupView>()
 
   _interaction: InteractionManager
   _resizeObserver: ResizeObserver
@@ -79,12 +68,12 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._stage.setAttr(ActiveElementManager.key, this._activeElementManager)
     this._activeElementManager.init()
 
-    this._gridLayer = createCoordLayer(workspace.coord)
+    this._gridLayer = new CoordLayer(workspace.coord)
     this._groupLayer = new Konva.Layer({ name: LAYER_NAME.GROUPS })
     this._edgeLayer = new Konva.Layer({ name: LAYER_NAME.EDGES })
     this._nodeLayer = new Konva.Layer({ name: LAYER_NAME.NODES })
 
-    this._stage.add(this._gridLayer)
+    this._stage.add(this._gridLayer.layer)
     this._stage.add(this._groupLayer)
     this._stage.add(this._edgeLayer)
     this._stage.add(this._nodeLayer)
@@ -109,7 +98,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._resizeObserver = new ResizeObserver(() => {
       this._stage.width(container.clientWidth)
       this._stage.height(container.clientHeight)
-      this._gridLayer.batchDraw()
+      this._gridLayer.redraw()
     })
     this._resizeObserver.observe(container)
   }
@@ -123,13 +112,13 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     let bottom = -Infinity
 
     for (const id of nodeIds) {
-      const group = this._nodeGroups.get(id)
-      if (!group) continue
+      const view = this._nodeViews.get(id)
+      if (!view) continue
 
       const node = this._ws.getNode(id)
       if (!node) continue
 
-      const { width, height } = group.getSize()
+      const { width, height } = view.group.getSize()
 
       left = Math.min(left, node.pos.x)
       top = Math.min(top, node.pos.y)
@@ -174,7 +163,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
     this._disposers.add(
       ws.events.on('node:changed', (node) => {
-        this._onNodeChanged(node)
+        this._nodeViews.get(node.id)?.update()
+        this._nodeLayer.batchDraw()
         this._rebuildEdgesForNode(node.id)
       }),
     )
@@ -188,10 +178,10 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
     this._disposers.add(
       ws.events.on('edge:removed', (edge) => {
-        const group = this._edgeGroups.get(edge.id)
-        if (group) {
-          group.destroy()
-          this._edgeGroups.delete(edge.id)
+        const view = this._edgeViews.get(edge.id)
+        if (view) {
+          view.destroy()
+          this._edgeViews.delete(edge.id)
         }
         this._edgeLayer.batchDraw()
       }),
@@ -211,7 +201,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
     this._disposers.add(
       ws.events.on('group:changed', (group) => {
-        this._onGroupChanged(group)
+        this._groupViews.get(group.id)?.update()
+        this._groupLayer.batchDraw()
       }),
     )
 
@@ -253,9 +244,19 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._nodeLayer.destroyChildren()
     this._edgeLayer.destroyChildren()
     this._groupLayer.destroyChildren()
-    this._nodeGroups.clear()
-    this._edgeGroups.clear()
-    this._groupGroups.clear()
+
+    for (const view of this._nodeViews.values()) {
+      view.destroy()
+    }
+    this._nodeViews.clear()
+    for (const view of this._edgeViews.values()) {
+      view.destroy()
+    }
+    this._edgeViews.clear()
+    for (const view of this._groupViews.values()) {
+      view.destroy()
+    }
+    this._groupViews.clear()
 
     for (const node of this._ws.nodes) {
       this._onNodeAdded(node)
@@ -280,43 +281,30 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   // --- Node ---
 
   _onNodeAdded(node: Node) {
-    const group = createNode(node)
-    group.setAttr(ATTR.ELEMENT_ID, node.id)
-
-    this._nodeGroups.set(node.id, group)
-    this._nodeLayer.add(group)
+    const view = new NodeView(node)
+    this._nodeViews.set(node.id, view)
+    this._nodeLayer.add(view.group)
   }
 
   _onNodeRemoved(node: Node) {
-    const group = this._nodeGroups.get(node.id)
-    if (group) {
-      destroyNode(group, node)
-      this._nodeGroups.delete(node.id)
+    const view = this._nodeViews.get(node.id)
+    if (view) {
+      view.destroy()
+      this._nodeViews.delete(node.id)
     }
-  }
-
-  _onNodeChanged(node: Node) {
-    const group = this._nodeGroups.get(node.id)
-    if (group) {
-      updateNode(group, node)
-    }
-    this._nodeLayer.batchDraw()
   }
 
   // --- Edge ---
 
   _addEdgeLine(edge: Edge) {
     try {
-      const group = createEdge(edge)
-      this._edgeGroups.set(edge.id, group)
-      this._edgeLayer.add(group)
+      const view = new EdgeView(edge)
+      this._edgeViews.set(edge.id, view)
+      this._edgeLayer.add(view.group)
 
-      const closeBtn = group.findOne('.edge-close')
-      if (closeBtn) {
-        closeBtn.on('click', () => {
-          this._ws.removeEdgeByIds(edge.id)
-        })
-      }
+      view.closeButton.on('click', () => {
+        this._ws.removeEdgeByIds(edge.id)
+      })
     } catch {
       // handle may not exist yet
     }
@@ -326,11 +314,11 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     const relatedEdges = this._ws.queryConnectedEdges(nodeId)
 
     for (const edge of relatedEdges) {
-      const group = this._edgeGroups.get(edge.id)
-      if (group) {
+      const view = this._edgeViews.get(edge.id)
+      if (view) {
         // Update geometry in place to avoid Konva object churn while dragging.
         try {
-          updateEdge(group, edge)
+          view.update()
         } catch {
           // handle may not exist yet
         }
@@ -345,55 +333,43 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   // --- Group ---
 
   _onGroupAdded(group: Group) {
-    const konvaGroup = createGroup(group)
-    konvaGroup.setAttr(ATTR.ELEMENT_ID, group.id)
-
-    this._groupGroups.set(group.id, konvaGroup)
-    this._groupLayer.add(konvaGroup)
+    const view = new GroupView(group)
+    this._groupViews.set(group.id, view)
+    this._groupLayer.add(view.group)
   }
 
   _onGroupRemoved(group: Group) {
-    const konvaGroup = this._groupGroups.get(group.id)
-    if (konvaGroup) {
-      destroyGroup(konvaGroup)
-      this._groupGroups.delete(group.id)
+    const view = this._groupViews.get(group.id)
+    if (view) {
+      view.destroy()
+      this._groupViews.delete(group.id)
     }
-  }
-
-  _onGroupChanged(group: Group) {
-    const konvaGroup = this._groupGroups.get(group.id)
-    if (konvaGroup) {
-      updateGroup(konvaGroup, group)
-    }
-    this._groupLayer.batchDraw()
   }
 
   // --- Handle ---
 
   _onHandleUpdated(handle: NodeHandle) {
-    const index = getHandleIndex(handle.node, handle)
-    if (index >= 0) {
-      updateHandle(handle, index)
-    }
+    this._updateHandleView(handle)
 
     const edges = this._ws.queryEdges(handle.loc)
     for (const edge of edges) {
       const otherHandle = edge.start === handle ? edge.end : edge.start
-      const otherIndex = getHandleIndex(otherHandle.node, otherHandle)
-      if (otherIndex >= 0) {
-        updateHandle(otherHandle, otherIndex)
-      }
+      this._updateHandleView(otherHandle)
     }
 
     this._nodeLayer.batchDraw()
   }
 
   _onHandleConnectionChanged(handle: NodeHandle) {
+    this._updateHandleView(handle)
+    this._nodeLayer.batchDraw()
+  }
+
+  _updateHandleView(handle: NodeHandle) {
     const index = getHandleIndex(handle.node, handle)
     if (index >= 0) {
-      updateHandle(handle, index)
+      getHandleView(handle)?.update(index)
     }
-    this._nodeLayer.batchDraw()
   }
 
   // --- Coord ---
@@ -412,24 +388,12 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _syncState() {
     const { state } = this._ws
 
-    for (const [nodeId, group] of this._nodeGroups) {
-      const isActive = state.activeIds.includes(nodeId)
-      const body = group.findOne<Konva.Rect>(SEL.BODY)
-      if (body) {
-        body.stroke(isActive ? COLORS.ACCENT : COLORS.BORDER)
-      }
-      const resize = group.findOne<Konva.Group>(SEL.RESIZE)
-      if (resize) {
-        resize.visible(isActive)
-      }
+    for (const [nodeId, view] of this._nodeViews) {
+      view.setActive(state.activeIds.includes(nodeId))
     }
 
-    for (const [groupId, group] of this._groupGroups) {
-      const isActive = state.activeIds.includes(groupId)
-      const body = group.findOne<Konva.Rect>(SEL.BODY)
-      if (body) {
-        body.stroke(isActive ? COLORS.ACCENT : COLORS.GROUP_BORDER)
-      }
+    for (const [groupId, view] of this._groupViews) {
+      view.setActive(state.activeIds.includes(groupId))
     }
 
     this._nodeLayer.batchDraw()
@@ -441,21 +405,11 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _syncExecutor() {
     const { executorState } = this._ws
 
-    for (const [nodeId, group] of this._nodeGroups) {
-      const body = group.findOne<Konva.Rect>(SEL.BODY)
-      if (body) {
-        if (
-          executorState.isProcessing &&
-          executorState.currentNodeId === nodeId
-        ) {
-          body.shadowColor(COLORS.ACCENT_SOFT)
-          body.shadowBlur(EXECUTOR_SHADOW_BLUR)
-          body.shadowOffset({ x: 0, y: 0 })
-          body.shadowEnabled(true)
-        } else {
-          body.shadowEnabled(false)
-        }
-      }
+    for (const [nodeId, view] of this._nodeViews) {
+      view.setExecuteHighlight(
+        executorState.isProcessing,
+        executorState.currentNodeId === nodeId,
+      )
     }
 
     this._nodeLayer.batchDraw()
@@ -472,15 +426,18 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._resizeObserver.disconnect()
     disposeHandleEditors()
 
-    this._nodeGroups.forEach((group, nodeId) => {
-      const node = this._ws.getNode(nodeId)
-      if (node) {
-        destroyNode(group, node)
-      }
-    })
-    this._nodeGroups.clear()
-    this._edgeGroups.clear()
-    this._groupGroups.clear()
+    for (const view of this._nodeViews.values()) {
+      view.destroy()
+    }
+    this._nodeViews.clear()
+    for (const view of this._edgeViews.values()) {
+      view.destroy()
+    }
+    this._edgeViews.clear()
+    for (const view of this._groupViews.values()) {
+      view.destroy()
+    }
+    this._groupViews.clear()
 
     this._stage.destroy()
 

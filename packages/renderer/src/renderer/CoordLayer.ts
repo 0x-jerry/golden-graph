@@ -5,30 +5,41 @@ import { COLORS, LAYER_NAME } from './constants'
 const GRID_SIZE = 40
 const GRID_RANGE = 10_000
 
-export function createCoordLayer(_coord: CoordSystem): Konva.Layer {
-  const layer = new Konva.Layer({ name: LAYER_NAME.GRID })
+/**
+ * Static dot-grid layer. The grid pattern never changes with the coordinate
+ * transform, so it is rendered once and only redrawn on a full render.
+ */
+export class CoordLayer {
+  readonly layer: Konva.Layer
 
-  renderGrid(layer)
+  constructor(_coord: CoordSystem) {
+    this.layer = new Konva.Layer({ name: LAYER_NAME.GRID })
+    this.render()
+  }
 
-  return layer
-}
+  redraw(): void {
+    this.layer.batchDraw()
+  }
 
-function renderGrid(layer: Konva.Layer) {
-  const tile = new OffscreenCanvas(GRID_SIZE, GRID_SIZE)
-  const ctx = tile.getContext('2d')!
-  ctx.fillStyle = COLORS.GRID_COLOR
-  ctx.beginPath()
-  ctx.arc(GRID_SIZE / 2, GRID_SIZE / 2, 1.5, 0, Math.PI * 2)
-  ctx.fill()
+  render(): void {
+    this.layer.destroyChildren()
 
-  layer.add(
-    new Konva.Rect({
-      x: -GRID_RANGE,
-      y: -GRID_RANGE,
-      width: GRID_RANGE * 2,
-      height: GRID_RANGE * 2,
-      fillPatternImage: tile as unknown as HTMLImageElement,
-      listening: false,
-    }),
-  )
+    const tile = new OffscreenCanvas(GRID_SIZE, GRID_SIZE)
+    const ctx = tile.getContext('2d')!
+    ctx.fillStyle = COLORS.GRID_COLOR
+    ctx.beginPath()
+    ctx.arc(GRID_SIZE / 2, GRID_SIZE / 2, 1.5, 0, Math.PI * 2)
+    ctx.fill()
+
+    this.layer.add(
+      new Konva.Rect({
+        x: -GRID_RANGE,
+        y: -GRID_RANGE,
+        width: GRID_RANGE * 2,
+        height: GRID_RANGE * 2,
+        fillPatternImage: tile as unknown as HTMLImageElement,
+        listening: false,
+      }),
+    )
+  }
 }

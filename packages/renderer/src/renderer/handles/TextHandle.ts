@@ -1,39 +1,43 @@
 import Konva from 'konva'
 import { Input } from '../components/input'
 import { availableWidth } from './utils'
-import type { HandleModule } from './types'
+import { HandleModule } from './types'
 
-export const type = 'text'
+export class TextHandle extends HandleModule {
+  static type = 'text'
 
-const INPUT_HEIGHT = 18
+  _inputMap = new WeakMap<Konva.Group, Input>()
 
-const inputMap = new WeakMap<Konva.Group, Input>()
+  create: HandleModule['create'] = (handle) => {
+    const group = new Konva.Group()
+    const w = availableWidth(handle)
 
-export const create: HandleModule['create'] = (handle) => {
-  const group = new Konva.Group()
-  const w = availableWidth(handle)
+    const input = new Input({
+      inputWidth: w,
+      inputHeight: INPUT_HEIGHT,
+      value: String(handle.getValue() ?? ''),
+      fontSize: 12,
+      onChange: (v) => {
+        handle.setValue(v || undefined)
+      },
+    })
+    group.add(input)
+    this._inputMap.set(group, input)
 
-  const input = new Input({
-    inputWidth: w,
-    inputHeight: INPUT_HEIGHT,
-    value: String(handle.getValue() ?? ''),
-    fontSize: 12,
-    onChange: (v) => {
-      handle.setValue(v || undefined)
-    },
-  })
-  group.add(input)
-  inputMap.set(group, input)
+    return group
+  }
 
-  return group
-}
+  update: HandleModule['update'] = (group, handle) => {
+    const input = this._inputMap.get(group)
+    if (input) {
+      input.setValue(String(handle.getValue() ?? ''))
+      input.setWidth(availableWidth(handle))
+    }
+  }
 
-export const update: HandleModule['update'] = (group, handle) => {
-  const input = inputMap.get(group)
-  if (input) {
-    input.setValue(String(handle.getValue() ?? ''))
-    input.setWidth(availableWidth(handle))
+  destroy: HandleModule['destroy'] = (group) => {
+    this._inputMap.delete(group)
   }
 }
 
-export function dispose() {}
+const INPUT_HEIGHT = 18
