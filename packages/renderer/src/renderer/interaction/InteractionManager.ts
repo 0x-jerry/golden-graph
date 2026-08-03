@@ -92,9 +92,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
     stage.on('contextmenu', this._onContextMenuEvent)
   }
 
-  _onContextMenuEvent = (
-    e: Konva.KonvaEventObject<PointerEvent>,
-  ) => {
+  _onContextMenuEvent = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault()
     this._contextMenu.handle(e)
   }

@@ -92,7 +92,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
           layer === LAYER_NAME.EDGES
             ? this._store.edgeLayer
             : this._store.nodeLayer
-        if (!shape.getParent()) target.add(shape)
+
+        target.add(shape)
         target.batchDraw()
       }),
     )
