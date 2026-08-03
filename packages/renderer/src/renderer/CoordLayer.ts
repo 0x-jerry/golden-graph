@@ -9,20 +9,14 @@ const GRID_RANGE = 10_000
  * Static dot-grid layer. The grid pattern never changes with the coordinate
  * transform, so it is rendered once and only redrawn on a full render.
  */
-export class CoordLayer {
-  readonly layer: Konva.Layer
-
+export class CoordLayer extends Konva.Layer {
   constructor(_coord: CoordSystem) {
-    this.layer = new Konva.Layer({ name: LAYER_NAME.GRID })
+    super({ name: LAYER_NAME.GRID })
     this.render()
   }
 
-  redraw(): void {
-    this.layer.batchDraw()
-  }
-
   render(): void {
-    this.layer.destroyChildren()
+    this.destroyChildren()
 
     const tile = new OffscreenCanvas(GRID_SIZE, GRID_SIZE)
     const ctx = tile.getContext('2d')!
@@ -31,7 +25,7 @@ export class CoordLayer {
     ctx.arc(GRID_SIZE / 2, GRID_SIZE / 2, 1.5, 0, Math.PI * 2)
     ctx.fill()
 
-    this.layer.add(
+    this.add(
       new Konva.Rect({
         x: -GRID_RANGE,
         y: -GRID_RANGE,

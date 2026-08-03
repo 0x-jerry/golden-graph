@@ -12,7 +12,7 @@ import { ActiveType, Disposable } from '@0x-jerry/golden-graph'
 import { CoordLayer } from './CoordLayer'
 import { EdgeView } from './EdgeView'
 import { GroupView } from './GroupView'
-import { InteractionManager } from './InteractionManager'
+import { InteractionManager } from './interaction/InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
 import { NodeView, getHandleIndex } from './NodeView'
 import { getHandleView } from './HandleView'
@@ -73,7 +73,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._edgeLayer = new Konva.Layer({ name: LAYER_NAME.EDGES })
     this._nodeLayer = new Konva.Layer({ name: LAYER_NAME.NODES })
 
-    this._stage.add(this._gridLayer.layer)
+    this._stage.add(this._gridLayer)
     this._stage.add(this._groupLayer)
     this._stage.add(this._edgeLayer)
     this._stage.add(this._nodeLayer)
@@ -87,18 +87,30 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._interaction = new InteractionManager({
       stage: this._stage,
       ws: workspace,
-      edgeLayer: this._edgeLayer,
-      nodeLayer: this._nodeLayer,
-      onNodeSelect: (id) => {
-        workspace.setActiveIds(ActiveType.Node, [id])
-      },
-      onContextMenu: options?.onContextMenu,
     })
+
+    this._disposers.add(
+      this._interaction.on('node-select', (id) => {
+        workspace.setActiveIds(ActiveType.Node, [id])
+      }),
+    )
+    this._disposers.add(
+      this._interaction.on('context-menu', (ctx, evt, menus) => {
+        options?.onContextMenu?.(ctx, evt, menus)
+      }),
+    )
+    this._disposers.add(
+      this._interaction.on('overlay-render', ({ shape, layer }) => {
+        const target = layer === LAYER_NAME.EDGES ? this._edgeLayer : this._nodeLayer
+        if (!shape.getParent()) target.add(shape)
+        target.batchDraw()
+      }),
+    )
 
     this._resizeObserver = new ResizeObserver(() => {
       this._stage.width(container.clientWidth)
       this._stage.height(container.clientHeight)
-      this._gridLayer.redraw()
+      this._gridLayer.batchDraw()
     })
     this._resizeObserver.observe(container)
   }
