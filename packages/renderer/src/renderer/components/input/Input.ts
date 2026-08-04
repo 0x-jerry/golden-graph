@@ -21,6 +21,8 @@ export interface InputConfig extends BaseFormConfig {
   placeholder?: string
   onChange?: (value: string) => void
   beforeChange?: (value: string) => string
+  /** Fired once an edit session ends (commit, cancel, blur or destroy). */
+  onStopEdit?: () => void
 }
 
 export class Input extends FormElement {
@@ -41,6 +43,7 @@ export class Input extends FormElement {
   _iw: number
   _ih: number
   _onChange?: (value: string) => void
+  _onStopEdit?: () => void
 
   _dragging = false
   _wheelFn = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -90,6 +93,7 @@ export class Input extends FormElement {
       cornerRadius = 2,
       onChange,
       beforeChange,
+      onStopEdit,
       ...rest
     } = config
 
@@ -98,6 +102,7 @@ export class Input extends FormElement {
     this._iw = inputWidth
     this._ih = inputHeight
     this._onChange = onChange
+    this._onStopEdit = onStopEdit
 
     this._model = new TextModel({
       value,
@@ -406,6 +411,7 @@ export class Input extends FormElement {
     // of leaving a stray bound listener that keeps mutating the value.
     this._unbindEvents()
     this._active = false
+    this._onStopEdit?.()
   }
 
   protected _onKeyDown(e: KeyboardEvent) {

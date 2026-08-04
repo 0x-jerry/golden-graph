@@ -6,7 +6,7 @@ import { NodeView } from '../../src/renderer/NodeView'
 import { GroupView } from '../../src/renderer/GroupView'
 import { EdgeView } from '../../src/renderer/EdgeView'
 import { getHandleView } from '../../src/renderer/HandleView'
-import { COLORS } from '../../src/renderer/constants'
+import { COLORS, RESIZE_HANDLE_SIZE } from '../../src/renderer/constants'
 
 function find<T extends Konva.Node>(group: Konva.Group, sel: string): T {
   return group.findOne<T>(sel) as T
@@ -125,6 +125,53 @@ describe('GroupView', () => {
 
     view.setActive(false)
     expect(body.stroke()).toBe(COLORS.GROUP_BORDER)
+  })
+
+  it('shows the resize grip only while selected and syncs its position', () => {
+    const group = new Group()
+    group.id = 3
+    group.setSize({ x: 300, y: 200 })
+
+    const view = new GroupView(group)
+    const resize = find<Konva.Group>(view.group, '.resize')
+
+    expect(resize.visible()).toBe(false)
+
+    view.setActive(true)
+    expect(resize.visible()).toBe(true)
+
+    group.setSize({ x: 500, y: 400 })
+    view.update()
+    expect(resize.x()).toBe(500 - RESIZE_HANDLE_SIZE)
+    expect(resize.y()).toBe(400 - RESIZE_HANDLE_SIZE)
+  })
+
+  it('opens a title editor on startRename and tears it down on stop', () => {
+    const group = new Group()
+    group.id = 4
+    group.setName('G')
+    const view = new GroupView(group)
+
+    view.startRename()
+    const input = view._nameInput
+    expect(input).toBeDefined()
+    expect(view.group.getChildren().includes(input!)).toBe(true)
+
+    input!.deactivate()
+    expect(view._nameInput).toBeNull()
+    expect(view.group.getChildren().includes(input!)).toBe(false)
+  })
+
+  it('destroys an open title editor when the view is destroyed', () => {
+    const group = new Group()
+    group.id = 5
+    const view = new GroupView(group)
+
+    view.startRename()
+    expect(view._nameInput).toBeDefined()
+
+    view.destroy()
+    expect(view._nameInput).toBeNull()
   })
 })
 

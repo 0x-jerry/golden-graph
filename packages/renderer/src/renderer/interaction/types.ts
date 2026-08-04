@@ -11,7 +11,7 @@ export type OverlayLayer = typeof LAYER_NAME.EDGES | typeof LAYER_NAME.NODES
 export interface GestureContext {
   stage: Konva.Stage
   ws: Workspace
-  renderOverlay(shape: Konva.Shape, layer: OverlayLayer): void
+  renderOverlay(shape: Konva.Group | Konva.Shape, layer: OverlayLayer): void
 }
 
 /** A pointer gesture the InteractionManager routes move/end events to. */

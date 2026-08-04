@@ -39,7 +39,13 @@ export class ContextMenuController {
     if (!ctx) return
 
     if (ctx.type === ContextMenuTargetType.Node) {
-      this._onNodeSelect(ctx.id!)
+      const id = ctx.id!
+      if (
+        this._ws.state.activeType !== ActiveType.Node ||
+        !this._ws.isActive(id)
+      ) {
+        this._onNodeSelect(id)
+      }
     } else if (ctx.type === ContextMenuTargetType.Group) {
       this._ws.setActiveIds(ActiveType.Group, [ctx.id!])
     }

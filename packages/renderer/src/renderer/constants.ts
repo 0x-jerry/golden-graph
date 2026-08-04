@@ -79,6 +79,10 @@ export const NODE_BODY_PADDING = 8
 /** Minimum node width a user can resize a node down to. */
 export const NODE_MIN_WIDTH = 120
 
+/** Minimum group width/height a user can resize a group down to. */
+export const GROUP_MIN_WIDTH = 100
+export const GROUP_MIN_HEIGHT = 80
+
 /** Size of the corner resize grip (drawn as a triangle). */
 export const RESIZE_HANDLE_SIZE = 12
 export const BEZIER_MIN_OFFSET = 10

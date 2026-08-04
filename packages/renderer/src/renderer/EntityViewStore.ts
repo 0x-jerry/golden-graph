@@ -5,7 +5,7 @@ import type { EntityView } from './EntityView'
 import { GroupView } from './GroupView'
 import { NodeView } from './NodeView'
 import type { IRect } from '../utils/RectBox'
-import { LAYER_NAME } from './constants'
+import { LAYER_NAME, getNodeHeight, getNodeWidth } from './constants'
 
 /**
  * Map of entity views keyed by entity id. `add` draws the view into the given
@@ -59,13 +59,11 @@ export class EntityViewStore {
     let bottom = -Infinity
 
     for (const id of nodeIds) {
-      const view = this._nodeViews.get(id)
-      if (!view) continue
-
       const node = this._ws.getNode(id)
       if (!node) continue
 
-      const { width, height } = view.group.getSize()
+      const width = getNodeWidth(node)
+      const height = getNodeHeight(node)
 
       left = Math.min(left, node.pos.x)
       top = Math.min(top, node.pos.y)

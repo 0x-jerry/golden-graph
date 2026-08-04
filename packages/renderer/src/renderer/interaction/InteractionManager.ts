@@ -16,6 +16,7 @@ import { CanvasPanGesture } from './CanvasPanGesture'
 import { ConnectGesture } from './ConnectGesture'
 import { ContextMenuController } from './ContextMenuController'
 import { GroupDragGesture } from './GroupDragGesture'
+import { GroupResizeGesture } from './GroupResizeGesture'
 import { getJointInfo, hitTarget } from './hitTest'
 import { NodeDragGesture } from './NodeDragGesture'
 import { NodeResizeGesture } from './NodeResizeGesture'
@@ -33,7 +34,7 @@ export type InteractionManagerEvents = {
    * The caller must add the shape to the layer it owns and redraw it —
    * resolving layers is the caller's responsibility.
    */
-  'overlay-render': [target: { shape: Konva.Shape; layer: OverlayLayer }]
+  'overlay-render': [target: { shape: Konva.Group | Konva.Shape; layer: OverlayLayer }]
 }
 
 export interface InteractionManagerOptions {
@@ -50,6 +51,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
   _nodeDrag: NodeDragGesture
   _nodeResize: NodeResizeGesture
   _groupDrag: GroupDragGesture
+  _groupResize: GroupResizeGesture
   _canvasPan: CanvasPanGesture
   _selection: SelectionGesture
   _contextMenu: ContextMenuController
@@ -70,6 +72,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
     this._nodeDrag = new NodeDragGesture(ctx)
     this._nodeResize = new NodeResizeGesture(ctx)
     this._groupDrag = new GroupDragGesture(ctx)
+    this._groupResize = new GroupResizeGesture(ctx)
     this._canvasPan = new CanvasPanGesture(ctx)
     this._selection = new SelectionGesture(ctx)
     this._contextMenu = new ContextMenuController({
@@ -130,8 +133,18 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
         }
         this._nodeResize.start(nodeId)
         this._activeGesture = this._nodeResize
+        return
       }
-      return
+
+      const groupGroup = resizeGrip.findAncestor(
+        (n: Konva.Node) => n.name() === ELEMENT_TYPE.GROUP,
+      )
+      const groupId = Number(groupGroup?.getAttr(ATTR.ELEMENT_ID))
+      if (groupId) {
+        this._groupResize.start(groupId)
+        this._activeGesture = this._groupResize
+        return
+      }
     }
 
     const hit = hitTarget(target)

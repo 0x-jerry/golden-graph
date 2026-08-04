@@ -52,7 +52,7 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
       },
     },
     {
-      label: 'Add to Group',
+      label: 'Create Group',
       action: () => {
         const selected = [
           nodeId,

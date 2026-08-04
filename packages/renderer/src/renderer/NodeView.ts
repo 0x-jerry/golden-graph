@@ -14,6 +14,7 @@ import {
 } from './constants'
 import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
+import { renderResizeHandle } from './resizeHandle'
 
 export class NodeView extends EntityView<Node> {
   _body: Konva.Rect
@@ -173,39 +174,6 @@ export function getHandleIndex(node: Node, handle: NodeHandle): number {
   if (noneIdx >= 0) return positioned.length + noneIdx
 
   return -1
-}
-
-function renderResizeHandle(): Konva.Group {
-  const size = RESIZE_HANDLE_SIZE
-  const grip = new Konva.Group({
-    name: NODE_SHAPE.RESIZE,
-    // Shown only while the node is selected (see NodeView.setActive).
-    visible: false,
-  })
-
-  // Generous invisible hit area so the tiny triangle is easy to grab.
-  const hit = new Konva.Rect({
-    x: -10,
-    y: -10,
-    width: size + 20,
-    height: size + 20,
-    fill: 'transparent',
-    cursor: 'nwse-resize',
-    name: NODE_SHAPE.RESIZE,
-  })
-  grip.add(hit)
-
-  const triangle = new Konva.Line({
-    points: [0, size, size, size, size, 0],
-    closed: true,
-    fill: COLORS.ACCENT,
-    stroke: COLORS.BG,
-    strokeWidth: 1,
-    listening: false,
-  })
-  grip.add(triangle)
-
-  return grip
 }
 
 const EXECUTOR_SHADOW_BLUR = 10
