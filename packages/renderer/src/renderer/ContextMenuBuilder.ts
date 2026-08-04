@@ -40,7 +40,7 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
 }
 
 function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
-  return [
+  const items: CoreMenuItem[] = [
     {
       label: 'Delete',
       shortcut: 'Del',
@@ -71,6 +71,16 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
       },
     },
   ]
+
+  const node = ws.getNode(nodeId)
+  if (node?.subGraphId) {
+    items.unshift({
+      label: 'Enter SubGraph',
+      action: () => ws.enterSubGraph(node.subGraphId!),
+    })
+  }
+
+  return items
 }
 
 function groupMenu(ws: Workspace, groupId: number): CoreMenuItem[] {
