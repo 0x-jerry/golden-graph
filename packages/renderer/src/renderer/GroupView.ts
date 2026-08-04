@@ -10,7 +10,7 @@ import {
   ATTR,
 } from './constants'
 import { EntityView } from './EntityView'
-import { renderResizeHandle } from './resizeHandle'
+import { ResizeHandle } from './components/ResizeHandle'
 import { PADDING } from './components/shared'
 
 const NAME_X = 8
@@ -20,7 +20,7 @@ export class GroupView extends EntityView<Group> {
   _body: Konva.Rect
   _header: Konva.Rect
   _name: Konva.Text
-  _resize: Konva.Group
+  _resize: ResizeHandle
 
   /** Inline group-title editor currently open, if any. */
   _nameInput: Input | null = null
@@ -69,7 +69,7 @@ export class GroupView extends EntityView<Group> {
     header.on('dblclick', () => this.startRename())
     nameText.on('dblclick', () => this.startRename())
 
-    const resize = renderResizeHandle()
+    const resize = new ResizeHandle()
     resize.x(group.size.x - RESIZE_HANDLE_SIZE)
     resize.y(group.size.y - RESIZE_HANDLE_SIZE)
     g.add(resize)

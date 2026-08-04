@@ -14,13 +14,13 @@ import {
 } from './constants'
 import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
-import { renderResizeHandle } from './resizeHandle'
+import { ResizeHandle } from './components/ResizeHandle'
 
 export class NodeView extends EntityView<Node> {
   _body: Konva.Rect
   _header: Konva.Rect
   _name: Konva.Text
-  _resize: Konva.Group
+  _resize: ResizeHandle
   /** Rendered handle views keyed by handle key. */
   _handleViews = new Map<string, HandleView>()
 
@@ -71,7 +71,7 @@ export class NodeView extends EntityView<Node> {
 
     this._syncHandles()
 
-    const resize = renderResizeHandle()
+    const resize = new ResizeHandle()
     resize.x(width - RESIZE_HANDLE_SIZE)
     resize.y(height - RESIZE_HANDLE_SIZE)
     g.add(resize)
