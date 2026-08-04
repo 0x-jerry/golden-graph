@@ -1,12 +1,11 @@
 import type { NodeHandle, IVec2 } from '@0x-jerry/golden-graph'
 import { ConnectionLine } from '../ConnectionLine'
-import { getJointPos } from '../EdgeView'
 import { setJointHighlight } from '../HandleView'
 import { ELEMENT_TYPE, LAYER_NAME } from '../constants'
 import { getJointInfo } from './hitTest'
-import type { GestureContext } from './types'
+import type { GestureContext, IGesture } from './types'
 
-export class ConnectGesture {
+export class ConnectGesture implements IGesture {
   _connectionLine = new ConnectionLine()
   _connectHandle: NodeHandle | null = null
   _connectTargetHandle: NodeHandle | null = null
@@ -43,9 +42,8 @@ export class ConnectGesture {
     if (!pos) return
 
     const wsPos = this._ctx.ws.coord.convertScreenCoord(pos)
-    const jointPos = getJointPos(startHandle)
 
-    this._connectionLine.update(jointPos, wsPos)
+    this._connectionLine.update(startHandle, wsPos)
     this._connectionLine.show()
     this._render()
   }
@@ -54,9 +52,8 @@ export class ConnectGesture {
     if (!this._connectHandle) return
 
     const wsPos = this._ctx.ws.coord.convertScreenCoord(screenPos)
-    const jointPos = getJointPos(this._connectHandle)
 
-    this._connectionLine.update(jointPos, wsPos)
+    this._connectionLine.update(this._connectHandle, wsPos)
     this._render()
     this._updateHover()
   }

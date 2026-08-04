@@ -1,6 +1,6 @@
 import type Konva from 'konva'
 import { clamp, EventEmitter } from '@0x-jerry/utils'
-import type { IVec2, Workspace } from '@0x-jerry/golden-graph'
+import type { Workspace } from '@0x-jerry/golden-graph'
 import { ActiveType } from '@0x-jerry/golden-graph'
 import type { ContextMenuContext, CoreMenuItem } from '../types'
 import { ContextMenuTargetType } from '../types'
@@ -169,7 +169,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
     const pos = this._stage.getPointerPosition()
     if (!pos) return
 
-    this._activeGesture?.move(pos as IVec2)
+    this._activeGesture?.move(pos)
   }
 
   _onPointerUp = () => {

@@ -1,7 +1,7 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
-import type { GestureContext } from './types'
+import type { GestureContext, IGesture } from './types'
 
-export class CanvasPanGesture {
+export class CanvasPanGesture implements IGesture {
   _lastPos: IVec2 = { x: 0, y: 0 }
   _ctx: GestureContext
 

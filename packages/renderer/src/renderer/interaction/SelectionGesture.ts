@@ -7,9 +7,9 @@ import {
   getNodeHeight,
   getNodeWidth,
 } from '../constants'
-import type { GestureContext } from './types'
+import type { GestureContext, IGesture } from './types'
 
-export class SelectionGesture {
+export class SelectionGesture implements IGesture {
   _started = false
   _x1 = 0
   _y1 = 0

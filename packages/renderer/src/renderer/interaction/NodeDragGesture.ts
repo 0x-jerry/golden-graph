@@ -1,8 +1,8 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
 import { ActiveType } from '@0x-jerry/golden-graph'
-import type { GestureContext } from './types'
+import type { GestureContext, IGesture } from './types'
 
-export class NodeDragGesture {
+export class NodeDragGesture implements IGesture {
   _nodeId = 0
   _lastPos: IVec2 = { x: 0, y: 0 }
   _ctx: GestureContext
