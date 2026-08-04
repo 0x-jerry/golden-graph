@@ -556,10 +556,13 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   removeEdgeByIds(...ids: number[]) {
     const edges = remove(this._edges, (e) => ids.includes(e.id))
     for (const edge of edges) {
+      // Detach and notify BEFORE clearing endpoints: `clearEndpoints()`
+      // fires `handle:connection-changed`, and subscribers may rebuild edge
+      // views via the edge index. If the edge were still queryable, a view
+      // that was just torn down by `edge:removed` could be re-created.
       this._unindexEdge(edge)
-      edge.clearEndpoints()
-
       this.events.emit('edge:removed', edge)
+      edge.clearEndpoints()
     }
 
     return edges
@@ -599,8 +602,12 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
       this.events.emit('node:removed', node)
     }
     for (const edge of this._edges) {
-      edge.clearEndpoints()
+      // Same ordering as `removeEdgeByIds`: unindex + `edge:removed` before
+      // `clearEndpoints()`, so `handle:connection-changed` handlers never
+      // find a still-indexed edge whose view was already torn down.
+      this._unindexEdge(edge)
       this.events.emit('edge:removed', edge)
+      edge.clearEndpoints()
     }
     for (const group of this._groups) {
       this.events.emit('group:removed', group)

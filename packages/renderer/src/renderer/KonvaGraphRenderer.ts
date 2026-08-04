@@ -82,6 +82,14 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       }),
     )
     this._disposers.add(
+      this._interaction.on('node-dblclick', (id) => {
+        const node = workspace.getNode(id)
+        if (node?.subGraphId) {
+          workspace.enterSubGraph(node.subGraphId)
+        }
+      }),
+    )
+    this._disposers.add(
       this._interaction.on('context-menu', (ctx, evt, menus) => {
         options?.onContextMenu?.(ctx, evt, menus)
       }),

@@ -25,6 +25,7 @@ import type { GestureContext, IGesture, OverlayLayer } from './types'
 
 export type InteractionManagerEvents = {
   'node-select': [id: number]
+  'node-dblclick': [id: number]
   'context-menu': [
     ctx: ContextMenuContext,
     evt: PointerEvent,
@@ -93,6 +94,14 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
     stage.on('pointerup', this._onPointerUp)
     stage.on('wheel', this._onWheel)
     stage.on('contextmenu', this._onContextMenuEvent)
+    stage.on('dblclick', this._onDblClick)
+  }
+
+  _onDblClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const hit = hitTarget(e.target)
+    if (hit?.type === ContextMenuTargetType.Node) {
+      this.emit('node-dblclick', hit.id)
+    }
   }
 
   _onContextMenuEvent = (e: Konva.KonvaEventObject<PointerEvent>) => {
@@ -213,6 +222,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
     this._stage.off('pointerup', this._onPointerUp)
     this._stage.off('wheel', this._onWheel)
     this._stage.off('contextmenu', this._onContextMenuEvent)
+    this._stage.off('dblclick', this._onDblClick)
     this._connect.dispose()
     this.off()
   }

@@ -17,7 +17,7 @@ export function buildDefaultContextMenu(
 }
 
 function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
-  return [
+  const items: CoreMenuItem[] = [
     {
       label: 'Add Node',
       children: Array.from(ws.nodeRegister.entries())
@@ -28,6 +28,15 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
         })),
     },
   ]
+
+  if (ws.isActiveSubGraph) {
+    items.unshift({
+      label: 'Exit SubGraph',
+      action: () => ws.exitSubGraph(),
+    })
+  }
+
+  return items
 }
 
 function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
