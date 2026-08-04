@@ -65,7 +65,7 @@ export class HandleView {
       name: 'label',
       text: handle.name,
       fontSize: 12,
-      fill: COLORS.TEXT_MUTED,
+      fill: COLORS.TEXT_LABEL,
       y: handleY(index),
       // Fixed-width name column: keeps handle contents aligned across rows.
       // Handles without a name reserve no space (auto width = 0).

@@ -77,8 +77,8 @@ function resetZoom() {
   align-items: center;
   gap: 2px;
   padding: 4px;
-  background: var(--gr-color-bg-toolbar, rgba(255, 255, 255, 0.9));
-  border: 1px solid var(--gr-color-border, rgba(0, 0, 0, 0.1));
+  background: var(--gr-color-bg-toolbar, rgba(255, 255, 255, 0.92));
+  border: 1px solid var(--gr-color-border, rgba(0, 0, 0, 0.08));
   border-radius: 6px;
   z-index: 10;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
@@ -95,18 +95,18 @@ function resetZoom() {
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
-  color: var(--gr-color-text, #333);
+  color: var(--gr-color-text, #1f2328);
 }
 
 .r-workspace-toolbar-btn:hover {
-  background: var(--gr-color-bg-hover, rgba(0, 0, 0, 0.06));
+  background: var(--gr-color-bg-hover, rgba(0, 0, 0, 0.05));
 }
 
 .r-workspace-toolbar-label {
   min-width: 40px;
   font-size: 11px;
   text-align: center;
-  color: var(--gr-color-text-muted, #666);
+  color: var(--gr-color-text-muted, #5f6670);
   user-select: none;
 }
 </style>

@@ -97,7 +97,7 @@ export class ImageHandle extends HandleModule {
       const placeholder = new Konva.Text({
         text: 'Click to choose image',
         fontSize: 11,
-        fill: '#999999',
+        fill: '#9aa0aa',
         align: 'center',
         verticalAlign: 'middle',
         width: MAX_WIDTH,

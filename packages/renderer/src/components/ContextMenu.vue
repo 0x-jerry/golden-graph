@@ -220,14 +220,14 @@ function handleSubMenuClick(item: ContextMenuItem) {
   z-index: 10000;
   min-width: 180px;
   padding: 4px;
-  background: var(--gr-color-surface, #1e1e1e);
-  border: 1px solid var(--gr-color-border, #333);
+  background: var(--gr-color-surface, #ffffff);
+  border: 1px solid var(--gr-color-border, #e2e2e8);
   border-radius: 6px;
   box-shadow: var(
     --gr-color-context-menu-shadow,
-    0 4px 12px rgba(0, 0, 0, 0.3)
+    0 4px 16px rgba(0, 0, 0, 0.12)
   );
-  color: var(--gr-color-text-primary, #e0e0e0);
+  color: var(--gr-color-text-primary, #1f2328);
   font-size: 13px;
   user-select: none;
 
@@ -242,7 +242,7 @@ function handleSubMenuClick(item: ContextMenuItem) {
 
     &:hover,
     &.active {
-      background-color: var(--gr-color-accent, #007acc);
+      background-color: var(--gr-color-accent, #6366f1);
       color: #ffffff;
     }
 
@@ -277,7 +277,7 @@ function handleSubMenuClick(item: ContextMenuItem) {
     .shortcut {
       margin-left: 16px;
       font-size: 11px;
-      color: var(--gr-color-text-muted, rgba(224, 224, 224, 0.7));
+      color: var(--gr-color-text-muted, #5f6670);
     }
 
     .arrow {

@@ -11,24 +11,38 @@ export const LAYOUT = {
 } as const
 
 export const COLORS = {
+  // --- Node surfaces (neutral warm-gray) ---
   BG: '#ffffff',
-  BORDER: '#cccccc',
-  HEADER_BG: '#eeeeee',
-  TEXT_PRIMARY: '#333333',
-  TEXT_MUTED: '#666666',
-  ACCENT: '#007acc',
-  ACCENT_SOFT: 'rgba(13, 200, 13, 0.4)',
-  EDGE: '#ef4646',
+  BORDER: '#d9d9de',
+  HEADER_BG: '#f5f5f7',
+  TEXT_PRIMARY: '#1f2328',
+  /** Handle / parameter labels — small 12px text, needs extra contrast. */
+  TEXT_LABEL: '#4b5563',
+  TEXT_MUTED: '#5f6670',
+
+  // --- Accent (indigo) ---
+  ACCENT: '#6366f1',
+  /** Executor glow while a node is running. */
+  ACCENT_SOFT: 'rgba(99, 102, 241, 0.3)',
+
+  // --- Edges & joints (rose) ---
+  EDGE: 'rgba(225, 93, 118, 0.5)',
   EDGE_WIDTH: 3,
-  JOINT_DEFAULT: '#000000',
+  JOINT_DEFAULT: '#9ca3af',
   /** Joint fill while a connection drag is hovering a compatible handle. */
-  JOINT_HIGHLIGHT: '#16a34a',
-  GROUP_BG: 'rgba(213, 213, 213, 0.67)',
-  GROUP_BORDER: '#b0b0b0',
-  GRID_COLOR: '#cccccc',
-  GROUP_HEADER_BG: 'rgba(0, 0, 0, 0.1)',
-  SELECTION_BORDER: 'rgba(41, 136, 237, 1)',
-  SELECTION_FILL: 'rgba(41, 136, 237, 0.2)',
+  JOINT_HIGHLIGHT: '#6366f1',
+
+  // --- Groups (indigo tint) ---
+  GROUP_BG: 'rgba(129, 140, 248, 0.1)',
+  GROUP_BORDER: '#a5b4fc',
+  GROUP_HEADER_BG: 'rgba(99, 102, 241, 0.08)',
+
+  // --- Canvas ---
+  GRID_COLOR: '#e9e9ee',
+
+  // --- Selection ---
+  SELECTION_BORDER: '#6366f1',
+  SELECTION_FILL: 'rgba(99, 102, 241, 0.12)',
 } as const
 
 export const NODE_SHAPE = {
