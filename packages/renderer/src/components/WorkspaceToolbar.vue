@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { clamp } from '@0x-jerry/utils'
 import { computed, ref } from 'vue'
+import IconReset from '~icons/carbon/reset'
+import IconZoomIn from '~icons/carbon/zoom-in'
+import IconZoomOut from '~icons/carbon/zoom-out'
 import { useCoordSystem, useWorkspace, useWorkspaceEvent } from '../hooks'
 import { getZoomStep, ZOOM_MAX, ZOOM_MIN } from '../renderer/constants'
 
@@ -45,16 +48,7 @@ function resetZoom() {
       title="Zoom out"
       @click.stop="zoomOut"
     >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
+      <IconZoomOut width="14" height="14" />
     </button>
     <span class="r-workspace-toolbar-label">{{ zoomPercent }}</span>
     <button
@@ -62,34 +56,14 @@ function resetZoom() {
       title="Zoom in"
       @click.stop="zoomIn"
     >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
+      <IconZoomIn width="14" height="14" />
     </button>
     <button
       class="r-workspace-toolbar-btn"
       title="Reset view"
       @click.stop="resetZoom"
     >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <polyline points="1 4 1 10 7 10" />
-        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-      </svg>
+      <IconReset width="14" height="14" />
     </button>
   </div>
 </template>
