@@ -206,8 +206,12 @@ describe('Workspace', () => {
     expect(ws.nodes.find((n) => n.id === nodeB.id)).toBeUndefined()
 
     // 4. SubGraph should have Input and Output nodes
-    const sgInput = subGraph!.workspace.nodes.find((n) => n.name === 'Input')
-    const sgOutput = subGraph!.workspace.nodes.find((n) => n.name === 'Output')
+    const sgInput = subGraph!.workspace.nodes.find(
+      (n) => n.name === 'Input Handle',
+    )
+    const sgOutput = subGraph!.workspace.nodes.find(
+      (n) => n.name === 'Output Handle',
+    )
     expect(sgInput).toBeDefined()
     expect(sgOutput).toBeDefined()
 
@@ -371,7 +375,7 @@ describe('Workspace', () => {
     const subGraph = ws.subGraphs[0]!
     // Should have 1 Input Node inside
     const inputNodes = subGraph.workspace.nodes.filter(
-      (n) => n.name === 'Input',
+      (n) => n.name === 'Input Handle',
     )
     expect(inputNodes.length).toBe(1)
 

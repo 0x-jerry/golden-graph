@@ -27,11 +27,11 @@ import type { NodeHandle } from './NodeHandle'
 import { nodeClassFromSchema, type INodeSchema } from './NodeSchema'
 import type { IPersistent } from './Persistent'
 import { Register } from './Register'
+import { SubGraph } from './SubGraph'
 import {
-  SubGraph,
   subGraphInputNodeSchema,
   subGraphOutputNodeSchema,
-} from './SubGraph'
+} from './SubGraphSchema'
 import type {
   IDisposable,
   INodeHandleLoc,
