@@ -16,7 +16,7 @@ interface HandleConnectionInfo {
   // List of internal handles that share this connection (merged inputs)
   handles: NodeHandle[]
   externalLocs: INodeHandleLoc[]
-  generatedName?: string
+  interfaceNodeId?: number
 }
 
 interface ConversionContext {
@@ -171,14 +171,23 @@ function createInterfaceNodes(ctx: ConversionContext, subGraph: SubGraph) {
       name = `${name}_${i}`
     }
     usedNames.add(name)
-    item.generatedName = name
 
     const type = firstHandle.types[0] || '*'
 
     if (item.type === 'input') {
-      createInputNode({ subGraph, name, type, targetHandles: item.handles })
+      item.interfaceNodeId = createInputNode({
+        subGraph,
+        name,
+        type,
+        targetHandles: item.handles,
+      })
     } else {
-      createOutputNode({ subGraph, name, type, sourceHandles: item.handles })
+      item.interfaceNodeId = createOutputNode({
+        subGraph,
+        name,
+        type,
+        sourceHandles: item.handles,
+      })
     }
   }
 }
@@ -207,6 +216,8 @@ function createInputNode({
   for (const handle of targetHandles) {
     subGraph.workspace.connect(outputHandle, handle)
   }
+
+  return inputNode.id
 }
 
 function createOutputNode({
@@ -228,6 +239,8 @@ function createOutputNode({
   for (const handle of targetHandles) {
     subGraph.workspace.connect(handle, valueHandle)
   }
+
+  return outputNode.id
 }
 
 function createSubGraphNode(
@@ -246,11 +259,18 @@ function createSubGraphNode(
 
 function reconnectExternalEdges(ctx: ConversionContext, subGraphNode: Node) {
   for (const item of ctx.handleMap.values()) {
-    const name = item.generatedName!
-    const sgHandle = subGraphNode.getHandle(name)
+    const interfaceNodeId = item.interfaceNodeId
+    if (interfaceNodeId == null) {
+      continue
+    }
+
+    // Collapsed handles are keyed by the interface node id.
+    const sgHandle = subGraphNode.getHandle(String(interfaceNodeId))
 
     if (!sgHandle) {
-      console.warn(`Could not find handle [${name}] on SubGraphNode`)
+      console.warn(
+        `Could not find handle [${interfaceNodeId}] on SubGraphNode`,
+      )
       continue
     }
 

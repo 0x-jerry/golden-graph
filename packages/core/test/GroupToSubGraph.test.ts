@@ -131,4 +131,48 @@ describe('enterSubGraph/exitSubGraph', () => {
     expect(ws.queryEdges(extIn.getHandle('value')!.loc).length).toBe(1)
     expect(ws.queryEdges(extOut.getHandle('a')!.loc).length).toBe(1)
   })
+
+  it('keeps external connections after renaming input/output handles', () => {
+    const ws = createWs()
+    const extIn = ws.addNode('Number')
+    const extOut = ws.addNode('Sum')
+    const n1 = ws.addNode('Number')
+    const sum = ws.addNode('Sum')
+
+    ws.connect(extIn.getHandle('value')!, sum.getHandle('a')!)
+    ws.connect(n1.getHandle('value')!, sum.getHandle('b')!)
+    ws.connect(sum.getHandle('out')!, extOut.getHandle('a')!)
+
+    const group = groupNodes(ws, n1.id, sum.id)
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraph = ws.subGraphs[0]!
+    const subGraphId = subGraph.id
+    const oldSubGraphNode = ws.nodes.find((n) => n.subGraphId === subGraphId)!
+    const oldKeys = oldSubGraphNode.handles.map((h) => h.key)
+
+    ws.enterSubGraph(subGraphId)
+
+    // rename the interface nodes inside the subgraph
+    const inputNode = ws.nodes.find((n) => n.type === 'subgraph.input')!
+    const outputNode = ws.nodes.find((n) => n.type === 'subgraph.output')!
+    inputNode.setData('Name', 'RenamedIn')
+    outputNode.setData('Name', 'RenamedOut')
+
+    ws.exitSubGraph()
+    expect(ws.isActiveSubGraph).toBe(false)
+
+    // collapsed handle keys are the interface node ids — stable across
+    // renames; only the display labels change
+    const rebuilt = ws.nodes.find((n) => n.subGraphId === subGraphId)!
+    expect(rebuilt.handles.map((h) => h.key).sort()).toEqual(
+      [...oldKeys].sort(),
+    )
+    expect(rebuilt.handles.map((h) => h.name)).toContain('RenamedIn')
+    expect(rebuilt.handles.map((h) => h.name)).toContain('RenamedOut')
+
+    // external connections are restored on the rebuilt node
+    expect(ws.queryEdges(extIn.getHandle('value')!.loc).length).toBe(1)
+    expect(ws.queryEdges(extOut.getHandle('a')!.loc).length).toBe(1)
+  })
 })

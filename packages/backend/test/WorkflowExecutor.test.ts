@@ -261,12 +261,12 @@ describe('WorkflowExecutor', () => {
     const g = graph({
       nodes: [
         node(1, 'Source', { out: 1 }),
-        node(2, 'DefaultNode', { x: undefined, y: undefined }, { subGraphId: 9 }),
+        node(2, 'DefaultNode', { '1': undefined, '3': undefined }, { subGraphId: 9 }),
         node(3, 'Step', { in: undefined, out: undefined }),
       ],
       edges: [
-        edge({ id: 1, key: 'out' }, { id: 2, key: 'x' }),
-        edge({ id: 2, key: 'y' }, { id: 3, key: 'in' }),
+        edge({ id: 1, key: 'out' }, { id: 2, key: '1' }),
+        edge({ id: 2, key: '3' }, { id: 3, key: 'in' }),
       ],
       subGraphs: [
         {
@@ -292,7 +292,7 @@ describe('WorkflowExecutor', () => {
     expect(calls).toEqual(['Source', 'Step(2)', 'Step(3)'])
 
     // only the subgraph node's own writes are streamed, not nested ones
-    expect(collected.updates).toContainEqual({ nodeId: 2, key: 'y', value: 2 })
+    expect(collected.updates).toContainEqual({ nodeId: 2, key: '3', value: 2 })
     expect(collected.updates).not.toContainEqual(
       expect.objectContaining({ nodeId: 2, key: 'out' }),
     )
@@ -306,9 +306,9 @@ describe('WorkflowExecutor', () => {
       graph({
         nodes: [
           node(1, 'Source', { out: sourceValue }),
-          node(2, 'DefaultNode', { x: undefined, y: subY }, { subGraphId: 9 }),
+          node(2, 'DefaultNode', { '1': undefined, '3': subY }, { subGraphId: 9 }),
         ],
-        edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'x' })],
+        edges: [edge({ id: 1, key: 'out' }, { id: 2, key: '1' })],
         subGraphs: [
           {
             id: 9,

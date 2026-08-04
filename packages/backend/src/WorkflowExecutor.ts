@@ -100,10 +100,10 @@ interface IGraphIndex {
  * - a diff cache keyed by node id: a node is re-executed only when its
  *   fully-resolved handle data changed since the last successful run,
  * - subgraph nodes (`INode.subGraphId`): inject the node's inputs into
- *   the nested workspace's `subgraph.input` interface nodes (matched by
- *   their `Name` data), execute the nested workspace, then read the
- *   `subgraph.output` interface nodes' resolved `Value` back onto the
- *   node's output handles,
+ *   the nested workspace's `subgraph.input` interface nodes (the
+ *   collapsed node's handle keys are the interface node ids), execute the
+ *   nested workspace, then read the `subgraph.output` interface nodes'
+ *   resolved `Value` back onto the node's output handles,
  * - debug mode paces execution (sleep between nodes) so progress stays
  *   observable.
  *
@@ -273,14 +273,19 @@ export class WorkflowExecutor {
     const subIndex = indexGraph(subGraph.workspace)
 
     // Inject the node's inputs into the nested workspace's interface
-    // input nodes, matched by their `Name` data.
+    // input nodes, matched by the interface node id (the collapsed node's
+    // handle key).
     for (const subNode of subGraph.workspace.nodes) {
       if (subNode.type !== SUBGRAPH_INPUT_NODE_TYPE) {
         continue
       }
 
-      const name = String(subNode.data?.Name ?? '')
-      setLocalValue(subIndex, subNode.id, 'Output', ctx.getData(name))
+      setLocalValue(
+        subIndex,
+        subNode.id,
+        'Output',
+        ctx.getData(String(subNode.id)),
+      )
     }
 
     const executor = this._subExecutor(subGraphId)
@@ -299,8 +304,10 @@ export class WorkflowExecutor {
         continue
       }
 
-      const name = String(subNode.data?.Name ?? '')
-      ctx.setData(name, executor._resolveValue(subIndex, subNode, 'Value'))
+      ctx.setData(
+        String(subNode.id),
+        executor._resolveValue(subIndex, subNode, 'Value'),
+      )
     }
   }
 
@@ -430,7 +437,7 @@ export class WorkflowExecutor {
   /**
    * Input/output handle keys of a node. For schema-defined nodes this
    * comes from the schema; for subgraph nodes the keys are the nested
-   * workspace's interface node names.
+   * workspace's interface node ids.
    */
   _nodeInfo(index: IGraphIndex, node: INode): INodeRuntimeInfo {
     if (node.subGraphId != null) {
@@ -439,14 +446,12 @@ export class WorkflowExecutor {
       const outputKeys = new Set<string>()
 
       for (const subNode of subGraph?.workspace.nodes ?? []) {
-        const name = String(subNode.data?.Name ?? '')
-
         if (subNode.type === SUBGRAPH_INPUT_NODE_TYPE) {
-          inputKeys.add(name)
+          inputKeys.add(String(subNode.id))
         }
 
         if (subNode.type === SUBGRAPH_OUTPUT_NODE_TYPE) {
-          outputKeys.add(name)
+          outputKeys.add(String(subNode.id))
         }
       }
 

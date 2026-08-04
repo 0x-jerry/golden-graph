@@ -82,7 +82,9 @@ export function isSubGraphOutputNode(node: Node) {
 export function subGraphInputToHandleConfig(node: Node): INodeHandleConfig {
   const conf: INodeHandleConfig = {
     name: node.getData('Name'),
-    key: node.getData('Name'),
+    // Key by the interface node id — stable across renames of the display
+    // name, so external edges survive `exitSubGraph`.
+    key: String(node.id),
     type: node.getData('Type'),
     position: HandlePosition.Left,
   }
@@ -93,7 +95,7 @@ export function subGraphInputToHandleConfig(node: Node): INodeHandleConfig {
 export function subGraphOutputToHandleConfig(node: Node): INodeHandleConfig {
   const conf: INodeHandleConfig = {
     name: node.getData('Name'),
-    key: node.getData('Name'),
+    key: String(node.id),
     type: node.getData('Type'),
     position: HandlePosition.Right,
   }
