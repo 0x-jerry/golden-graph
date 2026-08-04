@@ -139,7 +139,9 @@ export class HandleView {
     const nameWidth = this._label.width()
     content.x(contentX(this.handle, nameWidth))
     if (this.handle.position === HandlePosition.Right) {
-      content.offsetX(content.getClientRect().width)
+      // Local-space width: `getClientRect()` without `skipTransform` would
+      // include the stage zoom, shifting right-aligned content on resize.
+      content.offsetX(content.getClientRect({ skipTransform: true }).width)
     } else {
       content.offsetX(0)
     }
