@@ -1,4 +1,5 @@
 import type { Workspace } from '@0x-jerry/golden-graph'
+import { isSubGraphNode } from '@0x-jerry/golden-graph'
 import { autoLayout } from '../layout'
 import type { CoreMenuItem, ContextMenuContext } from './types'
 import { ContextMenuTargetType } from './types'
@@ -68,7 +69,7 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
         if (!node) return
 
         // SubGraphNodes reuse the same sub-graph workspace on copy.
-        if (node.subGraphId) {
+        if (isSubGraphNode(node) && node.subGraphId) {
           ws.copySubGraphNode(node.subGraphId)
           return
         }
@@ -94,7 +95,7 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
   ]
 
   const node = ws.getNode(nodeId)
-  if (node?.subGraphId) {
+  if (node && isSubGraphNode(node) && node.subGraphId) {
     items.unshift({
       label: 'Enter SubGraph',
       action: () => ws.enterSubGraph(node.subGraphId!),

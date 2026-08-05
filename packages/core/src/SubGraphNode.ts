@@ -1,5 +1,6 @@
 import { Node } from './Node'
 import type { SubGraph } from './SubGraph'
+import type { INode } from './types'
 import {
   isSubGraphInputNode,
   isSubGraphOutputNode,
@@ -26,7 +27,7 @@ export class SubGraphNode extends Node {
     return this._subGraph
   }
 
-  override get subGraphId() {
+  get subGraphId() {
     return this._subGraph?.id
   }
 
@@ -34,6 +35,17 @@ export class SubGraphNode extends Node {
     super()
 
     this._subGraph = subGraph
+  }
+
+  // `subGraphId` is written to the serialized `INode` so the backend and JSON
+  // round-trip keep the sub-graph reference. `fromJSON` needs no override:
+  // `_subGraph` is wired up structurally via `SubGraph.buildNode()` before
+  // `fromJSON` runs, so the id is never read back out of the JSON.
+  override toJSON(): INode {
+    const json = super.toJSON()
+    json.subGraphId = this.subGraphId
+
+    return json
   }
 
   /**
@@ -58,4 +70,8 @@ export class SubGraphNode extends Node {
 
     return this
   }
+}
+
+export function isSubGraphNode(node: unknown): node is SubGraphNode {
+  return !!node && node instanceof SubGraphNode
 }

@@ -5,6 +5,7 @@ import {
   Node,
   SubGraphNode,
   Workspace,
+  isSubGraphNode,
   type INodeSchema,
 } from '../src'
 
@@ -69,7 +70,7 @@ describe('SubGraphNode', () => {
   it('is a Node whose subGraphId points at its SubGraph', () => {
     const { ws, subGraph } = makeSubGraph()
 
-    const subGraphNode = ws.nodes.find((n) => n.subGraphId)!
+    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
     expect(subGraphNode).toBeInstanceOf(SubGraphNode)
     expect(subGraphNode).toBeInstanceOf(Node)
     expect(subGraphNode.subGraphId).toBe(subGraph.id)
@@ -78,7 +79,7 @@ describe('SubGraphNode', () => {
 
   it('tracks its relative nodes on the SubGraph', () => {
     const { ws, subGraph } = makeSubGraph()
-    const subGraphNode = ws.nodes.find((n) => n.subGraphId)!
+    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
 
     expect(subGraph.nodes).toContain(subGraphNode)
     expect(subGraph.nodes).toHaveLength(1)
@@ -87,7 +88,7 @@ describe('SubGraphNode', () => {
   it('does not mark regular nodes as sub-graph nodes', () => {
     const ws = createWs()
     const n = ws.addNode('Number')
-    expect(n.subGraphId).toBeUndefined()
+    expect(isSubGraphNode(n)).toBe(false)
     expect(n).not.toBeInstanceOf(SubGraphNode)
   })
 })
@@ -95,7 +96,7 @@ describe('SubGraphNode', () => {
 describe('copySubGraphNode', () => {
   it('reuses the same SubGraph (and inner workspace) as the original', () => {
     const { ws, subGraph } = makeSubGraph()
-    const original = ws.nodes.find((n) => n.subGraphId)!
+    const original = ws.nodes.find((n) => isSubGraphNode(n))!
 
     const copy = ws.copySubGraphNode(subGraph.id)
 
@@ -105,14 +106,14 @@ describe('copySubGraphNode', () => {
     expect(copy.subGraphId).toBe(original.subGraphId)
     expect(copy.subGraph).toBe(subGraph)
     // both nodes are registered in the parent workspace
-    expect(ws.nodes.filter((n) => n.subGraphId === subGraph.id)).toHaveLength(2)
+    expect(ws.nodes.filter((n) => isSubGraphNode(n) && n.subGraphId === subGraph.id)).toHaveLength(2)
     // the SubGraph now tracks both relative nodes
     expect(subGraph.nodes).toHaveLength(2)
   })
 
   it('positions the copy offset from the source node', () => {
     const { ws, subGraph } = makeSubGraph()
-    const original = ws.nodes.find((n) => n.subGraphId)!
+    const original = ws.nodes.find((n) => isSubGraphNode(n))!
     original.moveTo(100, 200)
 
     const copy = ws.copySubGraphNode(subGraph.id)
@@ -123,7 +124,7 @@ describe('copySubGraphNode', () => {
 
   it('keeps both copies driven by the same inner workspace', () => {
     const { ws, subGraph, extIn, extOut } = makeSubGraph()
-    const original = ws.nodes.find((n) => n.subGraphId)!
+    const original = ws.nodes.find((n) => isSubGraphNode(n))!
 
     const copy = ws.copySubGraphNode(subGraph.id)
 
@@ -151,7 +152,9 @@ describe('copySubGraphNode', () => {
     ws2.fromJSON(ws.toJSON())
 
     expect(ws2.subGraphs.length).toBe(1)
-    const subGraphNodes = ws2.nodes.filter((n) => n.subGraphId === subGraph.id)
+    const subGraphNodes = ws2.nodes.filter(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )
     expect(subGraphNodes.length).toBe(2)
     for (const n of subGraphNodes) {
       expect(n).toBeInstanceOf(SubGraphNode)

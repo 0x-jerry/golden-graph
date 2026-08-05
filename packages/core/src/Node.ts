@@ -50,8 +50,6 @@ export class Node implements IPersistent<INode> {
 
   _workspace?: Workspace
 
-  _subGraphId?: number
-
   get type() {
     return this._type
   }
@@ -78,14 +76,6 @@ export class Node implements IPersistent<INode> {
 
   get handles() {
     return toReadonly(this._handles)
-  }
-
-  get subGraphId() {
-    return this._subGraphId
-  }
-
-  setSubGraphId(subGraphId?: number) {
-    this._subGraphId = subGraphId
   }
 
   /**
@@ -225,7 +215,6 @@ export class Node implements IPersistent<INode> {
       id: this.id,
       type: this._type,
       data: this.getAllRealData(),
-      subGraphId: this.subGraphId,
       pos: {
         x: this._state.pos.x,
         y: this._state.pos.y,
@@ -252,8 +241,6 @@ export class Node implements IPersistent<INode> {
     }
 
     this.setAllData(data.data || {})
-
-    this.setSubGraphId(data.subGraphId)
   }
 }
 

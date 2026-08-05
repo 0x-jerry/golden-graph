@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Group, HandlePosition, Workspace, type INodeSchema } from '../src'
+import {
+  Group,
+  HandlePosition,
+  Workspace,
+  isSubGraphNode,
+  type INodeSchema,
+} from '../src'
 
 const numberSchema: INodeSchema = {
   type: 'Number',
@@ -109,7 +115,7 @@ describe('enterSubGraph/exitSubGraph', () => {
     ws.convertGroupToSubGraph(group.id)
 
     const subGraph = ws.subGraphs[0]!
-    const subGraphNode = ws.nodes.find((n) => n.subGraphId === subGraph.id)!
+    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n) && n.subGraphId === subGraph.id)!
     expect(subGraphNode.handles.length).toBe(2)
 
     // subgraph.input/output are internal types — entering must not require
@@ -123,7 +129,7 @@ describe('enterSubGraph/exitSubGraph', () => {
     expect(ws.isActiveSubGraph).toBe(false)
 
     // the subgraph node is rebuilt with the same interface
-    const rebuilt = ws.nodes.find((n) => n.subGraphId === subGraph.id)!
+    const rebuilt = ws.nodes.find((n) => isSubGraphNode(n) && n.subGraphId === subGraph.id)!
     expect(rebuilt).toBeDefined()
     expect(rebuilt.handles.length).toBe(subGraphNode.handles.length)
 
@@ -148,7 +154,7 @@ describe('enterSubGraph/exitSubGraph', () => {
 
     const subGraph = ws.subGraphs[0]!
     const subGraphId = subGraph.id
-    const oldSubGraphNode = ws.nodes.find((n) => n.subGraphId === subGraphId)!
+    const oldSubGraphNode = ws.nodes.find((n) => isSubGraphNode(n) && n.subGraphId === subGraphId)!
     const oldKeys = oldSubGraphNode.handles.map((h) => h.key)
 
     ws.enterSubGraph(subGraphId)
@@ -164,7 +170,7 @@ describe('enterSubGraph/exitSubGraph', () => {
 
     // collapsed handle keys are the interface node ids — stable across
     // renames; only the display labels change
-    const rebuilt = ws.nodes.find((n) => n.subGraphId === subGraphId)!
+    const rebuilt = ws.nodes.find((n) => isSubGraphNode(n) && n.subGraphId === subGraphId)!
     expect(rebuilt.handles.map((h) => h.key).sort()).toEqual(
       [...oldKeys].sort(),
     )

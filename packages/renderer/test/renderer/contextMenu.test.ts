@@ -4,6 +4,7 @@ import {
   HandlePosition,
   SubGraphNode,
   Workspace,
+  isSubGraphNode,
   type INodeSchema,
 } from '@0x-jerry/golden-graph'
 import { buildDefaultContextMenu } from '../../src/renderer/ContextMenuBuilder'
@@ -59,7 +60,7 @@ describe('buildDefaultContextMenu', () => {
     const group = groupNodes(ws, a.id, b.id)
     ws.convertGroupToSubGraph(group.id)
 
-    const subGraphNode = ws.nodes.find((n) => n.subGraphId)!
+    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
     const subGraph = ws.subGraphs.find((s) => s.id === subGraphNode.subGraphId)!
     const internalEdgeCount = subGraph.workspace.edges.length
     expect(subGraphNode.subGraphId).toBe(subGraph.id)
@@ -104,7 +105,7 @@ describe('buildDefaultContextMenu', () => {
     const group = groupNodes(ws, a.id, b.id)
     ws.convertGroupToSubGraph(group.id)
 
-    const subGraphNode = ws.nodes.find((n) => n.subGraphId)!
+    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
     ws.enterSubGraph(subGraphNode.subGraphId!)
 
     const items = buildDefaultContextMenu(
@@ -127,7 +128,7 @@ describe('buildDefaultContextMenu', () => {
     ws.convertGroupToSubGraph(group.id)
 
     const subGraph = ws.subGraphs[0]!
-    const original = ws.nodes.find((n) => n.subGraphId)!
+    const original = ws.nodes.find((n) => isSubGraphNode(n))!
 
     const items = buildDefaultContextMenu(
       { type: ContextMenuTargetType.Node, id: original.id },
@@ -136,7 +137,9 @@ describe('buildDefaultContextMenu', () => {
     const dup = items.find((item) => item.label === 'Duplicate')!
     dup.action!()
 
-    const copies = ws.nodes.filter((n) => n.subGraphId === subGraph.id)
+    const copies = ws.nodes.filter(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )
     expect(copies).toHaveLength(2)
     for (const n of copies) {
       expect((n as SubGraphNode).subGraph).toBe(subGraph)

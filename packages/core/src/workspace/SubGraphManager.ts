@@ -2,6 +2,7 @@ import { remove } from '@0x-jerry/utils'
 import { convertGroupToSubGraph } from '../GroupToSubGraph'
 import type { SubGraph } from '../SubGraph'
 import type { SubGraphNode } from '../SubGraphNode'
+import { isSubGraphNode } from '../SubGraphNode'
 import type { IWorkspace } from '../types'
 import type { Workspace } from './Workspace'
 
@@ -88,7 +89,7 @@ export class SubGraphManager {
     // Rebuild the existing SubGraphNode's handles in place and reconnect the
     // surviving external edges.
     const subGraphNode = this.ws.nodes.find(
-      (n) => n.subGraphId === subGraph.id,
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
     ) as SubGraphNode | undefined
     if (!subGraphNode) {
       throw new Error(`Can not find sub graph node by id ${subGraph.id}`)
@@ -141,9 +142,9 @@ export class SubGraphManager {
       throw new Error(`Can not find subGraph by id ${subGraphId}`)
     }
 
-    const source = this.ws.nodes.find((n) => n.subGraphId === subGraph.id) as
-      | SubGraphNode
-      | undefined
+    const source = this.ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )
 
     const copy = subGraph.buildNode()
     if (source) {

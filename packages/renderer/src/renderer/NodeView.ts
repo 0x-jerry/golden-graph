@@ -1,6 +1,6 @@
 import Konva from 'konva'
 import type { Node, NodeHandle } from '@0x-jerry/golden-graph'
-import { HandlePosition } from '@0x-jerry/golden-graph'
+import { HandlePosition, isSubGraphNode } from '@0x-jerry/golden-graph'
 import {
   COLORS,
   LAYOUT,
@@ -71,7 +71,7 @@ export class NodeView extends EntityView<Node> {
     this._header = header
     this._name = nameText
 
-    if (node.subGraphId) {
+    if (isSubGraphNode(node)) {
       const tag = createSubGraphTag()
       tag.x(width - SUBGRAPH_TAG_WIDTH - 8)
       tag.y(Math.round((LAYOUT.HEADER_HEIGHT - SUBGRAPH_TAG_HEIGHT) / 2))

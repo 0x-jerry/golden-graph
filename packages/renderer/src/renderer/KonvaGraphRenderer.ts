@@ -1,6 +1,6 @@
 import Konva from 'konva'
 import type { IDisposable, IRenderer, Workspace } from '@0x-jerry/golden-graph'
-import { ActiveType, Disposable } from '@0x-jerry/golden-graph'
+import { ActiveType, Disposable, isSubGraphNode } from '@0x-jerry/golden-graph'
 import { CoordLayer } from './CoordLayer'
 import { InteractionManager } from './interaction/InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
@@ -93,8 +93,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._disposers.add(
       this._interaction.on('node-dblclick', (id) => {
         const node = workspace.getNode(id)
-        if (node?.subGraphId) {
-          workspace.enterSubGraph(node.subGraphId)
+        if (isSubGraphNode(node)) {
+          workspace.enterSubGraph(node.subGraphId!)
         }
       }),
     )
