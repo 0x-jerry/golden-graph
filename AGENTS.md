@@ -133,6 +133,16 @@ export const addDefinition: INodeDefinition = {
 
 Then add it to `nodes/index.ts`. No renderer changes needed unless you add a new `options.type`.
 
+## Auto-layout
+
+Pure-TS module in **renderer** (`packages/renderer/src/layout/`), no external deps, works on `Workspace` public APIs:
+
+- `computeNodePositions(nodes, edges, options): LayoutResult` — pure, returns a `Map<nodeId, pos>` + bounding `rect`; never mutates.
+- `autoLayout(ws, options)` — applies via `node.moveTo(x, y)` (each emits `node:changed` → renderer redraws) then re-fits every group to its children (40/50 padding, mirroring `GroupManager.addGroup`). No-op while `ws.disabled`.
+- `resolveEdgeDirection(edge)` — infers producer→consumer from handle position (`isRight` → `isLeft`); `edge.start/end` order is unreliable. Same-side edges contribute **no** rank constraint but still join weakly-connected components.
+- Algorithm: weakly-connected components → longest-path-from-root rank assignment (cycle-safe) → barycenter crossing reduction → coordinate assignment. `direction: 'right'` (default; inputs left → outputs right) or `'down'`. `measure` supplies per-node `{width,height}` (renderer passes `getNodeWidth`/`getNodeHeight`); default estimator mirrors `LAYOUT`.
+- Exposed as the **"Auto Layout"** item in `ContextMenuBuilder.canvasMenu`, gate by `ws.disabled`.
+
 ## Renderer (Konva + Vue)
 
 - **Layer order** (bottom → top): grid → groups → edges → nodes. The rubber-band selection rect is drawn into the node layer so it stays visible (`InteractionManager` takes a `nodeLayer`).
