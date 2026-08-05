@@ -12,7 +12,8 @@ import { EntityViewStore } from './EntityViewStore'
 import { GraphStateSyncer } from './GraphStateSyncer'
 import { subscribeGraphEvents } from './GraphEventRouter'
 import { autoLayout } from '../layout'
-import { getNodeHeight, getNodeWidth } from './constants'
+import { getNodeWidth } from './constants'
+import { getNodeHeight } from './NodeView'
 
 export interface KonvaGraphRendererOptions {
   onContextMenu?: (

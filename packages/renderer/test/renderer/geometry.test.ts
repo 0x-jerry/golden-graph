@@ -2,10 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import { getJointPos, bezierOffset } from '../../src/renderer/EdgeView'
-import { getHandleIndex, computeNodeHeight } from '../../src/renderer/NodeView'
+import { getHandleIndex, getNodeHeight } from '../../src/renderer/NodeView'
 import {
   getNodeWidth,
-  getNodeHeight,
   LAYOUT,
   NODE_BODY_PADDING,
 } from '../../src/renderer/constants'
@@ -13,7 +12,10 @@ import {
 describe('getJointPos', () => {
   it('places a left joint at the node left edge on its handle row', () => {
     const node = makeNode(1, 'A', { x: 100, y: 50 })
-    const handle = addHandle(node, 'in', { position: HandlePosition.Left })
+    const handle = addHandle(node, 'in', {
+      position: HandlePosition.Left,
+      type: 'text',
+    })
 
     const pos = getJointPos(handle)
     expect(pos.x).toBe(100)
@@ -23,7 +25,10 @@ describe('getJointPos', () => {
   it('places a right joint at the effective node right edge', () => {
     const node = makeNode(2, 'B', { x: 200, y: 0 })
     node.setSize({ x: 300, y: 0 })
-    const handle = addHandle(node, 'out', { position: HandlePosition.Right })
+    const handle = addHandle(node, 'out', {
+      position: HandlePosition.Right,
+      type: 'text',
+    })
 
     const pos = getJointPos(handle)
     expect(pos.x).toBe(200 + getNodeWidth(node))
@@ -31,8 +36,11 @@ describe('getJointPos', () => {
 
   it('offsets lower handles within a node', () => {
     const node = makeNode(3, 'C', { x: 0, y: 0 })
-    addHandle(node, 'a', { position: HandlePosition.Left })
-    const second = addHandle(node, 'b', { position: HandlePosition.Left })
+    addHandle(node, 'a', { position: HandlePosition.Left, type: 'text' })
+    const second = addHandle(node, 'b', {
+      position: HandlePosition.Left,
+      type: 'text',
+    })
 
     const pos = getJointPos(second)
     expect(pos.y).toBe(
@@ -69,19 +77,29 @@ describe('getHandleIndex', () => {
 describe('node dimensions', () => {
   it('falls back to layout width and content-driven height', () => {
     const node = makeNode(5, 'D')
-    addHandle(node, 'a')
-    addHandle(node, 'b')
+    addHandle(node, 'a', { type: 'text' })
+    addHandle(node, 'b', { type: 'text' })
 
     expect(getNodeWidth(node)).toBe(LAYOUT.NODE_WIDTH)
-    expect(getNodeHeight(node)).toBe(computeNodeHeight(node))
-    expect(computeNodeHeight(node)).toBe(
+    expect(getNodeHeight(node)).toBe(
       LAYOUT.HEADER_HEIGHT + 2 * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING,
+    )
+  })
+
+  it('grows the node for block-layout handles', () => {
+    const node = makeNode(7, 'D')
+    addHandle(node, 'a', { type: 'text' })
+    // 'display' uses the block layout by default.
+    addHandle(node, 'b', { type: 'display' })
+
+    expect(getNodeHeight(node)).toBe(
+      LAYOUT.HEADER_HEIGHT + 3 * LAYOUT.HANDLE_ROW_HEIGHT + NODE_BODY_PADDING,
     )
   })
 
   it('respects an explicit size', () => {
     const node = makeNode(6, 'D')
-    addHandle(node, 'a')
+    addHandle(node, 'a', { type: 'text' })
 
     node.setSize({ x: 400, y: 500 })
     expect(getNodeWidth(node)).toBe(400)

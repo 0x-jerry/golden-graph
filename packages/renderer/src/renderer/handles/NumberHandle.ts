@@ -1,14 +1,14 @@
 import Konva from 'konva'
 import { Input } from '../components/input'
 import { availableWidth } from './utils'
-import { HandleModule } from './types'
+import type { HandleModule } from './types'
 
-export class NumberHandle extends HandleModule {
-  static type = 'number'
+const inputMap = new WeakMap<Konva.Group, Input>()
 
-  _inputMap = new WeakMap<Konva.Group, Input>()
+export const numberHandle: HandleModule = {
+  type: 'number',
 
-  create: HandleModule['create'] = (handle) => {
+  create: (handle) => {
     const group = new Konva.Group()
     const w = availableWidth(handle)
 
@@ -24,22 +24,22 @@ export class NumberHandle extends HandleModule {
       },
     })
     group.add(input)
-    this._inputMap.set(group, input)
+    inputMap.set(group, input)
 
     return group
-  }
+  },
 
-  update: HandleModule['update'] = (group, handle) => {
-    const input = this._inputMap.get(group)
+  update: (group, handle) => {
+    const input = inputMap.get(group)
     if (input) {
       input.setValue(String(handle.getValue() ?? ''))
       input.setWidth(availableWidth(handle))
     }
-  }
+  },
 
-  destroy: HandleModule['destroy'] = (group) => {
-    this._inputMap.delete(group)
-  }
+  destroy: (group) => {
+    inputMap.delete(group)
+  },
 }
 
 const INPUT_HEIGHT = 18

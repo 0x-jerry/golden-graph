@@ -1,5 +1,6 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
-import { NODE_MIN_WIDTH, getNodeHeight, getNodeWidth } from '../constants'
+import { NODE_MIN_WIDTH, getNodeWidth } from '../constants'
+import { getNodeHeight } from '../NodeView'
 import type { GestureContext, IGesture } from './types'
 
 export class NodeResizeGesture implements IGesture {

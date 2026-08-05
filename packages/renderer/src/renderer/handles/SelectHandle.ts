@@ -3,14 +3,14 @@ import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Select } from '../components/select'
 import type { SelectOption } from '../components/select'
 import { availableWidth } from './utils'
-import { HandleModule } from './types'
+import type { HandleModule } from './types'
 
-export class SelectHandle extends HandleModule {
-  static type = 'select'
+const selectMap = new WeakMap<Konva.Group, Select>()
 
-  _selectMap = new WeakMap<Konva.Group, Select>()
+export const selectHandle: HandleModule = {
+  type: 'select',
 
-  create: HandleModule['create'] = (handle) => {
+  create: (handle) => {
     const group = new Konva.Group()
     const w = availableWidth(handle)
 
@@ -25,23 +25,23 @@ export class SelectHandle extends HandleModule {
       },
     })
     group.add(select)
-    this._selectMap.set(group, select)
+    selectMap.set(group, select)
 
     return group
-  }
+  },
 
-  update: HandleModule['update'] = (group, handle) => {
-    const select = this._selectMap.get(group)
+  update: (group, handle) => {
+    const select = selectMap.get(group)
     if (select) {
       select.setOptions(readOptions(handle))
       select.setValue(String(handle.getValue() ?? ''))
       select.setWidth(availableWidth(handle))
     }
-  }
+  },
 
-  destroy: HandleModule['destroy'] = (group) => {
-    this._selectMap.delete(group)
-  }
+  destroy: (group) => {
+    selectMap.delete(group)
+  },
 }
 
 const INPUT_HEIGHT = 18

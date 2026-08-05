@@ -1,9 +1,7 @@
 import Konva from 'konva'
 import type { Edge, NodeHandle } from '@0x-jerry/golden-graph'
-import { HandlePosition } from '@0x-jerry/golden-graph'
 import {
   COLORS,
-  LAYOUT,
   BEZIER_MIN_OFFSET,
   BEZIER_MAX_OFFSET,
   EDGE_HIT_STROKE,
@@ -11,6 +9,7 @@ import {
   ATTR,
   getNodeWidth,
 } from './constants'
+import { handleY } from './handles/layout'
 import { EntityView } from './EntityView'
 
 const CLOSE_SIZE = 12
@@ -71,15 +70,7 @@ export class EdgeView extends EntityView<Edge> {
 }
 
 export function getJointPos(handle: NodeHandle): { x: number; y: number } {
-  const handles = handle.node.handles.filter(
-    (h: NodeHandle) => h.position !== HandlePosition.None,
-  )
-  const index = handles.indexOf(handle)
-  const y =
-    handle.node.pos.y +
-    LAYOUT.HEADER_HEIGHT +
-    index * LAYOUT.HANDLE_ROW_HEIGHT +
-    LAYOUT.HANDLE_ROW_HEIGHT / 2
+  const y = handle.node.pos.y + handleY(handle.node, handle)
 
   if (handle.isRight) {
     return { x: handle.node.pos.x + getNodeWidth(handle.node), y }

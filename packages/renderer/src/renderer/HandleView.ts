@@ -13,7 +13,13 @@ import {
   getNodeWidth,
 } from './constants'
 import { getHandleModule } from './handles'
-import type { HandleModule } from './handles/types'
+import { handleY, getHandleRowHeight } from './handles/layout'
+import type { HandleModule, HandleContentLayout } from './handles/types'
+
+/** Label top padding inside a block handle's row. */
+const BLOCK_LABEL_TOP_PAD = 3
+/** Gap between the label and the content below it in a block handle. */
+const BLOCK_LABEL_CONTENT_GAP = 4
 
 /**
  * Registry mapping a core handle to its rendered view, used for cross-cutting
@@ -31,12 +37,14 @@ export class HandleView {
   _label: Konva.Text
   _content?: Konva.Group
   _module: HandleModule | null
+  _layout: HandleContentLayout
   _highlighted = false
 
-  constructor(handle: NodeHandle, index: number) {
+  constructor(handle: NodeHandle) {
     this.handle = handle
     this.key = handle.key
     this._module = getHandleModule(handle.type) ?? null
+    this._layout = this._module?.config?.layout ?? 'inline'
 
     const group = new Konva.Group({
       name: ELEMENT_TYPE.HANDLE,
@@ -44,13 +52,16 @@ export class HandleView {
     })
     this.group = group
 
+    const y = handleY(handle.node, handle)
+    const rowTop = this._blockRowTop(y)
+
     if (
       handle.position === HandlePosition.Left ||
       handle.position === HandlePosition.Right
     ) {
       const circle = new Konva.Circle({
         x: handle.position === HandlePosition.Left ? 0 : getNodeWidth(handle.node),
-        y: handleY(index),
+        y,
         radius: LAYOUT.JOINT_RADIUS,
         fill: this._jointFill(),
         stroke: COLORS.BORDER,
@@ -66,17 +77,22 @@ export class HandleView {
       text: handle.name,
       fontSize: 12,
       fill: COLORS.TEXT_LABEL,
-      y: handleY(index),
       // Fixed-width name column: keeps handle contents aligned across rows.
       // Handles without a name reserve no space (auto width = 0).
       width: handle.name ? HANDLE_NAME_WIDTH : undefined,
       wrap: 'none',
       ellipsis: true,
     })
-    label.offsetY(label.height() / 2)
     label.x(labelX(handle))
     if (handle.position === HandlePosition.Right) {
       label.align('right')
+    }
+    if (this._layout === 'block') {
+      label.y(rowTop + BLOCK_LABEL_TOP_PAD)
+      label.offsetY(0)
+    } else {
+      label.offsetY(label.height() / 2)
+      label.y(y)
     }
     group.add(label)
     this._label = label
@@ -84,7 +100,7 @@ export class HandleView {
     if (this._module) {
       const contentGroup = this._module.create(handle, handle.getOptions())
       contentGroup.name('content')
-      contentGroup.y(handleY(index) - HANDLE_CONTENT_Y_OFFSET)
+      contentGroup.y(this._contentY())
       this._layoutContent(contentGroup)
       group.add(contentGroup)
       this._content = contentGroup
@@ -93,15 +109,18 @@ export class HandleView {
     handleViewMap.set(handle, this)
   }
 
-  update(index: number): void {
+  update(): void {
+    const y = handleY(this.handle.node, this.handle)
+    const rowTop = this._blockRowTop(y)
+
     const joint = this._joint
     if (joint) {
-      joint.y(handleY(index))
+      joint.y(y)
       joint.x(this.handle.position === HandlePosition.Left ? 0 : getNodeWidth(this.handle.node))
       joint.fill(this._jointFill())
     }
 
-    this._label.y(handleY(index))
+    this._label.y(this._layout === 'block' ? rowTop + BLOCK_LABEL_TOP_PAD : y)
     this._label.x(labelX(this.handle))
 
     const content = this._content
@@ -111,6 +130,9 @@ export class HandleView {
       // Re-layout after the module may have changed its own size
       // (e.g. width follows the node width).
       this._layoutContent(content)
+    }
+    if (content) {
+      content.y(this._contentY())
     }
   }
 
@@ -135,7 +157,37 @@ export class HandleView {
     return this.handle.isConnected ? COLORS.ACCENT : COLORS.JOINT_DEFAULT
   }
 
+  _blockRowTop(rowCenterY: number): number {
+    return this._layout === 'block'
+      ? rowCenterY - getHandleRowHeight(this.handle) / 2
+      : rowCenterY
+  }
+
+  _contentY(): number {
+    if (this._layout === 'block') {
+      return this._label.y() + this._label.height() + BLOCK_LABEL_CONTENT_GAP
+    }
+    return handleY(this.handle.node, this.handle) - HANDLE_CONTENT_Y_OFFSET
+  }
+
   _layoutContent(content: Konva.Group): void {
+    if (this._layout === 'block') {
+      const w = getNodeWidth(this.handle.node)
+      if (this.handle.position === HandlePosition.Right) {
+        content.x(w - HANDLE_CONTENT_X)
+        // Local-space width: `getClientRect()` without `skipTransform` would
+        // include the stage zoom, shifting right-aligned content on resize.
+        content.offsetX(content.getClientRect({ skipTransform: true }).width)
+      } else if (this.handle.position === HandlePosition.Left) {
+        content.x(HANDLE_CONTENT_X)
+        content.offsetX(0)
+      } else {
+        content.x(LAYOUT.HANDLE_PADDING)
+        content.offsetX(0)
+      }
+      return
+    }
+
     const nameWidth = this._label.width()
     content.x(contentX(this.handle, nameWidth))
     if (this.handle.position === HandlePosition.Right) {
@@ -159,14 +211,6 @@ export function getHandleView(handle: NodeHandle): HandleView | undefined {
  */
 export function setJointHighlight(handle: NodeHandle, highlighted: boolean) {
   handleViewMap.get(handle)?.setJointHighlight(highlighted)
-}
-
-function handleY(index: number): number {
-  return (
-    LAYOUT.HEADER_HEIGHT +
-    index * LAYOUT.HANDLE_ROW_HEIGHT +
-    LAYOUT.HANDLE_ROW_HEIGHT / 2
-  )
 }
 
 function labelX(handle: NodeHandle): number {

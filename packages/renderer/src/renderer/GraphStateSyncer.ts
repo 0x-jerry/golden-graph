@@ -73,9 +73,8 @@ export class GraphStateSyncer {
   }
 
   _updateHandleView(handle: NodeHandle) {
-    const index = getHandleIndex(handle.node, handle)
-    if (index >= 0) {
-      getHandleView(handle)?.update(index)
+    if (getHandleIndex(handle.node, handle) >= 0) {
+      getHandleView(handle)?.update()
     }
   }
 }

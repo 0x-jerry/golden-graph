@@ -8,10 +8,10 @@ import {
   NODE_BODY_PADDING,
   RESIZE_HANDLE_SIZE,
   getNodeWidth,
-  getNodeHeight,
   ELEMENT_TYPE,
   ATTR,
 } from './constants'
+import { getHandleRowHeight } from './handles/layout'
 import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
 import { ResizeHandle } from './components/ResizeHandle'
@@ -158,12 +158,12 @@ export class NodeView extends EntityView<Node> {
 
       let view = this._handleViews.get(handle.key)
       if (!view) {
-        view = new HandleView(handle, index)
+        view = new HandleView(handle)
         this._handleViews.set(handle.key, view)
         this.group.add(view.group)
         return
       }
-      view.update(index)
+      view.update()
     })
   }
 
@@ -176,13 +176,16 @@ export class NodeView extends EntityView<Node> {
   }
 }
 
-export function computeNodeHeight(node: Node): number {
-  const handleCount = node.handles.length || 1
-  return (
-    LAYOUT.HEADER_HEIGHT +
-    handleCount * LAYOUT.HANDLE_ROW_HEIGHT +
-    NODE_BODY_PADDING
-  )
+/**
+ * Effective node height. Never smaller than the content-driven height
+ * (header + handle rows + padding), even when `size.y` is set.
+ */
+export function getNodeHeight(node: Node): number {
+  let contentHeight = LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING
+  for (const handle of node.handles) {
+    contentHeight += getHandleRowHeight(handle)
+  }
+  return Math.max(node.size.y, contentHeight)
 }
 
 export function getHandleIndex(node: Node, handle: NodeHandle): number {

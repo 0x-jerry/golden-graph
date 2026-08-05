@@ -5,7 +5,8 @@ import type { EntityView } from './EntityView'
 import { GroupView } from './GroupView'
 import { NodeView } from './NodeView'
 import type { IRect } from '../utils/RectBox'
-import { LAYER_NAME, getNodeHeight, getNodeWidth } from './constants'
+import { LAYER_NAME, getNodeWidth } from './constants'
+import { getNodeHeight } from './NodeView'
 
 /**
  * Map of entity views keyed by entity id. `add` draws the view into the given

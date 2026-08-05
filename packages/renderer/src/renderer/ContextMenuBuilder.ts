@@ -3,7 +3,8 @@ import { isSubGraphNode } from '@0x-jerry/golden-graph'
 import { autoLayout } from '../layout'
 import type { CoreMenuItem, ContextMenuContext } from './types'
 import { ContextMenuTargetType } from './types'
-import { getNodeHeight, getNodeWidth } from './constants'
+import { getNodeWidth } from './constants'
+import { getNodeHeight } from './NodeView'
 
 export function buildDefaultContextMenu(
   ctx: ContextMenuContext,

@@ -4,9 +4,9 @@ import { ActiveType } from '@0x-jerry/golden-graph'
 import {
   COLORS,
   LAYER_NAME,
-  getNodeHeight,
   getNodeWidth,
 } from '../constants'
+import { getNodeHeight } from '../NodeView'
 import type { GestureContext, IGesture } from './types'
 
 export class SelectionGesture implements IGesture {
