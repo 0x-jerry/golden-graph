@@ -1,4 +1,5 @@
 import type { Node, IVec2 } from '@0x-jerry/golden-graph'
+import type { IRect } from '../utils/RectBox'
 
 /**
  * Flow direction of the layout.
@@ -59,12 +60,7 @@ export interface LayoutResult {
   /**
    * Bounding box of all laid-out nodes.
    */
-  rect: {
-    x: number
-    y: number
-    width: number
-    height: number
-  }
+  rect: IRect
 }
 
 /**

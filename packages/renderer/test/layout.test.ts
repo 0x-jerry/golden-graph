@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   Edge,
+  Group,
   HandlePosition,
   NodeType,
   Workspace,
@@ -345,5 +346,42 @@ describe('autoLayout', () => {
     // Nodes no longer start at the top-left origin.
     expect(at(nodes, 0).pos.y).toBeGreaterThan(0)
     expect(at(nodes, 0).pos.y).not.toBe(0)
+  })
+
+  it('arranges the inner workspace of a freshly created subgraph', () => {
+    const ws = makeWorkspace()
+    const src = ws.addNode(sourceSchema.type)
+    const pass = ws.addNode(passSchema.type)
+    const sink = ws.addNode(sinkSchema.type)
+    ws.connect(src.getHandle('out')!, pass.getHandle('in')!)
+    ws.connect(pass.getHandle('out')!, sink.getHandle('in')!)
+    pass.moveTo(200, 300)
+
+    // Group just the middle node → convert to a subgraph.
+    const group = new Group()
+    group.id = ws.nextId()
+    group.setWorkspace(ws)
+    group.nodes.push(pass.id)
+    ws._groups.push(group)
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraph = ws.subGraphs[0]!
+    autoLayout(subGraph.workspace, { measure })
+
+    const inner = subGraph.workspace
+    const inputs = inner.nodes.filter((n) => n.type === 'subgraph.input')
+    const outputs = inner.nodes.filter((n) => n.type === 'subgraph.output')
+    const innerPass = inner.nodes.find((n) => n.type === passSchema.type)!
+
+    // Inside the subgraph the internal node is placed between its input and
+    // output interface nodes (inputs left, outputs right).
+    const maxInputX = Math.max(...inputs.map((n) => n.pos.x))
+    const passX = innerPass.pos.x
+    const minOutputX = Math.min(...outputs.map((n) => n.pos.x))
+
+    expect(inputs.length).toBeGreaterThan(0)
+    expect(outputs.length).toBeGreaterThan(0)
+    expect(passX).toBeGreaterThan(maxInputX)
+    expect(minOutputX).toBeGreaterThan(passX)
   })
 })

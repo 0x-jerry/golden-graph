@@ -11,6 +11,8 @@ import { ActiveElementManager } from './ActiveElementManager'
 import { EntityViewStore } from './EntityViewStore'
 import { GraphStateSyncer } from './GraphStateSyncer'
 import { subscribeGraphEvents } from './GraphEventRouter'
+import { autoLayout } from '../layout'
+import { getNodeHeight, getNodeWidth } from './constants'
 
 export interface KonvaGraphRendererOptions {
   onContextMenu?: (
@@ -18,6 +20,11 @@ export interface KonvaGraphRendererOptions {
     evt: PointerEvent,
     menus: CoreMenuItem[],
   ) => void
+  /**
+   * When `true` (default), a freshly created subgraph's inner workspace is
+   * auto-laid-out so its nodes are arranged instead of scattered.
+   */
+  autoLayoutSubGraph?: boolean
 }
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
@@ -33,6 +40,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _resizeObserver: ResizeObserver
   _disposed = false
   _activeElementManager: ActiveElementManager
+  _autoLayoutSubGraph: boolean
 
   get stage(): Konva.Stage {
     return this._stage
@@ -43,6 +51,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     workspace: Workspace,
     options?: KonvaGraphRendererOptions,
   ) {
+    this._autoLayoutSubGraph = options?.autoLayoutSubGraph ?? true
     this._ws = workspace
 
     this._stage = new Konva.Stage({
@@ -131,6 +140,19 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
 
   _subscribe() {
     subscribeGraphEvents(this._ws, this._store, this._syncer, this._disposers)
+
+    if (this._autoLayoutSubGraph) {
+      this._disposers.add(
+        this._ws.events.on('subgraph:added', (subGraph) => {
+          autoLayout(subGraph.workspace, {
+            measure: (node) => ({
+              width: getNodeWidth(node),
+              height: getNodeHeight(node),
+            }),
+          })
+        }),
+      )
+    }
   }
 
   // --- Full Render ---

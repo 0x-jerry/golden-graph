@@ -142,6 +142,7 @@ Pure-TS module in **renderer** (`packages/renderer/src/layout/`), no external de
 - `resolveEdgeDirection(edge)` — infers producer→consumer from handle position (`isRight` → `isLeft`); `edge.start/end` order is unreliable. Same-side edges contribute **no** rank constraint but still join weakly-connected components.
 - Algorithm: weakly-connected components → longest-path-from-root rank assignment (cycle-safe) → barycenter crossing reduction → coordinate assignment. `direction: 'right'` (default; inputs left → outputs right) or `'down'`. `measure` supplies per-node `{width,height}` (renderer passes `getNodeWidth`/`getNodeHeight`); default estimator mirrors `LAYOUT`.
 - Exposed as the **"Auto Layout"** item in `ContextMenuBuilder.canvasMenu`, gate by `ws.disabled`.
+- `KonvaGraphRenderer` auto-lays-out a newly created subgraph's inner workspace via a `subgraph:added` listener (`autoLayoutSubGraph`, default on; disable with `{ autoLayoutSubGraph: false }`).
 
 ## Renderer (Konva + Vue)
 
