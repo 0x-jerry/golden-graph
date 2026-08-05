@@ -222,7 +222,20 @@ export class Select extends FormElement {
       hostHeight: this._sh,
     })
     this._dropdown = dropdown
-    this.add(dropdown)
+
+    // Render the popup at the top of the node layer instead of inside the
+    // node's subtree, so it is never covered by other (higher z-order) nodes.
+    // Add to the Select first so the absolute position comes from the real
+    // scene transform, then reparent to the layer keeping that position.
+    const layer = this.getLayer()
+    if (layer) {
+      this.add(dropdown)
+      const absPos = dropdown.getAbsolutePosition()
+      layer.add(dropdown)
+      dropdown.setAbsolutePosition(absPos)
+    } else {
+      this.add(dropdown)
+    }
   }
 
   _unmountDropdown() {

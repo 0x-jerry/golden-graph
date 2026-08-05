@@ -41,6 +41,14 @@ export class Dropdown extends Konva.Group {
     this._ff = config.fontFamily
     this._maxVisible = config.maxVisible
     this._onSelect = config.onSelect
+
+    // The popup is lifted out of the node subtree and drawn at the top of the
+    // node layer, so it no longer belongs to a node. Swallow pointerdown to
+    // stop stage-level gestures (canvas pan / clearing the selection) from
+    // firing while interacting with the list.
+    this.on('pointerdown', (e) => {
+      e.cancelBubble = true
+    })
   }
 
   get scrollTop(): number {
