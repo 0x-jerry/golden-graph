@@ -2,14 +2,6 @@ import type { Node, IVec2 } from '@0x-jerry/golden-graph'
 import type { IRect } from '../utils/RectBox'
 
 /**
- * Flow direction of the layout.
- *
- * `'right'` lays ranks out left → right (inputs on the left, outputs on the
- * right), `'down'` lays them top → bottom.
- */
-export type LayoutDirection = 'right' | 'down'
-
-/**
  * Measured size of a node, in workspace units.
  */
 export interface LayoutSize {
@@ -19,12 +11,7 @@ export interface LayoutSize {
 
 export interface LayoutOptions {
   /**
-   * Flow direction. Defaults to `'right'`.
-   */
-  direction?: LayoutDirection
-
-  /**
-   * Gap between consecutive ranks (columns/rows) along the main flow axis.
+   * Gap between consecutive ranks (columns) along the flow axis.
    * @default 60
    */
   xGap?: number
@@ -77,7 +64,6 @@ export const DEFAULT_DRAW = {
 export const DEFAULT_OPTIONS: Required<
   Omit<LayoutOptions, 'measure'>
 > = {
-  direction: 'right',
   xGap: 60,
   yGap: 40,
   componentGap: 80,

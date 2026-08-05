@@ -192,23 +192,6 @@ describe('computeNodePositions', () => {
     expect(positions.get(b.id)).toBeDefined()
   })
 
-  it('supports the down (top-to-bottom) direction', () => {
-    const { ws, nodes } = chain([sourceSchema, passSchema, sinkSchema])
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
-      direction: 'down',
-      measure,
-    })
-
-    const p0 = positions.get(at(nodes, 0).id)!
-    const p1 = positions.get(at(nodes, 1).id)!
-    const p2 = positions.get(at(nodes, 2).id)!
-
-    expect(p1.y).toBeGreaterThan(p0.y)
-    expect(p2.y).toBeGreaterThan(p1.y)
-    expect(p1.x).toBe(p0.x)
-    expect(p2.x).toBe(p1.x)
-  })
-
   it('separates disconnected components with componentGap', () => {
     const ws = makeWorkspace()
     const srcA = ws.addNode(sourceSchema.type)
@@ -221,16 +204,18 @@ describe('computeNodePositions', () => {
       componentGap: 80,
     })
 
-    const minXA = Math.min(positions.get(srcA.id)!.x, positions.get(sinkA.id)!.x)
-    const maxXA = Math.max(positions.get(srcA.id)!.x, positions.get(sinkA.id)!.x)
-    const xB = positions.get(srcB.id)!.x
+    const minYA = Math.min(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y)
+    const maxYA = Math.max(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y) + 50
+    const yB = positions.get(srcB.id)!.y
 
-    expect(xB).toBeGreaterThan(maxXA)
-    expect(xB - maxXA).toBeGreaterThanOrEqual(80)
-    expect(minXA).toBeGreaterThanOrEqual(0)
+    // Components stack top→bottom; the isolated node lands below the
+    // connected batch (footprint includes extents, not just origins).
+    expect(yB).toBeGreaterThan(maxYA)
+    expect(yB - maxYA).toBeGreaterThanOrEqual(80)
+    expect(minYA).toBeGreaterThanOrEqual(0)
   })
 
-  it('spaces isolated (unconnected) nodes so they never overlap', () => {
+  it('stacks isolated (unconnected) nodes top-to-bottom', () => {
     const ws = makeWorkspace()
     const n1 = ws.addNode(sourceSchema.type)
     const n2 = ws.addNode(sourceSchema.type)
@@ -241,11 +226,60 @@ describe('computeNodePositions', () => {
       componentGap: 80,
     })
 
-    const xs = [n1, n2, n3].map((n) => positions.get(n.id)!.x).sort((a, b) => a - b)
-    // Each node is 100 wide; consecutive isolated components must be separated
-    // by more than a node's width (footprint includes extents, not just origins).
-    expect(xs[1]!).toBeGreaterThanOrEqual(xs[0]! + 100 + 80)
-    expect(xs[2]!).toBeGreaterThanOrEqual(xs[1]! + 100 + 80)
+    const xs = [n1, n2, n3].map((n) => positions.get(n.id)!.x)
+    const ys = [n1, n2, n3].map((n) => positions.get(n.id)!.y).sort((a, b) => a - b)
+    // All isolated nodes share the same column x.
+    expect(xs[0]).toBe(xs[1])
+    expect(xs[1]).toBe(xs[2])
+    // Each node is 50 tall; consecutive isolated nodes are separated by more
+    // than a node's height (footprint includes extents, not just origins).
+    expect(ys[1]!).toBeGreaterThanOrEqual(ys[0]! + 50 + 80)
+    expect(ys[2]!).toBeGreaterThanOrEqual(ys[1]! + 50 + 80)
+  })
+
+  it('treats a self-loop node as isolated (no edges to other nodes)', () => {
+    const ws = makeWorkspace()
+    const loop = ws.addNode(passSchema.type)
+    const lone = ws.addNode(sourceSchema.type)
+    rawConnect(ws, loop.getHandle('out')!, loop.getHandle('in')!)
+
+    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+      measure,
+      componentGap: 80,
+    })
+
+    const pLoop = positions.get(loop.id)!
+    const pLone = positions.get(lone.id)!
+    // A node whose only edge is to itself is not connected to other nodes, so
+    // it joins the isolated column (same x) stacked top→bottom.
+    expect(pLoop.x).toBe(pLone.x)
+    expect(pLone.y).toBeGreaterThan(pLoop.y)
+  })
+
+  it('stacks a connected batch above isolated nodes in the same column', () => {
+    const ws = makeWorkspace()
+    const srcA = ws.addNode(sourceSchema.type)
+    const sinkA = ws.addNode(sinkSchema.type)
+    ws.connect(srcA.getHandle('out')!, sinkA.getHandle('in')!)
+    const iso1 = ws.addNode(sourceSchema.type)
+    const iso2 = ws.addNode(sourceSchema.type)
+
+    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+      measure,
+      componentGap: 80,
+    })
+
+    const maxYConnected =
+      Math.max(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y) + 50
+    const pIso1 = positions.get(iso1.id)!
+    const pIso2 = positions.get(iso2.id)!
+
+    // The connected batch flows left→right internally, then isolated nodes
+    // stack below it sharing the same column x.
+    expect(positions.get(sinkA.id)!.x).toBeGreaterThan(positions.get(srcA.id)!.x)
+    expect(pIso1.y).toBeGreaterThan(maxYConnected)
+    expect(pIso1.x).toBe(pIso2.x)
+    expect(pIso2.y).toBeGreaterThan(pIso1.y)
   })
 })
 

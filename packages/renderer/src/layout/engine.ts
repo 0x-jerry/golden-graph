@@ -87,34 +87,40 @@ export function computeNodePositions(
   })
 
   const components = findComponents(sized, edges)
-  const horizontal = opts.direction === 'right'
 
+  // Each batch — a single node or a connected component — flows left→right
+  // internally (ranks as columns, nodes stacked vertically within a rank).
+  // Batches are then stacked top→bottom, so groups read as a column while each
+  // keeps its own left→right flow.
   let cursor = 0
-  let overall = { x: 0, y: 0, width: 0, height: 0 }
+  let overall: Rect = box(0, 0, 0, 0)
   let hasOverall = false
 
-  components.forEach((ids) => {
+  const record = (id: number, x: number, y: number) => {
+    positions.set(id, { x, y })
+    const size = byId.get(id)!.size
+    overall = hasOverall
+      ? unionRect(overall, box(x, y, size.width, size.height))
+      : box(x, y, size.width, size.height)
+    hasOverall = true
+  }
+
+  const placeComponent = (ids: number[], cursor: number): number => {
     const ranks = rankNodes(ids, byId, inEdges)
     orderRanks(ranks, outEdges, inEdges)
-    const placed = placeNodes(ranks, byId, opts, horizontal)
+    const placed = placeNodes(ranks, byId, opts)
 
-    const rect = componentRect(placed, byId, horizontal)
-    const rectOffset = horizontal ? rect.x : rect.y
+    const rect = componentRect(placed, byId)
 
     placed.forEach((item) => {
-      const pos = horizontal
-        ? { x: cursor + (item.x - rectOffset), y: item.y }
-        : { x: item.x, y: cursor + (item.y - rectOffset) }
-      positions.set(item.id, pos)
-
-      const size = byId.get(item.id)!.size
-      overall = hasOverall
-        ? unionRect(overall, { x: pos.x, y: pos.y, width: size.width, height: size.height })
-        : { x: pos.x, y: pos.y, width: size.width, height: size.height }
-      hasOverall = true
+      record(item.id, item.x - rect.x, cursor + (item.y - rect.y))
     })
 
-    cursor += (horizontal ? rect.width : rect.height) + opts.componentGap
+    return cursor + rect.height + opts.componentGap
+  }
+
+  components.forEach((ids) => {
+    cursor = placeComponent(ids, cursor)
   })
 
   return {
@@ -282,23 +288,20 @@ function orderRanks(
 }
 
 /**
- * Assign coordinates. Along the main axis each rank becomes a column/row whose
- * origin is the accumulated max extent of the previous rank plus the gap.
- * Within a rank, nodes are stacked along the cross axis with the cross gap.
+ * Assign coordinates. Ranks become columns: each rank's x is the accumulated
+ * max width of the previous rank plus the gap; nodes within a rank are stacked
+ * vertically (y) with the cross gap.
  */
 function placeNodes(
   ranks: RankedNode[][],
   byId: Map<number, SizedNode>,
-  opts: { direction: 'right' | 'down'; xGap: number; yGap: number },
-  horizontal: boolean,
+  opts: { xGap: number; yGap: number },
 ): { id: number; x: number; y: number }[] {
-  const extent = (id: number, main: boolean) => {
-    const s = byId.get(id)!.size
-    return main ? (horizontal ? s.width : s.height) : horizontal ? s.height : s.width
-  }
+  const width = (id: number) => byId.get(id)!.size.width
+  const height = (id: number) => byId.get(id)!.size.height
 
   const rankExtents = ranks.map((rank) =>
-    Math.max(0, ...rank.map((rn) => extent(rn.node.id, true))),
+    Math.max(0, ...rank.map((rn) => width(rn.node.id))),
   )
   const rankOrigin: number[] = []
   let main = 0
@@ -313,12 +316,12 @@ function placeNodes(
     let cross = 0
     rank.forEach((rn, i) => {
       if (i > 0) {
-        cross += extent(ranks[r]![i - 1]!.node.id, false) + opts.yGap
+        cross += height(ranks[r]![i - 1]!.node.id) + opts.yGap
       }
       out.push({
         id: rn.node.id,
-        x: horizontal ? rankOrigin[r]! : cross,
-        y: horizontal ? cross : rankOrigin[r]!,
+        x: rankOrigin[r]!,
+        y: cross,
       })
     })
   })
@@ -346,13 +349,12 @@ function box(x: number, y: number, width: number, height: number) {
 
 /**
  * Bounding box of a placed component, including each node's full footprint
- * (origin + measured extent) rather than just its origin point. This is used
- * to advance the cursor so consecutive components never overlap.
+ * (origin + measured extent) rather than just its origin point. Used to
+ * advance the cursor so consecutive components never overlap.
  */
 function componentRect(
   placed: { id: number; x: number; y: number }[],
   byId: Map<number, SizedNode>,
-  horizontal: boolean,
 ) {
   let minX = Infinity
   let minY = Infinity
@@ -361,12 +363,10 @@ function componentRect(
 
   for (const item of placed) {
     const size = byId.get(item.id)!.size
-    const right = item.x + (horizontal ? size.width : 0)
-    const bottom = item.y + (horizontal ? 0 : size.height)
-    minX = Math.min(minX, item.x, right)
-    minY = Math.min(minY, item.y, bottom)
-    maxX = Math.max(maxX, item.x, right)
-    maxY = Math.max(maxY, item.y, bottom)
+    minX = Math.min(minX, item.x)
+    minY = Math.min(minY, item.y)
+    maxX = Math.max(maxX, item.x + size.width)
+    maxY = Math.max(maxY, item.y + size.height)
   }
 
   return box(minX, minY, maxX - minX, maxY - minY)
