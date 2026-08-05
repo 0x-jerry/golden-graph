@@ -225,7 +225,7 @@ export class Node implements IPersistent<INode> {
       id: this.id,
       type: this._type,
       data: this.getAllRealData(),
-      subGraphId: this._subGraphId,
+      subGraphId: this.subGraphId,
       pos: {
         x: this._state.pos.x,
         y: this._state.pos.y,

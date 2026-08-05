@@ -12,8 +12,17 @@ import type { INodeSchema } from '../NodeSchema'
 import type { IPersistent } from '../Persistent'
 import { Register } from '../Register'
 import type { SubGraph } from '../SubGraph'
-import { subGraphInputNodeSchema, subGraphOutputNodeSchema } from '../SubGraphSchema'
-import type { IDisposable, INodeHandleLoc, IRenderer, IVec2, IWorkspace } from '../types'
+import {
+  subGraphInputNodeSchema,
+  subGraphOutputNodeSchema,
+} from '../SubGraphSchema'
+import type {
+  IDisposable,
+  INodeHandleLoc,
+  IRenderer,
+  IVec2,
+  IWorkspace,
+} from '../types'
 import { EdgeManager } from './EdgeManager'
 import { GroupManager } from './GroupManager'
 import { NodeManager } from './NodeManager'

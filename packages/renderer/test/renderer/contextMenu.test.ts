@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   Group,
   HandlePosition,
+  SubGraphNode,
   Workspace,
   type INodeSchema,
 } from '@0x-jerry/golden-graph'
@@ -114,5 +115,31 @@ describe('buildDefaultContextMenu', () => {
     expect(items[0]!.label).toBe('Exit SubGraph')
     items[0]!.action!()
     expect(ws.isActiveSubGraph).toBe(false)
+  })
+
+  it('duplicates a subgraph node by reusing the same sub-graph', () => {
+    const ws = createWs()
+    const a = ws.addNode('Number')
+    const b = ws.addNode('Sum')
+    ws.connect(a.getHandle('value')!, b.getHandle('a')!)
+
+    const group = groupNodes(ws, a.id, b.id)
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraph = ws.subGraphs[0]!
+    const original = ws.nodes.find((n) => n.subGraphId)!
+
+    const items = buildDefaultContextMenu(
+      { type: ContextMenuTargetType.Node, id: original.id },
+      ws,
+    )
+    const dup = items.find((item) => item.label === 'Duplicate')!
+    dup.action!()
+
+    const copies = ws.nodes.filter((n) => n.subGraphId === subGraph.id)
+    expect(copies).toHaveLength(2)
+    for (const n of copies) {
+      expect((n as SubGraphNode).subGraph).toBe(subGraph)
+    }
   })
 })

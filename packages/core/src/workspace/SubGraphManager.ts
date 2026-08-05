@@ -1,6 +1,7 @@
 import { remove } from '@0x-jerry/utils'
 import { convertGroupToSubGraph } from '../GroupToSubGraph'
 import type { SubGraph } from '../SubGraph'
+import type { SubGraphNode } from '../SubGraphNode'
 import type { IWorkspace } from '../types'
 import type { Workspace } from './Workspace'
 
@@ -14,7 +15,12 @@ export interface IWorkspaceData {
 }
 
 /**
- * Sub-graph CRUD, navigation (enter/exit) and group → sub-graph conversion.
+ * Sub-graph CRUD, navigation (enter/exit), group → sub-graph conversion and
+ * sub-graph node copying.
+ *
+ * A `SubGraph` is a container (inner workspace + referencing `SubGraphNode`s),
+ * while a `SubGraphNode` is a special `Node` that references a `SubGraph` via
+ * `subGraphId`.
  *
  * Mutates `ws._subGraphs` / `ws._workspaceDataStack` in place and emits
  * `subgraph:added` / `subgraph:removed` events.
@@ -79,30 +85,23 @@ export class SubGraphManager {
 
     subGraph.workspace.fromJSON(subGraphWorkspaceData)
 
-    // remove old sub graph node and rebuild new sub graph node
-
-    const oldSubGraphNode = this.ws.nodes.find(
+    // Rebuild the existing SubGraphNode's handles in place and reconnect the
+    // surviving external edges.
+    const subGraphNode = this.ws.nodes.find(
       (n) => n.subGraphId === subGraph.id,
-    )
-    if (!oldSubGraphNode) {
+    ) as SubGraphNode | undefined
+    if (!subGraphNode) {
       throw new Error(`Can not find sub graph node by id ${subGraph.id}`)
     }
 
-    const newSubGraphNode = subGraph.buildNode()
-    newSubGraphNode.setWorkspace(this.ws)
-    newSubGraphNode.fromJSON({
-      ...oldSubGraphNode.toJSON(),
-      data: {},
-    })
-
-    const edges = this.ws.queryConnectedEdges(oldSubGraphNode.id)
+    const edges = this.ws.queryConnectedEdges(subGraphNode.id)
 
     const connections = edges.map((edge) => {
-      const isStart = edge.start.node.id === oldSubGraphNode.id
+      const isStart = edge.start.node.id === subGraphNode.id
       const myHandle = isStart ? edge.start : edge.end
       const otherHandle = isStart ? edge.end : edge.start
 
-      const isOtherOnOldNode = otherHandle.node.id === oldSubGraphNode.id
+      const isOtherOnOldNode = otherHandle.node.id === subGraphNode.id
 
       return {
         myHandleKey: myHandle.key,
@@ -112,14 +111,17 @@ export class SubGraphManager {
       }
     })
 
-    this.ws.removeNodeByIds(oldSubGraphNode.id)
-    this.ws.addRawNode(newSubGraphNode)
+    // Drop the old edges (and their handle back-references) before the handles
+    // are rebuilt, then recreate the connections against the new handles.
+    this.ws.removeEdgeByIds(...edges.map((e) => e.id))
+
+    subGraphNode.buildNode()
 
     for (const conn of connections) {
-      const newHandle = newSubGraphNode.getHandle(conn.myHandleKey)
+      const newHandle = subGraphNode.getHandle(conn.myHandleKey)
 
       const targetHandle = conn.isOtherOnOldNode
-        ? newSubGraphNode.getHandle(conn.otherHandleKey)
+        ? subGraphNode.getHandle(conn.otherHandleKey)
         : conn.otherHandle
 
       if (newHandle && targetHandle) {
@@ -128,6 +130,10 @@ export class SubGraphManager {
     }
   }
 
+  /**
+   * Copy a sub-graph node. The copy references the same `SubGraph` (and thus
+   * the same inner workspace) as the original.
+   */
   copySubGraphNode(subGraphId: number) {
     const subGraph = this.ws._subGraphs.find((n) => n.id === subGraphId)
 
@@ -135,10 +141,21 @@ export class SubGraphManager {
       throw new Error(`Can not find subGraph by id ${subGraphId}`)
     }
 
-    const node = subGraph.buildNode()
+    const source = this.ws.nodes.find((n) => n.subGraphId === subGraph.id) as
+      | SubGraphNode
+      | undefined
 
-    this.ws.addRawNode(node)
+    const copy = subGraph.buildNode()
+    if (source) {
+      copy.name = source.name
+      // Offset from the source node so the copy doesn't overlap it.
+      copy.moveTo(source.pos.x + COPY_OFFSET, source.pos.y + COPY_OFFSET)
+    }
 
-    return node
+    this.ws.addRawNode(copy)
+
+    return copy
   }
 }
+
+const COPY_OFFSET = 30

@@ -21,6 +21,8 @@ export class NodeView extends EntityView<Node> {
   _header: Konva.Rect
   _name: Konva.Text
   _resize: ResizeHandle
+  /** SubGraph marker tag rendered in the header, absent for normal nodes. */
+  _tag?: Konva.Group
   /** Rendered handle views keyed by handle key. */
   _handleViews = new Map<string, HandleView>()
 
@@ -69,6 +71,17 @@ export class NodeView extends EntityView<Node> {
     this._header = header
     this._name = nameText
 
+    if (node.subGraphId) {
+      const tag = createSubGraphTag()
+      tag.x(width - SUBGRAPH_TAG_WIDTH - 8)
+      tag.y(Math.round((LAYOUT.HEADER_HEIGHT - SUBGRAPH_TAG_HEIGHT) / 2))
+      g.add(tag)
+      this._tag = tag
+
+      // Leave room on the right so the tag never overlaps the title.
+      nameText.width(width - 16 - SUBGRAPH_TAG_WIDTH - 4)
+    }
+
     this._syncHandles()
 
     const resize = new ResizeHandle()
@@ -93,7 +106,15 @@ export class NodeView extends EntityView<Node> {
     this._body.width(width)
     this._body.height(height)
     this._header.width(width)
-    this._name.width(width - 16)
+
+    if (this._tag) {
+      // Leave room on the right so the tag never overlaps the title.
+      this._name.width(width - 16 - SUBGRAPH_TAG_WIDTH - 4)
+      this._tag.x(width - SUBGRAPH_TAG_WIDTH - 8)
+      this._tag.y(Math.round((LAYOUT.HEADER_HEIGHT - SUBGRAPH_TAG_HEIGHT) / 2))
+    } else {
+      this._name.width(width - 16)
+    }
 
     this._resize.x(width - RESIZE_HANDLE_SIZE)
     this._resize.y(height - RESIZE_HANDLE_SIZE)
@@ -165,11 +186,15 @@ export function computeNodeHeight(node: Node): number {
 }
 
 export function getHandleIndex(node: Node, handle: NodeHandle): number {
-  const positioned = node.handles.filter((h) => h.position !== HandlePosition.None)
+  const positioned = node.handles.filter(
+    (h) => h.position !== HandlePosition.None,
+  )
   const idx = positioned.indexOf(handle)
   if (idx >= 0) return idx
 
-  const noneHandles = node.handles.filter((h) => h.position === HandlePosition.None)
+  const noneHandles = node.handles.filter(
+    (h) => h.position === HandlePosition.None,
+  )
   const noneIdx = noneHandles.indexOf(handle)
   if (noneIdx >= 0) return positioned.length + noneIdx
 
@@ -177,3 +202,33 @@ export function getHandleIndex(node: Node, handle: NodeHandle): number {
 }
 
 const EXECUTOR_SHADOW_BLUR = 10
+
+const SUBGRAPH_TAG_TEXT = 'Composite'
+const SUBGRAPH_TAG_WIDTH = 56
+const SUBGRAPH_TAG_HEIGHT = 16
+
+/** Marker tag drawn on the right of a SubGraphNode's header title. */
+function createSubGraphTag(): Konva.Group {
+  const tag = new Konva.Group({ name: NODE_SHAPE.TAG })
+
+  const bg = new Konva.Rect({
+    width: SUBGRAPH_TAG_WIDTH,
+    height: SUBGRAPH_TAG_HEIGHT,
+    cornerRadius: 3,
+    fill: COLORS.SUBGRAPH_TAG_BG,
+  })
+
+  const text = new Konva.Text({
+    text: SUBGRAPH_TAG_TEXT,
+    fontSize: 10,
+    fill: COLORS.SUBGRAPH_TAG_TEXT,
+    width: SUBGRAPH_TAG_WIDTH,
+    height: SUBGRAPH_TAG_HEIGHT,
+    align: 'center',
+    verticalAlign: 'middle',
+  })
+
+  tag.add(bg, text)
+
+  return tag
+}

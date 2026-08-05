@@ -1,5 +1,6 @@
 import { remove } from '@0x-jerry/utils'
 import { type Node, type NodeBaseUpdateOptions } from '../Node'
+import { SubGraphNode } from '../SubGraphNode'
 import type { IVec2 } from '../types'
 import type { Workspace } from './Workspace'
 import { ActiveType } from './WorkspaceState'
@@ -51,6 +52,10 @@ export class NodeManager {
     const nodes = remove(this.ws._nodes, (e) => ids.includes(e.id))
 
     for (const node of nodes) {
+      if (node instanceof SubGraphNode) {
+        node.subGraph?.detachNode(node)
+      }
+
       this.ws.events.emit('node:removed', node)
     }
 

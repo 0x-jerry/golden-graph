@@ -99,6 +99,7 @@ export class WorkspacePersistence implements IPersistent<IWorkspace> {
           throw new Error(`Can not find SubGraph by id ${node.subGraphId}`)
         }
 
+        // Build a SubGraphNode referencing the sub-graph.
         n = subGraph.buildNode()
       } else {
         const factory = this.ws._nodeRegister.get(node.type)

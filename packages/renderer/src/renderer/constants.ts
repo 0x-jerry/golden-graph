@@ -25,6 +25,10 @@ export const COLORS = {
   /** Executor glow while a node is running. */
   ACCENT_SOFT: 'rgba(99, 102, 241, 0.3)',
 
+  // --- SubGraph node tag ---
+  SUBGRAPH_TAG_BG: '#eef2ff',
+  SUBGRAPH_TAG_TEXT: '#4f46e5',
+
   // --- Edges & joints (rose) ---
   EDGE: 'rgba(225, 93, 118, 0.5)',
   EDGE_WIDTH: 3,
@@ -51,6 +55,7 @@ export const NODE_SHAPE = {
   NAME: 'name',
   CONTENT: 'content',
   RESIZE: 'resize',
+  TAG: 'tag',
 } as const
 
 export const ELEMENT_TYPE = {

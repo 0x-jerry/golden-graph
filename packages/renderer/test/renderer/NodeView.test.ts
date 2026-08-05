@@ -5,6 +5,7 @@ import { find } from '../helpers/konva'
 import { NodeView } from '../../src/renderer/NodeView'
 import { getHandleView } from '../../src/renderer/HandleView'
 import { COLORS } from '../../src/renderer/constants'
+import { SubGraph, SubGraphNode, Workspace } from '@0x-jerry/golden-graph'
 
 describe('NodeView', () => {
   it('wraps the group with the node id and syncs position/name/size', () => {
@@ -97,5 +98,33 @@ describe('Konva shape construction in jsdom', () => {
     addHandle(node, 'a')
 
     expect(() => new NodeView(node)).not.toThrow()
+  })
+})
+
+describe('NodeView sub-graph tag', () => {
+  it('renders a tag on the right of the title for SubGraphNodes', () => {
+    const subGraph = new SubGraph(new Workspace())
+    subGraph.id = 10
+
+    const node = new SubGraphNode(subGraph)
+    node.id = 1
+    node.name = 'Group'
+    node.setWorkspace(new Workspace())
+
+    const view = new NodeView(node)
+    const tag = view.group.find('.tag')[0]!
+
+    expect(tag).toBeDefined()
+    // anchored to the right side of the header, not the top-left corner
+    expect(tag.x()).toBeGreaterThan(0)
+    expect(tag.y()).toBeGreaterThan(0)
+  })
+
+  it('does not render a tag for normal nodes', () => {
+    const node = makeNode(2, 'B')
+    addHandle(node, 'a')
+
+    const view = new NodeView(node)
+    expect(view.group.find('.tag').length).toBe(0)
   })
 })

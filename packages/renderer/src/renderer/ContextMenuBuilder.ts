@@ -26,14 +26,18 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
         .filter(([, ctor]) => !ctor.internal)
         .map(([type]) => ({
           label: type,
-          action: () => ws.addNode(type, ctx.pos ? { pos: ctx.pos } : undefined),
+          action: () =>
+            ws.addNode(type, ctx.pos ? { pos: ctx.pos } : undefined),
         })),
     },
     {
       label: 'Auto Layout',
       action: () => {
         autoLayout(ws, {
-          measure: (node) => ({ width: getNodeWidth(node), height: getNodeHeight(node) }),
+          measure: (node) => ({
+            width: getNodeWidth(node),
+            height: getNodeHeight(node),
+          }),
         })
       },
     },
@@ -62,6 +66,13 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
       action: () => {
         const node = ws.getNode(nodeId)
         if (!node) return
+
+        // SubGraphNodes reuse the same sub-graph workspace on copy.
+        if (node.subGraphId) {
+          ws.copySubGraphNode(node.subGraphId)
+          return
+        }
+
         const json = node.toJSON()
         const clone = ws.addNode(json.type)
         const newId = clone.id

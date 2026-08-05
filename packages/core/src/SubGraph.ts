@@ -1,18 +1,13 @@
 import type { Edge } from './Edge'
 import { toReadonly } from './helper'
-import { Node } from './Node'
+import type { Node } from './Node'
 import type { IPersistent } from './Persistent'
-import {
-  isSubGraphInputNode,
-  isSubGraphOutputNode,
-  subGraphInputToHandleConfig,
-  subGraphOutputToHandleConfig,
-} from './SubGraphSchema'
+import { SubGraphNode } from './SubGraphNode'
 import type { IDisposable, ISubGraph } from './types'
 import { Workspace } from './Workspace'
 
 /**
- * A virtual workspace used by SubGraph
+ * A virtual workspace used by `SubGraph` for its inner graph.
  */
 class VirtualWorkspace extends Workspace {
   constructor(ws: Workspace) {
@@ -36,43 +31,55 @@ class VirtualWorkspace extends Workspace {
   }
 }
 
+/**
+ * A sub-graph container: the inner graph workspace plus the `SubGraphNode`s
+ * on the parent graph that reference it. Multiple `SubGraphNode`s may share a
+ * single sub-graph (e.g. copies made by `Workspace.copySubGraphNode`), so each
+ * one is tracked in `nodes`.
+ */
 export class SubGraph implements IPersistent<ISubGraph>, IDisposable {
   id = 0
 
   _workspace: Workspace
 
-  _node?: Node
-
-  get node() {
-    return toReadonly(this._node)
-  }
+  /** The `SubGraphNode`s on the parent graph that reference this sub-graph. */
+  _nodes: SubGraphNode[] = []
 
   get workspace() {
     return toReadonly(this._workspace)
+  }
+
+  get nodes() {
+    return toReadonly(this._nodes)
   }
 
   constructor(parentWorkspace: Workspace) {
     this._workspace = new VirtualWorkspace(parentWorkspace)
   }
 
-  buildNode(): Node {
-    const inputs = this.workspace.nodes.filter(isSubGraphInputNode)
+  /**
+   * Build a `SubGraphNode` referencing this sub-graph.
+   */
+  buildNode(): SubGraphNode {
+    const node = new SubGraphNode(this)
+    node.buildNode()
 
-    const outputs = this.workspace.nodes.filter(isSubGraphOutputNode)
+    this.attachNode(node)
 
-    const node = new Node()
-    node.setSubGraphId(this.id)
-
-    for (const output of outputs) {
-      node.addHandle(subGraphOutputToHandleConfig(output))
-    }
-
-    for (const input of inputs) {
-      node.addHandle(subGraphInputToHandleConfig(input))
-    }
-
-    this._node = node
     return node
+  }
+
+  attachNode(node: SubGraphNode) {
+    if (!this._nodes.includes(node)) {
+      this._nodes.push(node)
+    }
+  }
+
+  detachNode(node: SubGraphNode) {
+    const index = this._nodes.indexOf(node)
+    if (index >= 0) {
+      this._nodes.splice(index, 1)
+    }
   }
 
   addNodes(...nodes: Node[]) {
