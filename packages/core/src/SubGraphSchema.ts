@@ -19,22 +19,20 @@ export const subGraphInputNodeSchema: INodeSchema = {
     {
       name: 'Output',
       key: 'Output',
-      type: '*',
+      accepts: '*',
       position: HandlePosition.Right,
     },
     {
       name: 'Name',
       key: 'Name',
-      type: 'string',
-      options: {
-        type: 'text',
-      },
+      accepts: 'string',
+      type: 'text',
     },
     // todo, use a select component
     {
       name: 'Type',
       key: 'Type',
-      type: 'string',
+      accepts: 'string',
     },
   ],
 }
@@ -51,21 +49,19 @@ export const subGraphOutputNodeSchema: INodeSchema = {
     {
       name: 'Value',
       key: 'Value',
-      type: '*',
+      accepts: '*',
       position: HandlePosition.Left,
     },
     {
       name: 'Name',
       key: 'Name',
-      type: 'string',
-      options: {
-        type: 'text',
-      },
+      accepts: 'string',
+      type: 'text',
     },
     {
       name: 'Type',
       key: 'Type',
-      type: 'string',
+      accepts: 'string',
       value: 'string',
     },
   ],
@@ -85,7 +81,7 @@ export function subGraphInputToHandleConfig(node: Node): INodeHandleConfig {
     // Key by the interface node id — stable across renames of the display
     // name, so external edges survive `exitSubGraph`.
     key: String(node.id),
-    type: node.getData('Type'),
+    accepts: node.getData('Type'),
     position: HandlePosition.Left,
   }
 
@@ -96,7 +92,7 @@ export function subGraphOutputToHandleConfig(node: Node): INodeHandleConfig {
   const conf: INodeHandleConfig = {
     name: node.getData('Name'),
     key: String(node.id),
-    type: node.getData('Type'),
+    accepts: node.getData('Type'),
     position: HandlePosition.Right,
   }
 

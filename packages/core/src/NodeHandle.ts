@@ -10,15 +10,9 @@ export enum NodeHandleType {
 
 /**
  * Options passed to the handle's render component.
- * The {@link type} field maps to a handle component via `getHandleComponent()`.
  */
 export interface INodeHandleConfigOptions {
   [key: string]: any
-
-  /**
-   * Handle render component type (e.g. 'text', 'number', 'image', 'select', 'display').
-   */
-  type: string
 }
 
 /**
@@ -33,7 +27,12 @@ export interface INodeHandleConfig {
   /**
    * Accepted data type(s) for connection matching. Use `'*'` to accept any type.
    */
-  type?: Arrayable<string>
+  accepts?: Arrayable<string>
+
+  /**
+   * Handle render component type (e.g. 'text', 'number', 'image', 'select', 'display').
+   */
+  type?: string
 
   /**
    * Display name shown on the handle.
@@ -57,7 +56,9 @@ export interface INodeHandleConfig {
 }
 
 export class NodeHandle {
-  types: string[] = [NodeHandleType.All]
+  accepts: string[] = [NodeHandleType.All]
+
+  type = ''
 
   key = ''
 
@@ -178,11 +179,11 @@ export class NodeHandle {
       return false
     }
 
-    if (includeTypeAll(this.types) || includeTypeAll(handle.types)) {
+    if (includeAcceptAll(this.accepts) || includeAcceptAll(handle.accepts)) {
       return true
     }
 
-    return isIntersected(this.types, handle.types)
+    return isIntersected(this.accepts, handle.accepts)
   }
 
   setConnectedHandle(handle?: NodeHandle) {
@@ -193,7 +194,8 @@ export class NodeHandle {
   fromConfig(data: INodeHandleConfig): void {
     this.key = data.key ?? ''
     this.name = data.name ?? ''
-    this.types = ensureArray(data.type)
+    this.accepts = ensureArray(data.accepts)
+    this.type = data.type ?? ''
     this.position = data.position ?? HandlePosition.None
     this._value = data.value
 
@@ -201,6 +203,6 @@ export class NodeHandle {
   }
 }
 
-function includeTypeAll(types: string[]) {
-  return types.includes(NodeHandleType.All)
+function includeAcceptAll(accepts: string[]) {
+  return accepts.includes(NodeHandleType.All)
 }

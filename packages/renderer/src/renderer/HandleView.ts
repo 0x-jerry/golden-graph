@@ -36,7 +36,7 @@ export class HandleView {
   constructor(handle: NodeHandle, index: number) {
     this.handle = handle
     this.key = handle.key
-    this._module = getHandleModule(handle.getOptions().type) ?? null
+    this._module = getHandleModule(handle.type) ?? null
 
     const group = new Konva.Group({
       name: ELEMENT_TYPE.HANDLE,

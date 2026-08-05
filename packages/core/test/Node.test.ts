@@ -11,10 +11,10 @@ class TNode extends Node {
 describe('Node', () => {
   it('addHandle and get/query handles', () => {
     const n = new TNode()
-    n.addHandle({ key: 'input', type: 'number', position: HandlePosition.Left })
+    n.addHandle({ key: 'input', accepts: 'number', position: HandlePosition.Left })
     n.addHandle({
       key: 'output',
-      type: 'number',
+      accepts: 'number',
       position: HandlePosition.Right,
       value: 5,
     })

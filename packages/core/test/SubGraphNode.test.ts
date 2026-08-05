@@ -16,7 +16,7 @@ const numberSchema: INodeSchema = {
     {
       key: 'value',
       name: 'Value',
-      type: 'number',
+      accepts: 'number',
       position: HandlePosition.Right,
       value: 1,
     },
@@ -27,9 +27,9 @@ const sumSchema: INodeSchema = {
   type: 'Sum',
   name: 'Sum',
   handles: [
-    { key: 'a', name: 'A', type: 'number', position: HandlePosition.Left },
-    { key: 'b', name: 'B', type: 'number', position: HandlePosition.Left },
-    { key: 'out', name: 'Out', type: 'number', position: HandlePosition.Right },
+    { key: 'a', name: 'A', accepts: 'number', position: HandlePosition.Left },
+    { key: 'b', name: 'B', accepts: 'number', position: HandlePosition.Left },
+    { key: 'out', name: 'Out', accepts: 'number', position: HandlePosition.Right },
   ],
 }
 

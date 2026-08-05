@@ -26,7 +26,7 @@ const definitions: INodeDefinition[] = [
         {
           key: 'out',
           position: HandlePosition.Right,
-          type: 'number',
+          accepts: 'number',
           value: 1,
         },
       ],
@@ -40,8 +40,8 @@ const definitions: INodeDefinition[] = [
       type: 'Step',
       name: 'Step',
       handles: [
-        { key: 'in', position: HandlePosition.Left, type: 'number' },
-        { key: 'out', position: HandlePosition.Right, type: 'number' },
+        { key: 'in', position: HandlePosition.Left, accepts: 'number' },
+        { key: 'out', position: HandlePosition.Right, accepts: 'number' },
       ],
     },
     execute: (ctx) => {
@@ -55,9 +55,9 @@ const definitions: INodeDefinition[] = [
       type: 'Join',
       name: 'Join',
       handles: [
-        { key: 'a', position: HandlePosition.Left, type: 'number' },
-        { key: 'b', position: HandlePosition.Left, type: 'number' },
-        { key: 'out', position: HandlePosition.Right, type: 'number' },
+        { key: 'a', position: HandlePosition.Left, accepts: 'number' },
+        { key: 'b', position: HandlePosition.Left, accepts: 'number' },
+        { key: 'out', position: HandlePosition.Right, accepts: 'number' },
       ],
     },
     execute: (ctx) => {
@@ -72,7 +72,7 @@ const definitions: INodeDefinition[] = [
       type: 'Failing',
       name: 'Failing',
       handles: [
-        { key: 'in', position: HandlePosition.Left, type: 'number' },
+        { key: 'in', position: HandlePosition.Left, accepts: 'number' },
       ],
     },
     execute: () => {

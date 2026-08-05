@@ -22,7 +22,7 @@ describe('HandleView content layout under zoom', () => {
     const node = makeNode(1, 'Foo')
     addHandle(node, 'out', {
       position: HandlePosition.Right,
-      options: { type: 'text' },
+      type: 'text',
     })
     const view = new NodeView(node)
 

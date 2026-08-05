@@ -17,11 +17,9 @@ const numberSchema: INodeSchema = {
       key: 'output',
       name: 'Number',
       position: HandlePosition.Right,
-      type: 'number',
+      accepts: 'number',
       value: 10,
-      options: {
-        type: 'number',
-      },
+      type: 'number',
     },
   ],
 }

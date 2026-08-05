@@ -17,7 +17,7 @@ interface TestNodeSchema {
   handles: Array<{
     key: string
     position: HandlePosition
-    type: string
+    accepts: string
     name?: string
   }>
 }
@@ -26,22 +26,22 @@ const sourceSchema: TestNodeSchema = {
   type: 'Source',
   name: 'Source',
   nodeType: NodeType.Entry,
-  handles: [{ key: 'out', position: HandlePosition.Right, type: 'number', name: 'out' }],
+  handles: [{ key: 'out', position: HandlePosition.Right, accepts: 'number', name: 'out' }],
 }
 
 const passSchema: TestNodeSchema = {
   type: 'Pass',
   name: 'Pass',
   handles: [
-    { key: 'in', position: HandlePosition.Left, type: 'number', name: 'in' },
-    { key: 'out', position: HandlePosition.Right, type: 'number', name: 'out' },
+    { key: 'in', position: HandlePosition.Left, accepts: 'number', name: 'in' },
+    { key: 'out', position: HandlePosition.Right, accepts: 'number', name: 'out' },
   ],
 }
 
 const sinkSchema: TestNodeSchema = {
   type: 'Sink',
   name: 'Sink',
-  handles: [{ key: 'in', position: HandlePosition.Left, type: 'number', name: 'in' }],
+  handles: [{ key: 'in', position: HandlePosition.Left, accepts: 'number', name: 'in' }],
 }
 
 function makeWorkspace() {

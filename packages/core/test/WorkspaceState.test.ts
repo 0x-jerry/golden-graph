@@ -5,8 +5,8 @@ const flowSchema: INodeSchema = {
   type: 'Flow',
   name: 'Flow',
   handles: [
-    { key: 'in', position: HandlePosition.Left, type: 'number' },
-    { key: 'out', position: HandlePosition.Right, type: 'number', value: 42 },
+    { key: 'in', position: HandlePosition.Left, accepts: 'number' },
+    { key: 'out', position: HandlePosition.Right, accepts: 'number', value: 42 },
   ],
 }
 

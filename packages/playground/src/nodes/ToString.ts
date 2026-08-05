@@ -10,19 +10,17 @@ export const toStringDefinition: INodeDefinition = {
         key: 'output',
         name: 'Output',
         position: HandlePosition.Right,
-        type: 'string',
+        accepts: 'string',
       },
       {
         key: 'input',
         name: 'Input',
-        type: '*',
+        accepts: '*',
         position: HandlePosition.Left,
       },
       {
         value: 'This is a ToString node, and some text explanation',
-        options: {
-          type: 'display',
-        },
+        type: 'display',
       },
     ],
   },

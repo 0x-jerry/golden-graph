@@ -11,11 +11,9 @@ export const textDefinition: INodeDefinition = {
         key: 'output',
         name: 'Text',
         position: HandlePosition.Right,
-        type: 'string',
+        accepts: 'string',
         value: 'hello',
-        options: {
-          type: 'text',
-        },
+        type: 'text',
       },
     ],
   },

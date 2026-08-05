@@ -17,15 +17,16 @@ describe('NodeHandle', () => {
     handle.fromConfig({
       key: 'input',
       name: 'Input',
-      type: ['number'],
+      accepts: ['number'],
       position: HandlePosition.Left,
-      options: { type: 'number', min: 0 },
+      type: 'number',
+      options: { min: 0 },
     })
     expect(handle.key).toBe('input')
     expect(handle.name).toBe('Input')
-    expect(handle.types).toEqual(['number'])
+    expect(handle.accepts).toEqual(['number'])
     expect(handle.isLeft).toBe(true)
-    expect(handle.getOptions().type).toBe('number')
+    expect(handle.type).toBe('number')
   })
 
   it('canConnectTo respects position and type', () => {
@@ -38,26 +39,26 @@ describe('NodeHandle', () => {
     h1.fromConfig({
       key: 'out',
       position: HandlePosition.Right,
-      type: ['number'],
+      accepts: ['number'],
     })
     h2.fromConfig({
       key: 'in',
       position: HandlePosition.Left,
-      type: ['number'],
+      accepts: ['number'],
     })
     expect(h1.canConnectTo(h2)).toBe(true)
 
     h2.fromConfig({
       key: 'in',
       position: HandlePosition.Left,
-      type: ['string'],
+      accepts: ['string'],
     })
     expect(h1.canConnectTo(h2)).toBe(false)
 
     h1.fromConfig({
       key: 'out',
       position: HandlePosition.Right,
-      type: [NodeHandleType.All],
+      accepts: [NodeHandleType.All],
     })
     expect(h1.canConnectTo(h2)).toBe(true)
   })

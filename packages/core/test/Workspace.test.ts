@@ -18,13 +18,13 @@ const groupTestNodeSchema: INodeSchema = {
     {
       name: 'Input',
       key: 'input',
-      type: 'string',
+      accepts: 'string',
       position: HandlePosition.Left,
     },
     {
       name: 'Output',
       key: 'output',
-      type: 'string',
+      accepts: 'string',
       position: HandlePosition.Right,
     },
   ],
@@ -35,7 +35,7 @@ const sourceSchema: INodeSchema = {
   name: 'Source',
   nodeType: NodeType.Entry,
   handles: [
-    { key: 'out', position: HandlePosition.Right, type: 'number', value: 1 },
+    { key: 'out', position: HandlePosition.Right, accepts: 'number', value: 1 },
   ],
 }
 
@@ -43,15 +43,15 @@ const sourceSchema: INodeSchema = {
 //   type: 'Process',
 //   name: 'Process',
 //   handles: [
-//     { key: 'in', position: HandlePosition.Left, type: 'number' },
-//     { key: 'out', position: HandlePosition.Right, type: 'number' },
+//     { key: 'in', position: HandlePosition.Left, accepts: 'number' },
+//     { key: 'out', position: HandlePosition.Right, accepts: 'number' },
 //   ],
 // }
 
 // const sinkSchema: INodeSchema = {
 //   type: 'Sink',
 //   name: 'Sink',
-//   handles: [{ key: 'in', position: HandlePosition.Left, type: 'number' }],
+//   handles: [{ key: 'in', position: HandlePosition.Left, accepts: 'number' }],
 // }
 
 // const executeDefinitions: INodeDefinition[] = [
@@ -79,12 +79,12 @@ describe('Workspace', () => {
     ws.registerNodeSchema({
       type: 'A',
       name: 'A',
-      handles: [{ key: 'o', position: HandlePosition.Right, type: 'number' }],
+      handles: [{ key: 'o', position: HandlePosition.Right, accepts: 'number' }],
     })
     ws.registerNodeSchema({
       type: 'B',
       name: 'B',
-      handles: [{ key: 'i', position: HandlePosition.Left, type: 'number' }],
+      handles: [{ key: 'i', position: HandlePosition.Left, accepts: 'number' }],
     })
     const a = ws.addNode('A')
     const b = ws.addNode('B')
@@ -282,13 +282,13 @@ describe('Workspace', () => {
         {
           name: 'Input',
           key: 'input',
-          type: 'string',
+          accepts: 'string',
           position: HandlePosition.Left,
         },
         {
           name: 'Output',
           key: 'output',
-          type: 'string',
+          accepts: 'string',
           position: HandlePosition.Right,
         },
       ],

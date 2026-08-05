@@ -11,7 +11,7 @@ const sourceDefinition: INodeDefinition = {
     name: 'Source',
     nodeType: NodeType.Entry,
     handles: [
-      { key: 'out', position: HandlePosition.Right, type: 'number', value: 1 },
+      { key: 'out', position: HandlePosition.Right, accepts: 'number', value: 1 },
     ],
   },
   execute: () => {

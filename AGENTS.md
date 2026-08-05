@@ -102,8 +102,7 @@ export interface INodeDefinition {
 ```
 
 - `INodeSchema` fields: `type` (unique id, e.g. `'Math.Op'`), `name` (header + "Add Node" menu label), `description?`, `internal?` (hidden from menu), `nodeType?` (`NodeType.Entry = 1` marks execution start), `handles: INodeHandleConfig[]`
-- `INodeHandleConfig` fields: `key` (unique within node, required for `getData`), `type` (data type(s) for connection matching, `'*'` = anything), `name` (label; empty name reserves no fixed column), `position` (`Left` = input, `Right` = output, `None` = layout-only row), `value` (initial), `options` (render props incl. `options.type`)
-- `options.type` selects the render component: `'text' | 'number' | 'select' | 'image' | 'display'` (registered in renderer `handles/index.ts`); select choices come from `options.options`
+- `INodeHandleConfig` fields: `key` (unique within node, required for `getData`), `accepts` (data type(s) for connection matching, `'*'` = anything), `type` (render component: `'text' | 'number' | 'select' | 'image' | 'display'`, registered in renderer `handles/index.ts`), `name` (label; empty name reserves no fixed column), `position` (`Left` = input, `Right` = output, `None` = layout-only row), `value` (initial), `options` (render props; select choices come from `options.options`)
 - `ctx.getData(key)` resolves inputs through incoming edges; `ctx.setData(key, value)` writes run state and streams a `handle-updates` event to the frontend
 - `execute` runs **in a Web Worker** — no DOM; handle values must be structured-cloneable. `execute` is optional (Entry sources / Display sinks can omit it)
 
@@ -118,9 +117,9 @@ export const addDefinition: INodeDefinition = {
     type: 'Math.Add',
     name: 'Math - Add',
     handles: [
-      { key: 'a', name: 'A', position: HandlePosition.Left, type: 'number', value: 0 },
-      { key: 'b', name: 'B', position: HandlePosition.Left, type: 'number', value: 0 },
-      { key: 'out', name: 'Sum', position: HandlePosition.Right, type: 'number', value: 0 },
+      { key: 'a', name: 'A', position: HandlePosition.Left, accepts: 'number', value: 0 },
+      { key: 'b', name: 'B', position: HandlePosition.Left, accepts: 'number', value: 0 },
+      { key: 'out', name: 'Sum', position: HandlePosition.Right, accepts: 'number', value: 0 },
     ],
   },
   execute: (ctx) => {

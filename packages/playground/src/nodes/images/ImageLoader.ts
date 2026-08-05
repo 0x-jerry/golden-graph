@@ -11,10 +11,8 @@ export const imageLoaderDefinition: INodeDefinition = {
         key: 'output',
         name: 'Image',
         position: HandlePosition.Right,
+        accepts: 'image',
         type: 'image',
-        options: {
-          type: 'image',
-        },
       },
     ],
   },

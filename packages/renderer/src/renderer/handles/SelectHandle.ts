@@ -47,6 +47,5 @@ export class SelectHandle extends HandleModule {
 const INPUT_HEIGHT = 18
 
 function readOptions(handle: NodeHandle): (SelectOption | string)[] {
-  const opts = handle.getOptions<{ type: string; options?: (SelectOption | string)[] }>()
-  return opts.options ?? []
+  return handle.getOptions().options ?? []
 }

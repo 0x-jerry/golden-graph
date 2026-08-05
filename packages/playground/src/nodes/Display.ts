@@ -10,11 +10,9 @@ export const displayDefinition: INodeDefinition = {
         key: 'input',
         name: 'Input',
         position: HandlePosition.Left,
-        type: '*',
+        accepts: '*',
         value: '',
-        options: {
-          type: 'display',
-        },
+        type: 'display',
       },
     ],
   },

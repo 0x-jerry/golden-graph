@@ -172,7 +172,7 @@ function createInterfaceNodes(ctx: ConversionContext, subGraph: SubGraph) {
     }
     usedNames.add(name)
 
-    const type = firstHandle.types[0] || '*'
+    const type = firstHandle.accepts[0] || '*'
 
     if (item.type === 'input') {
       item.interfaceNodeId = createInputNode({
