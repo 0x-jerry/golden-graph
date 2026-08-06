@@ -1,7 +1,8 @@
 import type { NodeHandle, IVec2 } from '@0x-jerry/golden-graph'
 import { ConnectionLine } from '../ConnectionLine'
+import { getJointPos } from '../EdgeView'
 import { setJointHighlight } from '../HandleView'
-import { ELEMENT_TYPE, LAYER_NAME } from '../constants'
+import { ELEMENT_TYPE, LAYER_NAME, PROXIMITY_RADIUS } from '../constants'
 import { getJointInfo } from './hitTest'
 import type { GestureContext, IGesture } from './types'
 
@@ -10,9 +11,17 @@ export class ConnectGesture implements IGesture {
   _connectHandle: NodeHandle | null = null
   _connectTargetHandle: NodeHandle | null = null
   _ctx: GestureContext
+  /**
+   * Screen-pixel radius around a joint that auto-targets it during the drag.
+   * `0` disables proximity so only exact pointer hits connect.
+   */
+  _proximityRadius: number
+  /** Candidate joints (all positioned handles on other nodes), built at start. */
+  _candidates: NodeHandle[] = []
 
-  constructor(_ctx: GestureContext) {
+  constructor(_ctx: GestureContext, proximityRadius = PROXIMITY_RADIUS) {
     this._ctx = _ctx
+    this._proximityRadius = proximityRadius
   }
 
   start(handleKey: string, nodeId: number) {
@@ -33,6 +42,11 @@ export class ConnectGesture implements IGesture {
 
     this._connectHandle = startHandle
     this._connectTargetHandle = null
+    this._candidates = this._ctx.ws.nodes
+      .filter((node) => node.id !== startHandle.node.id)
+      .flatMap((node) =>
+        node.handles.filter((handle) => handle.isLeft || handle.isRight),
+      )
 
     // Keep the source joint highlighted for the whole gesture so it is clear
     // which handle the drag started from.
@@ -51,11 +65,13 @@ export class ConnectGesture implements IGesture {
   move(screenPos: IVec2) {
     if (!this._connectHandle) return
 
-    const wsPos = this._ctx.ws.coord.convertScreenCoord(screenPos)
+    const target = this._updateHover(screenPos)
+    const wsPos = target
+      ? getJointPos(target)
+      : this._ctx.ws.coord.convertScreenCoord(screenPos)
 
     this._connectionLine.update(this._connectHandle, wsPos)
     this._render()
-    this._updateHover()
   }
 
   end() {
@@ -72,7 +88,8 @@ export class ConnectGesture implements IGesture {
 
     if (!this._connectHandle) return
 
-    const targetHandle = this._findHandleAtPointer()
+    const pos = this._ctx.stage.getPointerPosition()
+    const targetHandle = pos ? this._findTargetHandle(pos) : null
     if (targetHandle && this._connectHandle.node.id !== targetHandle.node.id) {
       this._ctx.ws.connect(this._connectHandle, targetHandle)
     }
@@ -85,20 +102,21 @@ export class ConnectGesture implements IGesture {
   }
 
   /**
-   * Highlight the joint under the pointer when it is compatible with the
+   * Highlight the joint targeted by the pointer when it is compatible with the
    * source handle (same rule as `Workspace.canConnect`); otherwise clear any
-   * previous hover highlight.
+   * previous hover highlight. A joint is targeted either by an exact hit or by
+   * proximity within `_proximityRadius` screen pixels.
    */
-  _updateHover() {
-    if (!this._connectHandle) return
+  _updateHover(screenPos: IVec2): NodeHandle | null {
+    if (!this._connectHandle) return null
 
-    const targetHandle = this._findHandleAtPointer()
+    const targetHandle = this._findTargetHandle(screenPos)
     const nextTarget =
       targetHandle && this._connectHandle.canConnectTo(targetHandle)
         ? targetHandle
         : null
 
-    if (nextTarget === this._connectTargetHandle) return
+    if (nextTarget === this._connectTargetHandle) return nextTarget
 
     if (this._connectTargetHandle) {
       setJointHighlight(this._connectTargetHandle, false)
@@ -107,13 +125,26 @@ export class ConnectGesture implements IGesture {
       setJointHighlight(nextTarget, true)
     }
     this._connectTargetHandle = nextTarget
+    return nextTarget
   }
 
-  _findHandleAtPointer(): NodeHandle | null {
-    const pos = this._ctx.stage.getPointerPosition()
-    if (!pos) return null
+  /**
+   * Resolve the handle a release should connect to. An exact joint hit takes
+   * priority: a compatible one is targeted, an incompatible one blocks the
+   * fallback so the user can't accidentally connect to a nearby joint while
+   * aiming at a specific one. Only when the pointer is not on any joint does
+   * the nearest compatible joint within the proximity radius apply.
+   */
+  _findTargetHandle(screenPos: IVec2): NodeHandle | null {
+    const exact = this._findHandleAtPointer(screenPos)
+    if (exact) {
+      return this._connectHandle?.canConnectTo(exact) ? exact : null
+    }
+    return this._findHandleInProximity(screenPos)
+  }
 
-    const target = this._ctx.stage.getIntersection(pos)
+  _findHandleAtPointer(screenPos: IVec2): NodeHandle | null {
+    const target = this._ctx.stage.getIntersection(screenPos)
     if (!target) return null
     if (target.name() !== ELEMENT_TYPE.JOINT) return null
 
@@ -124,6 +155,41 @@ export class ConnectGesture implements IGesture {
     if (!node) return null
 
     return node.getHandle(info.handleKey) ?? null
+  }
+
+  /**
+   * Nearest compatible joint whose joint center is within `_proximityRadius`
+   * screen pixels of the pointer — lets users connect without aiming exactly
+   * at the small joint. Returns `null` when disabled or nothing is in range.
+   */
+  _findHandleInProximity(screenPos: IVec2): NodeHandle | null {
+    const source = this._connectHandle
+    if (!source || this._proximityRadius <= 0) return null
+
+    const radiusSq = this._proximityRadius * this._proximityRadius
+    let best: NodeHandle | null = null
+    let bestDistSq = Infinity
+
+    for (const handle of this._candidates) {
+      // Candidates are snapshotted at `start()`; skip any whose node was
+      // removed mid-drag (e.g. by a completing run).
+      if (!this._ctx.ws.getNode(handle.node.id)) continue
+      if (!source.canConnectTo(handle)) continue
+
+      const jointPos = this._ctx.ws.coord.convertToScreenCoord(
+        getJointPos(handle),
+      )
+      const dx = screenPos.x - jointPos.x
+      const dy = screenPos.y - jointPos.y
+      const distSq = dx * dx + dy * dy
+
+      if (distSq <= radiusSq && distSq < bestDistSq) {
+        best = handle
+        bestDistSq = distSq
+      }
+    }
+
+    return best
   }
 
   _render() {

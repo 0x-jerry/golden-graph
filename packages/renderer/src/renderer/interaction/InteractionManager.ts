@@ -35,12 +35,19 @@ export type InteractionManagerEvents = {
    * The caller must add the shape to the layer it owns and redraw it —
    * resolving layers is the caller's responsibility.
    */
-  'overlay-render': [target: { shape: Konva.Group | Konva.Shape; layer: OverlayLayer }]
+  'overlay-render': [
+    target: { shape: Konva.Group | Konva.Shape; layer: OverlayLayer },
+  ]
 }
 
 export interface InteractionManagerOptions {
   stage: Konva.Stage
   ws: Workspace
+  /**
+   * Screen-pixel radius that auto-targets a joint during a connection drag.
+   * `0` disables proximity so only exact pointer hits connect.
+   */
+  proximityRadius?: number
 }
 
 export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
@@ -69,7 +76,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
         this.emit('overlay-render', { shape, layer }),
     }
 
-    this._connect = new ConnectGesture(ctx)
+    this._connect = new ConnectGesture(ctx, opts.proximityRadius)
     this._nodeDrag = new NodeDragGesture(ctx)
     this._nodeResize = new NodeResizeGesture(ctx)
     this._groupDrag = new GroupDragGesture(ctx)

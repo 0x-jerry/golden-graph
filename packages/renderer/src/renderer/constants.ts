@@ -104,6 +104,13 @@ export const GROUP_MIN_HEIGHT = 80
 
 /** Size of the corner resize grip (drawn as a triangle). */
 export const RESIZE_HANDLE_SIZE = 12
+
+/**
+ * Screen-pixel radius around a joint that auto-targets it during a
+ * connection drag, so users don't need to aim exactly at the small joint.
+ * Set the renderer's `proximityRadius` to 0 to disable.
+ */
+export const PROXIMITY_RADIUS = 24
 export const BEZIER_MIN_OFFSET = 10
 export const BEZIER_MAX_OFFSET = 200
 export const EDGE_HIT_STROKE = 20

@@ -26,6 +26,11 @@ export interface KonvaGraphRendererOptions {
    * auto-laid-out so its nodes are arranged instead of scattered.
    */
   autoLayoutSubGraph?: boolean
+  /**
+   * Screen-pixel radius that auto-targets a joint during a connection drag.
+   * `0` disables proximity so only exact pointer hits connect.
+   */
+  proximityRadius?: number
 }
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
@@ -84,6 +89,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._interaction = new InteractionManager({
       stage: this._stage,
       ws: workspace,
+      proximityRadius: options?.proximityRadius,
     })
 
     this._disposers.add(
