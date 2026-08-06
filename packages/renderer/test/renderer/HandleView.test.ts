@@ -4,6 +4,7 @@ import { HandlePosition } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import { find } from '../helpers/konva'
 import { NodeView } from '../../src/renderer/NodeView'
+import { LAYOUT } from '../../src/renderer/constants'
 
 function makeStage(scale: number) {
   const container = document.createElement('div')
@@ -43,5 +44,17 @@ describe('HandleView content layout under zoom', () => {
 
     stage.destroy()
     container.remove()
+  })
+
+  it('starts block content at the row top when there is no label or position', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'out', {
+      position: HandlePosition.None,
+      type: 'display',
+    })
+    const view = new NodeView(node)
+
+    const content = find<Konva.Group>(view.group, '.content')
+    expect(content.y()).toBe(LAYOUT.HEADER_HEIGHT)
   })
 })

@@ -24,7 +24,9 @@ class ColorModule extends Konva.Group implements NodeHandleModule {
       value: normalizeColor(handle.getValue()),
       shape: options.shape ?? 'circle',
       colors: options.colors ?? PRESET_COLORS,
-      onChange: (color) => {
+      // Preview picks live, but only commit the value to the handle once the
+      // picker is dismissed.
+      onCommit: (color) => {
         handle.setValue(color)
       },
     })
@@ -33,8 +35,12 @@ class ColorModule extends Konva.Group implements NodeHandleModule {
 
   update(): void {
     // Sync in silence so a non-hex external value is only normalized for
-    // display and not written back to the handle via `onChange`.
-    this._picker.setValue(normalizeColor(this._handle.getValue()), true)
+    // display and not written back to the handle via `onChange`. Skip while the
+    // picker is open so an in-progress pick is not reverted to the committed
+    // value by unrelated node updates (drag/resize).
+    if (!this._picker.active) {
+      this._picker.setValue(normalizeColor(this._handle.getValue()), true)
+    }
     this._picker.setWidth(availableWidth(this._handle))
   }
 }

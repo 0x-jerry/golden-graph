@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { HandlePosition } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import {
   clearMeasuredRowHeight,
@@ -40,6 +41,26 @@ describe('getHandleRowHeight', () => {
         factory.config = { ...factory.config, minHeight: prev }
       }
     }
+  })
+
+  it('skips the label row for label-less, position-less block handles', () => {
+    const node = makeNode(1, 'N')
+    const handle = addHandle(node, 'a', {
+      position: HandlePosition.None,
+      type: 'display',
+    })
+    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT)
+  })
+
+  it('still adds the label row for label-less block handles with a position', () => {
+    const node = makeNode(1, 'N')
+    const handle = addHandle(node, 'a', {
+      position: HandlePosition.Left,
+      type: 'display',
+    })
+    expect(getHandleRowHeight(handle)).toBe(
+      BLOCK_HANDLE_LABEL_ROW + LAYOUT.HANDLE_ROW_HEIGHT,
+    )
   })
 
   it('returns the measured row when it exceeds the static minimum', () => {

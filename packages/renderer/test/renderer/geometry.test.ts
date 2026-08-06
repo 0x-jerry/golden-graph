@@ -47,6 +47,21 @@ describe('getJointPos', () => {
       LAYOUT.HEADER_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2,
     )
   })
+
+  it('aligns a block handle joint at the inline row position', () => {
+    const node = makeNode(8, 'D', { x: 0, y: 0 })
+    addHandle(node, 'a', { position: HandlePosition.Left, type: 'text' })
+    // 'display' uses the block layout by default.
+    const block = addHandle(node, 'b', {
+      position: HandlePosition.Left,
+      type: 'display',
+    })
+
+    const pos = getJointPos(block)
+    expect(pos.y).toBe(
+      LAYOUT.HEADER_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2,
+    )
+  })
 })
 
 describe('bezierOffset', () => {

@@ -21,7 +21,10 @@ export interface ColorPickerConfig extends BaseFormConfig {
   value?: string
   colors?: string[]
   shape?: 'circle' | 'rect'
+  /** Live preview while the panel is open (every pick). */
   onChange?: (color: string) => void
+  /** Fired once with the final value when the picker is dismissed. */
+  onCommit?: (color: string) => void
 }
 
 export class ColorPicker extends FormElement {
@@ -35,6 +38,9 @@ export class ColorPicker extends FormElement {
   _colors: string[]
   _shape: 'circle' | 'rect'
   _onChange?: (color: string) => void
+  _onCommit?: (color: string) => void
+  /** Whether a color was actually picked since the panel opened. */
+  _picked = false
 
   constructor(config: ColorPickerConfig) {
     const {
@@ -44,6 +50,7 @@ export class ColorPicker extends FormElement {
       colors = PRESET_COLORS,
       shape = 'circle',
       onChange,
+      onCommit,
       ...rest
     } = config
     super(rest)
@@ -54,6 +61,7 @@ export class ColorPicker extends FormElement {
     this._colors = colors
     this._shape = shape
     this._onChange = onChange
+    this._onCommit = onCommit
 
     this._swatch = this._createSwatch()
     this.add(this._swatch)
@@ -77,6 +85,11 @@ export class ColorPicker extends FormElement {
     return this._val
   }
 
+  /** Whether the picker panel is currently open. */
+  get active(): boolean {
+    return this._active
+  }
+
   setValue(color: string, silent = false) {
     if (color === this._val) return
     this._val = color
@@ -84,6 +97,7 @@ export class ColorPicker extends FormElement {
     this._text.text(color.toUpperCase())
     this.getLayer()?.batchDraw()
     if (!silent) {
+      this._picked = true
       this._onChange?.(color)
     }
   }
@@ -159,6 +173,7 @@ export class ColorPicker extends FormElement {
     if (this._active) return
     this._activate()
     this._swatch.stroke(COLORS.ACCENT)
+    this._picked = false
 
     this._mountPanel()
     this.getLayer()?.batchDraw()
@@ -218,6 +233,10 @@ export class ColorPicker extends FormElement {
     this._swatch.stroke(this._borderColor)
     this._unmountPanel()
     this.getLayer()?.batchDraw()
+    if (this._picked) {
+      this._onCommit?.(this._val)
+    }
+    this._picked = false
   }
 
   protected _deactivate(): void {

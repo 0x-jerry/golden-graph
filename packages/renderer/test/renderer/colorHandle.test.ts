@@ -66,7 +66,7 @@ describe('ColorHandle', () => {
     expect(swatch?.fill()).toBe('#ffffff')
   })
 
-  it('opens the panel on click and applies a preset color without closing', () => {
+  it('applies a preset color only after the picker is dismissed', () => {
     const { node, handle } = makeColorNode('#000000')
     const view = new NodeView(node)
     const { stage, layer, container } = makeStage()
@@ -81,9 +81,34 @@ describe('ColorHandle', () => {
     const color = swatch.fill() as string
     swatch.fire('click')
 
+    // Picking previews the color but does not touch the handle yet.
     expect(picker._panel).not.toBeNull()
     expect(picker.getValue()).toBe(color)
+    expect(handle.getValue()).toBe('#000000')
+
+    // Dismissing the picker commits the picked value to the handle.
+    picker.deactivate()
     expect(handle.getValue()).toBe(color)
+
+    stage.destroy()
+    container.remove()
+  })
+
+  it('does not commit when dismissed without picking', () => {
+    const { node, handle } = makeColorNode('red')
+    const view = new NodeView(node)
+    const { stage, layer, container } = makeStage()
+    layer.add(view.group)
+    stage.draw()
+
+    const picker = modulePicker(view)
+    picker._swatch.fire('click')
+    expect(picker._panel).toBeTruthy()
+
+    // A non-hex value is normalized for display only; dismissing without a
+    // pick must not clobber the handle value.
+    picker.deactivate()
+    expect(handle.getValue()).toBe('red')
 
     stage.destroy()
     container.remove()

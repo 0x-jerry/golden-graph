@@ -16,8 +16,9 @@ import {
 import { getHandleFactory } from './handles'
 import {
   clearMeasuredRowHeight,
-  handleY,
   getHandleRowHeight,
+  hasLabelRow,
+  handleY,
   setMeasuredRowHeight,
 } from './handles/layout'
 import type {
@@ -25,11 +26,6 @@ import type {
   NodeHandleModule,
   HandleContentLayout,
 } from './handles/types'
-
-/** Label top padding inside a block handle's row. */
-const BLOCK_LABEL_TOP_PAD = 3
-/** Gap between the label and the content below it in a block handle. */
-const BLOCK_LABEL_CONTENT_GAP = 4
 
 /**
  * Registry mapping a core handle to its rendered view, used for cross-cutting
@@ -77,7 +73,6 @@ export class HandleView {
     this.group = group
 
     const y = handleY(handle.node, handle)
-    const rowTop = this._blockRowTop(y)
 
     if (
       handle.position === HandlePosition.Left ||
@@ -114,13 +109,8 @@ export class HandleView {
     if (handle.position === HandlePosition.Right) {
       label.align('right')
     }
-    if (this._layout === 'block') {
-      label.y(rowTop + BLOCK_LABEL_TOP_PAD)
-      label.offsetY(0)
-    } else {
-      label.offsetY(label.height() / 2)
-      label.y(y)
-    }
+    label.offsetY(label.height() / 2)
+    label.y(y)
     group.add(label)
     this._label = label
 
@@ -143,7 +133,6 @@ export class HandleView {
 
   update(): void {
     const y = handleY(this.handle.node, this.handle)
-    const rowTop = this._blockRowTop(y)
 
     const joint = this._joint
     if (joint) {
@@ -156,7 +145,7 @@ export class HandleView {
       joint.fill(this._jointFill())
     }
 
-    this._label.y(this._layout === 'block' ? rowTop + BLOCK_LABEL_TOP_PAD : y)
+    this._label.y(y)
     this._label.x(labelX(this.handle))
 
     const module = this._module
@@ -197,8 +186,10 @@ export class HandleView {
       ? this._module.getClientRect({ skipTransform: true }).height
       : 0
     const minHeight = this._factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
-    const rowHeight =
-      BLOCK_HANDLE_LABEL_ROW + Math.max(minHeight, contentHeight)
+    const content = Math.max(minHeight, contentHeight)
+    const rowHeight = hasLabelRow(this.handle)
+      ? BLOCK_HANDLE_LABEL_ROW + content
+      : content
     setMeasuredRowHeight(this.handle, rowHeight)
   }
 
@@ -215,14 +206,22 @@ export class HandleView {
   }
 
   _blockRowTop(rowCenterY: number): number {
-    return this._layout === 'block'
-      ? rowCenterY - getHandleRowHeight(this.handle) / 2
-      : rowCenterY
+    if (this._layout !== 'block') {
+      return rowCenterY
+    }
+    return hasLabelRow(this.handle)
+      ? rowCenterY - BLOCK_HANDLE_LABEL_ROW / 2
+      : rowCenterY - getHandleRowHeight(this.handle) / 2
   }
 
   _contentY(): number {
     if (this._layout === 'block') {
-      return this._label.y() + this._label.height() + BLOCK_LABEL_CONTENT_GAP
+      const blockTop = this._blockRowTop(
+        handleY(this.handle.node, this.handle),
+      )
+      return hasLabelRow(this.handle)
+        ? blockTop + BLOCK_HANDLE_LABEL_ROW
+        : blockTop
     }
     return handleY(this.handle.node, this.handle) - HANDLE_CONTENT_Y_OFFSET
   }
