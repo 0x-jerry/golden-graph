@@ -116,6 +116,7 @@ export class EditableText extends Konva.Group {
     this.add(input)
     this.getLayer()?.batchDraw()
     input._startEdit()
+    input.selectAll()
   }
 
   _stopEdit(): void {

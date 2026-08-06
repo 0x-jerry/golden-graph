@@ -243,6 +243,13 @@ export class Input extends FormElement {
     this._onChange?.(this._model.value)
   }
 
+  /** Select the entire value (used when an edit session opens). */
+  selectAll() {
+    this._model.selectAll()
+    this._syncDisplay()
+    this._startBlink()
+  }
+
   /**
    * Resize the input box (e.g. when its node is resized). Keeps the clip
    * region, background and scroll state in sync with the new width.
