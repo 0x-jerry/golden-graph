@@ -1,57 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createCanvas, DOMMatrix } from 'canvas'
-import {
-  HandlePosition,
-  Workspace,
-  type INodeSchema,
-  type Node,
-} from '@0x-jerry/golden-graph'
+import type { Node, Workspace } from '@0x-jerry/golden-graph'
 import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
 import { getJointPos } from '../../src/renderer/EdgeView'
 import { getHandleView } from '../../src/renderer/HandleView'
 import { PROXIMITY_RADIUS } from '../../src/renderer/constants'
-
-// jsdom lacks OffscreenCanvas/DOMMatrix/ResizeObserver; the canvas package
-// provides the first two, the renderer needs a no-op observer.
-globalThis.OffscreenCanvas = globalThis.OffscreenCanvas || createCanvas
-globalThis.DOMMatrix = globalThis.DOMMatrix || DOMMatrix
-if (!globalThis.ResizeObserver) {
-  class RO {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  globalThis.ResizeObserver = RO
-}
-
-const numberSchema: INodeSchema = {
-  type: 'Number',
-  name: 'Number',
-  handles: [
-    {
-      key: 'value',
-      name: 'Value',
-      accepts: 'number',
-      position: HandlePosition.Right,
-      value: 1,
-    },
-  ],
-}
-
-const sumSchema: INodeSchema = {
-  type: 'Sum',
-  name: 'Sum',
-  handles: [
-    { key: 'a', name: 'A', accepts: 'number', position: HandlePosition.Left },
-    { key: 'b', name: 'B', accepts: 'number', position: HandlePosition.Left },
-    {
-      key: 'out',
-      name: 'Out',
-      accepts: 'number',
-      position: HandlePosition.Right,
-    },
-  ],
-}
+import { createWorkspace } from '../helpers/workspace'
 
 interface Setup {
   ws: Workspace
@@ -65,9 +18,7 @@ interface Setup {
 }
 
 function createRenderer(proximityRadius?: number): Setup {
-  const ws = new Workspace()
-  ws.registerNodeSchema(numberSchema)
-  ws.registerNodeSchema(sumSchema)
+  const ws = createWorkspace()
 
   const src = ws.addNode('Number')
   src.moveTo(0, 0)
@@ -220,9 +171,7 @@ describe('ConnectGesture proximity connect', () => {
   })
 
   it('blocks proximity fallback when landing exactly on an incompatible joint', () => {
-    const ws = new Workspace()
-    ws.registerNodeSchema(numberSchema)
-    ws.registerNodeSchema(sumSchema)
+    const ws = createWorkspace()
 
     const src = ws.addNode('Sum')
     src.moveTo(0, 0)

@@ -1,58 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import {
-  Group,
-  HandlePosition,
-  SubGraphNode,
-  Workspace,
-  isSubGraphNode,
-  type INodeSchema,
-} from '@0x-jerry/golden-graph'
+import { SubGraphNode, isSubGraphNode } from '@0x-jerry/golden-graph'
 import { buildDefaultContextMenu } from '../../src/renderer/ContextMenuBuilder'
 import { ContextMenuTargetType } from '../../src/renderer/types'
-
-const numberSchema: INodeSchema = {
-  type: 'Number',
-  name: 'Number',
-  handles: [
-    {
-      key: 'value',
-      name: 'Value',
-      accepts: 'number',
-      position: HandlePosition.Right,
-      value: 1,
-    },
-  ],
-}
-
-const sumSchema: INodeSchema = {
-  type: 'Sum',
-  name: 'Sum',
-  handles: [
-    { key: 'a', name: 'A', accepts: 'number', position: HandlePosition.Left },
-    { key: 'b', name: 'B', accepts: 'number', position: HandlePosition.Left },
-    { key: 'out', name: 'Out', accepts: 'number', position: HandlePosition.Right },
-  ],
-}
-
-function createWs() {
-  const ws = new Workspace()
-  ws.registerNodeSchema(numberSchema)
-  ws.registerNodeSchema(sumSchema)
-  return ws
-}
-
-function groupNodes(ws: Workspace, ...ids: number[]) {
-  const group = new Group()
-  group.id = ws.nextId()
-  group.setWorkspace(ws)
-  group.nodes.push(...ids)
-  ws._groups.push(group)
-  return group
-}
+import { createWorkspace, groupNodes } from '../helpers/workspace'
 
 describe('buildDefaultContextMenu', () => {
   it('adds an Enter SubGraph item for subgraph nodes', () => {
-    const ws = createWs()
+    const ws = createWorkspace()
     const a = ws.addNode('Number')
     const b = ws.addNode('Sum')
     ws.connect(a.getHandle('value')!, b.getHandle('a')!)
@@ -85,7 +39,7 @@ describe('buildDefaultContextMenu', () => {
   })
 
   it('does not add an Enter SubGraph item for regular nodes', () => {
-    const ws = createWs()
+    const ws = createWorkspace()
     const a = ws.addNode('Number')
 
     const items = buildDefaultContextMenu(
@@ -97,7 +51,7 @@ describe('buildDefaultContextMenu', () => {
   })
 
   it('adds an Exit SubGraph item on the canvas while inside a subgraph', () => {
-    const ws = createWs()
+    const ws = createWorkspace()
     const a = ws.addNode('Number')
     const b = ws.addNode('Sum')
     ws.connect(a.getHandle('value')!, b.getHandle('a')!)
@@ -119,7 +73,7 @@ describe('buildDefaultContextMenu', () => {
   })
 
   it('duplicates a subgraph node by reusing the same sub-graph', () => {
-    const ws = createWs()
+    const ws = createWorkspace()
     const a = ws.addNode('Number')
     const b = ws.addNode('Sum')
     ws.connect(a.getHandle('value')!, b.getHandle('a')!)

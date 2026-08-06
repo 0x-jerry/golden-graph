@@ -1,7 +1,10 @@
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Edge, Node } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
-import type { INodeHandleConfig, INodeHandleConfigOptions } from '@0x-jerry/golden-graph'
+import type {
+  INodeHandleConfig,
+  INodeHandleConfigOptions,
+} from '@0x-jerry/golden-graph'
 
 export function makeNode(
   id: number,

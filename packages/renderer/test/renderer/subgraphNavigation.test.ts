@@ -1,85 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { createCanvas, DOMMatrix } from 'canvas'
-import {
-  Group,
-  HandlePosition,
-  Workspace,
-  type INodeSchema,
-} from '@0x-jerry/golden-graph'
 import { EntityViewStore } from '../../src/renderer/EntityViewStore'
 import { subscribeGraphEvents } from '../../src/renderer/GraphEventRouter'
 import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
-
-// jsdom lacks OffscreenCanvas/DOMMatrix/ResizeObserver; the canvas package
-// provides the first two, the renderer needs a no-op observer.
-globalThis.OffscreenCanvas = globalThis.OffscreenCanvas || createCanvas
-globalThis.DOMMatrix = globalThis.DOMMatrix || DOMMatrix
-if (!globalThis.ResizeObserver) {
-  class RO {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  globalThis.ResizeObserver = RO
-}
-
-const numberSchema: INodeSchema = {
-  type: 'Number',
-  name: 'Number',
-  handles: [
-    {
-      key: 'value',
-      name: 'Value',
-      accepts: 'number',
-      position: HandlePosition.Right,
-      value: 1,
-    },
-  ],
-}
-
-const sumSchema: INodeSchema = {
-  type: 'Sum',
-  name: 'Sum',
-  handles: [
-    { key: 'a', name: 'A', accepts: 'number', position: HandlePosition.Left },
-    { key: 'b', name: 'B', accepts: 'number', position: HandlePosition.Left },
-    { key: 'out', name: 'Out', accepts: 'number', position: HandlePosition.Right },
-  ],
-}
-
-function createWs() {
-  const ws = new Workspace()
-  ws.registerNodeSchema(numberSchema)
-  ws.registerNodeSchema(sumSchema)
-  return ws
-}
-
-function groupNodes(ws: Workspace, ...ids: number[]) {
-  const group = new Group()
-  group.id = ws.nextId()
-  group.setWorkspace(ws)
-  group.nodes.push(...ids)
-  ws._groups.push(group)
-  return group
-}
-
-/** Parent graph with an internal subgraph: 3 external edges, 3 internal. */
-function createSubGraphWorkspace() {
-  const ws = createWs()
-  const extIn = ws.addNode('Number')
-  const extOut = ws.addNode('Sum')
-  const n1 = ws.addNode('Number')
-  const sum = ws.addNode('Sum')
-
-  ws.connect(extIn.getHandle('value')!, sum.getHandle('a')!)
-  ws.connect(n1.getHandle('value')!, sum.getHandle('b')!)
-  ws.connect(sum.getHandle('out')!, extOut.getHandle('a')!)
-
-  const group = groupNodes(ws, n1.id, sum.id)
-  ws.convertGroupToSubGraph(group.id)
-
-  return ws
-}
+import { createSubGraphWorkspace } from '../helpers/workspace'
 
 describe('enter/exit subgraph edge cleanup', () => {
   it('keeps the edge view store in sync with the workspace', () => {

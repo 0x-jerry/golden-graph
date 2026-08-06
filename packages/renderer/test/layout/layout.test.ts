@@ -7,8 +7,12 @@ import {
   Workspace,
   type NodeHandle,
 } from '@0x-jerry/golden-graph'
-import { autoLayout, computeNodePositions, resolveEdgeDirection } from '../src/layout'
-import type { LayoutOptions } from '../src/layout'
+import {
+  autoLayout,
+  computeNodePositions,
+  resolveEdgeDirection,
+} from '../../src/layout'
+import type { LayoutOptions } from '../../src/layout'
 
 interface TestNodeSchema {
   type: string
@@ -26,7 +30,14 @@ const sourceSchema: TestNodeSchema = {
   type: 'Source',
   name: 'Source',
   nodeType: NodeType.Entry,
-  handles: [{ key: 'out', position: HandlePosition.Right, accepts: 'number', name: 'out' }],
+  handles: [
+    {
+      key: 'out',
+      position: HandlePosition.Right,
+      accepts: 'number',
+      name: 'out',
+    },
+  ],
 }
 
 const passSchema: TestNodeSchema = {
@@ -34,14 +45,21 @@ const passSchema: TestNodeSchema = {
   name: 'Pass',
   handles: [
     { key: 'in', position: HandlePosition.Left, accepts: 'number', name: 'in' },
-    { key: 'out', position: HandlePosition.Right, accepts: 'number', name: 'out' },
+    {
+      key: 'out',
+      position: HandlePosition.Right,
+      accepts: 'number',
+      name: 'out',
+    },
   ],
 }
 
 const sinkSchema: TestNodeSchema = {
   type: 'Sink',
   name: 'Sink',
-  handles: [{ key: 'in', position: HandlePosition.Left, accepts: 'number', name: 'in' }],
+  handles: [
+    { key: 'in', position: HandlePosition.Left, accepts: 'number', name: 'in' },
+  ],
 }
 
 function makeWorkspace() {
@@ -87,7 +105,10 @@ describe('resolveEdgeDirection', () => {
   it('resolves a Right→Left edge to producer→consumer', () => {
     const { ws, nodes } = chain([sourceSchema, sinkSchema])
     const edge = ws.queryConnectedEdges(at(nodes, 0).id)[0]!
-    expect(resolveEdgeDirection(edge)).toEqual([at(nodes, 0).id, at(nodes, 1).id])
+    expect(resolveEdgeDirection(edge)).toEqual([
+      at(nodes, 0).id,
+      at(nodes, 1).id,
+    ])
   })
 
   it('still resolves direction when edge endpoints are written reversed', () => {
@@ -204,8 +225,12 @@ describe('computeNodePositions', () => {
       componentGap: 80,
     })
 
-    const minYA = Math.min(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y)
-    const maxYA = Math.max(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y) + 50
+    const minYA = Math.min(
+      positions.get(srcA.id)!.y,
+      positions.get(sinkA.id)!.y,
+    )
+    const maxYA =
+      Math.max(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y) + 50
     const yB = positions.get(srcB.id)!.y
 
     // Components stack top→bottom; the isolated node lands below the
@@ -227,7 +252,9 @@ describe('computeNodePositions', () => {
     })
 
     const xs = [n1, n2, n3].map((n) => positions.get(n.id)!.x)
-    const ys = [n1, n2, n3].map((n) => positions.get(n.id)!.y).sort((a, b) => a - b)
+    const ys = [n1, n2, n3]
+      .map((n) => positions.get(n.id)!.y)
+      .sort((a, b) => a - b)
     // All isolated nodes share the same column x.
     expect(xs[0]).toBe(xs[1])
     expect(xs[1]).toBe(xs[2])
@@ -276,7 +303,9 @@ describe('computeNodePositions', () => {
 
     // The connected batch flows left→right internally, then isolated nodes
     // stack below it sharing the same column x.
-    expect(positions.get(sinkA.id)!.x).toBeGreaterThan(positions.get(srcA.id)!.x)
+    expect(positions.get(sinkA.id)!.x).toBeGreaterThan(
+      positions.get(srcA.id)!.x,
+    )
     expect(pIso1.y).toBeGreaterThan(maxYConnected)
     expect(pIso1.x).toBe(pIso2.x)
     expect(pIso2.y).toBeGreaterThan(pIso1.y)

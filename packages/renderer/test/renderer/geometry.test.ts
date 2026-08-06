@@ -44,7 +44,9 @@ describe('getJointPos', () => {
 
     const pos = getJointPos(second)
     expect(pos.y).toBe(
-      LAYOUT.HEADER_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2,
+      LAYOUT.HEADER_HEIGHT +
+        LAYOUT.HANDLE_ROW_HEIGHT +
+        LAYOUT.HANDLE_ROW_HEIGHT / 2,
     )
   })
 
@@ -59,7 +61,9 @@ describe('getJointPos', () => {
 
     const pos = getJointPos(block)
     expect(pos.y).toBe(
-      LAYOUT.HEADER_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT + LAYOUT.HANDLE_ROW_HEIGHT / 2,
+      LAYOUT.HEADER_HEIGHT +
+        LAYOUT.HANDLE_ROW_HEIGHT +
+        LAYOUT.HANDLE_ROW_HEIGHT / 2,
     )
   })
 })

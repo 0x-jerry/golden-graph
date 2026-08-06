@@ -14,21 +14,12 @@ import {
 } from '../../src/renderer/components/color'
 import { ActiveElementManager } from '../../src/renderer/ActiveElementManager'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
+import { makeStage } from '../helpers/stage'
 
-function makeStage() {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-  const stage = new Konva.Stage({
-    container,
-    width: 1000,
-    height: 800,
-  })
-  const layer = new Konva.Layer()
-  stage.add(layer)
-  return { stage, layer, container }
-}
-
-function makeColorNode(color?: string): { node: ReturnType<typeof makeNode>; handle: NodeHandle } {
+function makeColorNode(color?: string): {
+  node: ReturnType<typeof makeNode>
+  handle: NodeHandle
+} {
   const node = makeNode(1, 'Color')
   const handle = addHandle(node, 'color', {
     position: HandlePosition.Right,
@@ -53,7 +44,10 @@ describe('ColorHandle', () => {
     const { node } = makeColorNode('#ff0000')
     const view = new NodeView(node)
 
-    const swatch = find<Konva.Group>(view.group, '.content').findOne<Konva.Circle>('.swatch')
+    const swatch = find<Konva.Group>(
+      view.group,
+      '.content',
+    ).findOne<Konva.Circle>('.swatch')
     expect(swatch).toBeTruthy()
     expect(swatch?.fill()).toBe('#ff0000')
   })
@@ -62,7 +56,10 @@ describe('ColorHandle', () => {
     const { node } = makeColorNode()
     const view = new NodeView(node)
 
-    const swatch = find<Konva.Group>(view.group, '.content').findOne<Konva.Circle>('.swatch')
+    const swatch = find<Konva.Group>(
+      view.group,
+      '.content',
+    ).findOne<Konva.Circle>('.swatch')
     expect(swatch?.fill()).toBe('#ffffff')
   })
 
@@ -250,7 +247,10 @@ describe('ColorHandle', () => {
     handle.setValue('#00ff00')
     view.update()
 
-    const swatch = find<Konva.Group>(view.group, '.content').findOne<Konva.Circle>('.swatch')
+    const swatch = find<Konva.Group>(
+      view.group,
+      '.content',
+    ).findOne<Konva.Circle>('.swatch')
     expect(swatch?.fill()).toBe('#00ff00')
   })
 

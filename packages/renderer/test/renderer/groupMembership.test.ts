@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { Group, Workspace } from '@0x-jerry/golden-graph'
+import { Workspace } from '@0x-jerry/golden-graph'
 import type { IVec2 } from '@0x-jerry/golden-graph'
 import { syncGroupMembership } from '../../src/renderer/groupMembership'
+import { makeGroup } from '../helpers/workspace'
 
 const nodeSchema = {
   type: 'Test.Node',
@@ -20,22 +21,6 @@ function makeWorkspace() {
   return ws
 }
 
-function makeGroup(
-  ws: Workspace,
-  pos: IVec2,
-  size: IVec2,
-  nodes: number[] = [],
-) {
-  const group = new Group()
-  group.id = ws.nextId()
-  group.setWorkspace(ws)
-  group.setPos(pos)
-  group.setSize(size)
-  group.nodes.push(...nodes)
-  ws._groups.push(group)
-  return group
-}
-
 function makeNode(ws: Workspace, pos: IVec2, size: IVec2 = { x: 50, y: 50 }) {
   const node = ws.addNode('Test.Node')
   node.moveTo(pos.x, pos.y)
@@ -47,7 +32,10 @@ describe('syncGroupMembership', () => {
   it('adds a node that ends up fully inside a group', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 0, y: 0 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 })
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+    })
 
     syncGroupMembership(ws)
 
@@ -57,7 +45,10 @@ describe('syncGroupMembership', () => {
   it('lets a member follow the group when the group moves', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 0, y: 0 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 })
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+    })
 
     syncGroupMembership(ws)
     group.move({ x: 10, y: 20 })
@@ -68,7 +59,11 @@ describe('syncGroupMembership', () => {
   it('disconnects a member once it no longer overlaps the group', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 0, y: 0 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 }, [node.id])
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+      nodes: [node.id],
+    })
 
     node.moveTo(200, 200)
     syncGroupMembership(ws)
@@ -79,7 +74,11 @@ describe('syncGroupMembership', () => {
   it('keeps a member that only partially overlaps the group', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 80, y: 80 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 }, [node.id])
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+      nodes: [node.id],
+    })
 
     syncGroupMembership(ws)
 
@@ -89,7 +88,10 @@ describe('syncGroupMembership', () => {
   it('adds a node that only partially overlaps the group', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 80, y: 80 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 })
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+    })
 
     syncGroupMembership(ws)
 
@@ -99,7 +101,11 @@ describe('syncGroupMembership', () => {
   it('drops a member after the group is resized past it', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 110, y: 110 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 200, y: 200 }, [node.id])
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 200, y: 200 },
+      nodes: [node.id],
+    })
 
     group.setSize({ x: 100, y: 100 })
     syncGroupMembership(ws)
@@ -111,7 +117,11 @@ describe('syncGroupMembership', () => {
     const ws = makeWorkspace()
     const a = makeNode(ws, { x: 0, y: 0 })
     const b = makeNode(ws, { x: 10, y: 10 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 }, [b.id])
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+      nodes: [b.id],
+    })
 
     syncGroupMembership(ws)
 
@@ -121,7 +131,11 @@ describe('syncGroupMembership', () => {
   it('drops stale member ids of removed nodes', () => {
     const ws = makeWorkspace()
     const node = makeNode(ws, { x: 0, y: 0 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 }, [node.id])
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+      nodes: [node.id],
+    })
 
     ws.removeNodeByIds(node.id)
     syncGroupMembership(ws)
@@ -132,7 +146,10 @@ describe('syncGroupMembership', () => {
   it('emits group:changed only when membership changes', () => {
     const ws = makeWorkspace()
     makeNode(ws, { x: 0, y: 0 })
-    const group = makeGroup(ws, { x: 0, y: 0 }, { x: 100, y: 100 })
+    const group = makeGroup(ws, {
+      pos: { x: 0, y: 0 },
+      size: { x: 100, y: 100 },
+    })
 
     let changes = 0
     ws.events.on('group:changed', (g) => {
