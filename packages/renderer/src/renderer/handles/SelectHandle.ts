@@ -3,19 +3,20 @@ import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Select } from '../components/select'
 import type { SelectOption } from '../components/select'
 import { availableWidth } from './utils'
-import type { HandleModule } from './types'
+import type { NodeHandleFactory, NodeHandleModule } from './types'
 
-const selectMap = new WeakMap<Konva.Group, Select>()
+const INPUT_HEIGHT = 18
 
-export const selectHandle: HandleModule = {
-  type: 'select',
+class SelectModule extends Konva.Group implements NodeHandleModule {
+  _handle: NodeHandle
+  _select: Select
 
-  create: (handle) => {
-    const group = new Konva.Group()
-    const w = availableWidth(handle)
+  constructor(handle: NodeHandle) {
+    super()
+    this._handle = handle
 
-    const select = new Select({
-      selectWidth: w,
+    this._select = new Select({
+      selectWidth: availableWidth(handle),
       selectHeight: INPUT_HEIGHT,
       options: readOptions(handle),
       value: String(handle.getValue() ?? ''),
@@ -24,27 +25,20 @@ export const selectHandle: HandleModule = {
         handle.setValue(v)
       },
     })
-    group.add(select)
-    selectMap.set(group, select)
+    this.add(this._select)
+  }
 
-    return group
-  },
-
-  update: (group, handle) => {
-    const select = selectMap.get(group)
-    if (select) {
-      select.setOptions(readOptions(handle))
-      select.setValue(String(handle.getValue() ?? ''))
-      select.setWidth(availableWidth(handle))
-    }
-  },
-
-  destroy: (group) => {
-    selectMap.delete(group)
-  },
+  update(): void {
+    this._select.setOptions(readOptions(this._handle))
+    this._select.setValue(String(this._handle.getValue() ?? ''))
+    this._select.setWidth(availableWidth(this._handle))
+  }
 }
 
-const INPUT_HEIGHT = 18
+export const selectHandleFactory: NodeHandleFactory = {
+  type: 'select',
+  create: (handle) => new SelectModule(handle),
+}
 
 function readOptions(handle: NodeHandle): (SelectOption | string)[] {
   return handle.getOptions().options ?? []

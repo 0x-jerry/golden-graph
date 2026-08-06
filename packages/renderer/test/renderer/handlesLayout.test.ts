@@ -5,7 +5,7 @@ import {
   getHandleRowHeight,
   setMeasuredRowHeight,
 } from '../../src/renderer/handles/layout'
-import { getHandleModule } from '../../src/renderer/handles'
+import { getHandleFactory } from '../../src/renderer/handles'
 import { BLOCK_HANDLE_LABEL_ROW, LAYOUT } from '../../src/renderer/constants'
 
 describe('getHandleRowHeight', () => {
@@ -26,18 +26,18 @@ describe('getHandleRowHeight', () => {
   it('respects config.minHeight for block rows', () => {
     const node = makeNode(1, 'N')
     const handle = addHandle(node, 'a', { type: 'display' })
-    const module = getHandleModule('display')!
-    const prev = module.config?.minHeight
+    const factory = getHandleFactory('display')!
+    const prev = factory.config?.minHeight
 
-    module.config = { ...module.config, minHeight: 80 }
+    factory.config = { ...factory.config, minHeight: 80 }
     try {
       expect(getHandleRowHeight(handle)).toBe(BLOCK_HANDLE_LABEL_ROW + 80)
     } finally {
       if (prev === undefined) {
-        const { minHeight: _drop, ...rest } = module.config!
-        module.config = rest
+        const { minHeight: _drop, ...rest } = factory.config!
+        factory.config = rest
       } else {
-        module.config = { ...module.config, minHeight: prev }
+        factory.config = { ...factory.config, minHeight: prev }
       }
     }
   })

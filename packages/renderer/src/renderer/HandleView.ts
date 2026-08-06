@@ -13,14 +13,18 @@ import {
   ATTR,
   getNodeWidth,
 } from './constants'
-import { getHandleModule } from './handles'
+import { getHandleFactory } from './handles'
 import {
   clearMeasuredRowHeight,
   handleY,
   getHandleRowHeight,
   setMeasuredRowHeight,
 } from './handles/layout'
-import type { HandleModule, HandleContentLayout } from './handles/types'
+import type {
+  NodeHandleFactory,
+  NodeHandleModule,
+  HandleContentLayout,
+} from './handles/types'
 
 /** Label top padding inside a block handle's row. */
 const BLOCK_LABEL_TOP_PAD = 3
@@ -52,8 +56,8 @@ export class HandleView {
 
   _joint?: Konva.Circle
   _label: Konva.Text
-  _content?: Konva.Group
-  _module: HandleModule | null
+  _factory: NodeHandleFactory | null
+  _module: NodeHandleModule | null = null
   _layout: HandleContentLayout
   _highlighted = false
   /** Fired after this handle's row height is re-measured. */
@@ -63,8 +67,8 @@ export class HandleView {
     this.handle = handle
     this.key = handle.key
     this._onResize = onResize
-    this._module = getHandleModule(handle.type) ?? null
-    this._layout = this._module?.config?.layout ?? 'inline'
+    this._factory = getHandleFactory(handle.type) ?? null
+    this._layout = this._factory?.config?.layout ?? 'inline'
 
     const group = new Konva.Group({
       name: ELEMENT_TYPE.HANDLE,
@@ -120,14 +124,14 @@ export class HandleView {
     group.add(label)
     this._label = label
 
-    if (this._module) {
-      const contentGroup = this._module.create(handle, handle.getOptions())
-      contentGroup.name('content')
-      contentGroup.y(this._contentY())
-      this._layoutContent(contentGroup)
-      group.add(contentGroup)
-      this._content = contentGroup
-      contentViewMap.set(contentGroup, this)
+    if (this._factory) {
+      const module = this._factory.create(handle, handle.getOptions())
+      module.name('content')
+      module.y(this._contentY())
+      this._layoutContent(module)
+      group.add(module)
+      this._module = module
+      contentViewMap.set(module, this)
     }
 
     handleViewMap.set(handle, this)
@@ -155,16 +159,13 @@ export class HandleView {
     this._label.y(this._layout === 'block' ? rowTop + BLOCK_LABEL_TOP_PAD : y)
     this._label.x(labelX(this.handle))
 
-    const content = this._content
     const module = this._module
-    if (module?.update && content) {
-      module.update(content, this.handle)
+    module?.update?.()
+    if (module) {
       // Re-layout after the module may have changed its own size
       // (e.g. width follows the node width).
-      this._layoutContent(content)
-    }
-    if (content) {
-      content.y(this._contentY())
+      this._layoutContent(module)
+      module.y(this._contentY())
     }
 
     // Measure after the module re-rendered its content, so the row reflects
@@ -180,12 +181,10 @@ export class HandleView {
   destroy(): void {
     handleViewMap.delete(this.handle)
     clearMeasuredRowHeight(this.handle)
-    const content = this._content
-    if (content) {
-      contentViewMap.delete(content)
-      if (this._module?.destroy) {
-        this._module.destroy(content, this.handle)
-      }
+    const module = this._module
+    if (module) {
+      contentViewMap.delete(module)
+      module.destroy()
     }
     this.group.destroy()
   }
@@ -194,11 +193,10 @@ export class HandleView {
     if (this._layout !== 'block') {
       return
     }
-    const contentHeight = this._content
-      ? this._content.getClientRect({ skipTransform: true }).height
+    const contentHeight = this._module
+      ? this._module.getClientRect({ skipTransform: true }).height
       : 0
-    const module = this._module
-    const minHeight = module?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+    const minHeight = this._factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
     const rowHeight =
       BLOCK_HANDLE_LABEL_ROW + Math.max(minHeight, contentHeight)
     setMeasuredRowHeight(this.handle, rowHeight)

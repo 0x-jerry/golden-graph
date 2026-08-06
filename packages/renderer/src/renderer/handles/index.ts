@@ -1,25 +1,34 @@
 import { HandleComponentRegistry } from '@0x-jerry/golden-graph'
-import type { HandleModule } from './types'
+import type { NodeHandleFactory } from './types'
 
-import { textHandle } from './TextHandle'
-import { numberHandle } from './NumberHandle'
-import { selectHandle } from './SelectHandle'
-import { displayHandle } from './DisplayHandle'
-import { imageHandle } from './ImageHandle'
+import { textHandleFactory } from './TextHandle'
+import { numberHandleFactory } from './NumberHandle'
+import { selectHandleFactory } from './SelectHandle'
+import { displayHandleFactory } from './DisplayHandle'
+import { imageHandleFactory } from './ImageHandle'
 
-const registry = new HandleComponentRegistry<HandleModule>()
-  .register(textHandle.type, textHandle)
-  .register(numberHandle.type, numberHandle)
-  .register(selectHandle.type, selectHandle)
-  .register(displayHandle.type, displayHandle)
-  .register(imageHandle.type, imageHandle)
+const factories = [
+  textHandleFactory,
+  numberHandleFactory,
+  selectHandleFactory,
+  displayHandleFactory,
+  imageHandleFactory,
+]
 
-export const getHandleModule = (type: string) => registry.get(type)
+const registry = new HandleComponentRegistry<NodeHandleFactory>()
+
+for (const factory of factories) {
+  registry.register(factory.type, factory)
+}
+
+export const getHandleFactory = (type: string) => registry.get(type)
 
 /**
  * Remove shared DOM editors (appended to `document.body`) created by handle
- * modules. Should be called when the renderer is disposed.
+ * factories. Should be called when the renderer is disposed.
  */
 export function disposeHandleEditors() {
-  imageHandle.dispose?.()
+  for (const factory of factories) {
+    factory.dispose?.()
+  }
 }

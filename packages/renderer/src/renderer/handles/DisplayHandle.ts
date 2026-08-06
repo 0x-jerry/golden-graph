@@ -1,14 +1,15 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { COLORS, LAYOUT, getNodeWidth } from '../constants'
-import type { HandleModule } from './types'
+import type { NodeHandleFactory, NodeHandleModule } from './types'
 
-export const displayHandle: HandleModule = {
-  type: 'display',
-  config: { layout: 'block' },
+class DisplayModule extends Konva.Group implements NodeHandleModule {
+  _handle: NodeHandle
 
-  create: (handle) => {
-    const group = new Konva.Group()
+  constructor(handle: NodeHandle) {
+    super()
+    this._handle = handle
+
     const text = new Konva.Text({
       name: 'value',
       text: String(handle.getValue() ?? ''),
@@ -17,17 +18,22 @@ export const displayHandle: HandleModule = {
       width: displayWidth(handle),
       wrap: 'word',
     })
-    group.add(text)
-    return group
-  },
+    this.add(text)
+  }
 
-  update: (group, handle) => {
-    const text = group.findOne<Konva.Text>('.value')
+  update(): void {
+    const text = this.findOne<Konva.Text>('.value')
     if (text) {
-      text.text(String(handle.getValue() ?? ''))
-      text.width(displayWidth(handle))
+      text.text(String(this._handle.getValue() ?? ''))
+      text.width(displayWidth(this._handle))
     }
-  },
+  }
+}
+
+export const displayHandleFactory: NodeHandleFactory = {
+  type: 'display',
+  config: { layout: 'block' },
+  create: (handle) => new DisplayModule(handle),
 }
 
 function displayWidth(handle: NodeHandle): number {

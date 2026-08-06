@@ -1,19 +1,21 @@
 import Konva from 'konva'
+import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Input } from '../components/input'
 import { availableWidth } from './utils'
-import type { HandleModule } from './types'
+import type { NodeHandleFactory, NodeHandleModule } from './types'
 
-const inputMap = new WeakMap<Konva.Group, Input>()
+const INPUT_HEIGHT = 18
 
-export const textHandle: HandleModule = {
-  type: 'text',
+class TextModule extends Konva.Group implements NodeHandleModule {
+  _handle: NodeHandle
+  _input: Input
 
-  create: (handle) => {
-    const group = new Konva.Group()
-    const w = availableWidth(handle)
+  constructor(handle: NodeHandle) {
+    super()
+    this._handle = handle
 
-    const input = new Input({
-      inputWidth: w,
+    this._input = new Input({
+      inputWidth: availableWidth(handle),
       inputHeight: INPUT_HEIGHT,
       value: String(handle.getValue() ?? ''),
       fontSize: 12,
@@ -21,23 +23,16 @@ export const textHandle: HandleModule = {
         handle.setValue(v || undefined)
       },
     })
-    group.add(input)
-    inputMap.set(group, input)
+    this.add(this._input)
+  }
 
-    return group
-  },
-
-  update: (group, handle) => {
-    const input = inputMap.get(group)
-    if (input) {
-      input.setValue(String(handle.getValue() ?? ''))
-      input.setWidth(availableWidth(handle))
-    }
-  },
-
-  destroy: (group) => {
-    inputMap.delete(group)
-  },
+  update(): void {
+    this._input.setValue(String(this._handle.getValue() ?? ''))
+    this._input.setWidth(availableWidth(this._handle))
+  }
 }
 
-const INPUT_HEIGHT = 18
+export const textHandleFactory: NodeHandleFactory = {
+  type: 'text',
+  create: (handle) => new TextModule(handle),
+}

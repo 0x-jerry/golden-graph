@@ -1,7 +1,7 @@
 import type { Node, NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { BLOCK_HANDLE_LABEL_ROW, LAYOUT } from '../constants'
-import { getHandleModule } from './index'
+import { getHandleFactory } from './index'
 
 /** Measured row heights from live `HandleView`s, keyed by handle. */
 const measuredRows = new WeakMap<NodeHandle, number>()
@@ -15,18 +15,18 @@ export function clearMeasuredRowHeight(handle: NodeHandle) {
 }
 
 /**
- * Row height a handle occupies, based on its module's content layout.
+ * Row height a handle occupies, based on its factory's content layout.
  * Block handles take a label row plus a content row; the content row grows
  * past its static minimum when the rendered content measures taller
  * (wrapping text, images). Falls back to the static minimum when no live
  * handle view has measured itself yet.
  */
 export function getHandleRowHeight(handle: NodeHandle): number {
-  const module = getHandleModule(handle.type)
-  if (module?.config?.layout !== 'block') {
+  const factory = getHandleFactory(handle.type)
+  if (factory?.config?.layout !== 'block') {
     return LAYOUT.HANDLE_ROW_HEIGHT
   }
-  const minHeight = module.config.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+  const minHeight = factory.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
   const staticRow = BLOCK_HANDLE_LABEL_ROW + minHeight
   return Math.max(staticRow, measuredRows.get(handle) ?? 0)
 }

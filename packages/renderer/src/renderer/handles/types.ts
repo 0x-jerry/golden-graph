@@ -13,39 +13,54 @@ import type {
 export type HandleContentLayout = 'inline' | 'block'
 
 /**
- * A render module for a handle's content widget (text/number/select/etc.).
- *
- * Implementations are registered in a registry by string `type` and resolved
- * per-handle. A module is shared across handles, so any per-handle state must
- * be keyed by the handle's Konva group — use a module-level
- * `WeakMap<Konva.Group, ...>` and destroy it in `destroy(group)`.
+ * Render config for a handle factory. Applied to every handle created by it.
  */
-export interface HandleModule {
+export interface NodeHandleConfig {
+  /**
+   * Content placement relative to the handle label. Defaults to `'inline'`.
+   */
+  layout?: HandleContentLayout
+
+  /**
+   * Minimum height (px) of the block content area. The rendered row grows
+   * beyond this when the measured content is taller (wrapping text, images).
+   * Defaults to `LAYOUT.HANDLE_ROW_HEIGHT`. Only applies to block handles.
+   */
+  minHeight?: number
+}
+
+/**
+ * The rendered widget for a single handle. Created per-handle by a
+ * `NodeHandleFactory`; the module IS its Konva group, so all per-handle state
+ * lives on the module instance itself (no shared registries).
+ */
+export interface NodeHandleModule extends Konva.Group {
+  /** Re-render the widget for the current handle value/size. */
+  update?(): void
+
+  /**
+   * Tear down per-handle resources before the Konva group is destroyed.
+   * Inherited from `Konva.Group`; modules override it to add cleanup
+   * (e.g. releasing a stage cursor).
+   */
+  destroy(): this
+}
+
+/**
+ * A registered handle renderer. Factories are singletons in a registry keyed
+ * by string `type`; each `create()` call produces a fresh `NodeHandleModule`
+ * bound to one handle.
+ */
+export interface NodeHandleFactory {
   type: string
 
-  create(handle: NodeHandle, options: INodeHandleConfigOptions): Konva.Group
+  config?: NodeHandleConfig
 
-  update?(group: Konva.Group, handle: NodeHandle): void
-
-  destroy?(group: Konva.Group, handle: NodeHandle): void
+  create(handle: NodeHandle, options: INodeHandleConfigOptions): NodeHandleModule
 
   /**
    * Release shared resources (e.g. DOM editors) when the renderer is disposed.
-   * Called once per module, not per handle.
+   * Called once per factory, not per handle.
    */
   dispose?(): void
-
-  config?: {
-    /**
-     * Content placement relative to the handle label. Defaults to `'inline'`.
-     */
-    layout?: HandleContentLayout
-
-    /**
-     * Minimum height (px) of the block content area. The rendered row grows
-     * beyond this when the measured content is taller (wrapping text, images).
-     * Defaults to `LAYOUT.HANDLE_ROW_HEIGHT`. Only applies to block handles.
-     */
-    minHeight?: number
-  }
 }

@@ -40,4 +40,4 @@ export interface CoreMenuItem {
   children?: CoreMenuItem[]
 }
 
-export type { HandleModule } from './handles/types'
+export type { NodeHandleFactory, NodeHandleModule } from './handles/types'
