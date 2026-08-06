@@ -12,7 +12,6 @@
     "@iconify-json/carbon": "latest",
     "@vitejs/plugin-vue": "^6.0.3",
     "less": "^4.5.1",
-    "typescript": "^5.9.3",
     "unplugin-icons": "latest",
     "vite": "^7.3.1"
   },
