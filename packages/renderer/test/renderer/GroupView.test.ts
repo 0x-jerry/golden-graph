@@ -63,11 +63,11 @@ describe('GroupView', () => {
     view.startRename()
     const input = view._nameInput
     expect(input).toBeDefined()
-    expect(view.group.getChildren().includes(input!)).toBe(true)
+    expect(view._name.getChildren().includes(input!)).toBe(true)
 
     input!.deactivate()
     expect(view._nameInput).toBeNull()
-    expect(view.group.getChildren().includes(input!)).toBe(false)
+    expect(view._name.getChildren().includes(input!)).toBe(false)
   })
 
   it('destroys an open title editor when the view is destroyed', () => {
