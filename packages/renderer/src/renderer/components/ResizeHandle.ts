@@ -1,5 +1,6 @@
 import Konva from 'konva'
 import { COLORS, NODE_SHAPE, RESIZE_HANDLE_SIZE } from '../constants'
+import { resetStageCursor, setStageCursor } from '../cursor'
 
 /**
  * Corner resize grip (triangle) with an enlarged hit area for easy grabbing.
@@ -51,13 +52,11 @@ export class ResizeHandle extends Konva.Group {
   }
 
   _setResizeCursor = () => {
-    const stage = this._hit.getStage()
-    if (stage) stage.content.style.cursor = 'nwse-resize'
+    setStageCursor(this._hit, 'nwse-resize')
   }
 
   _resetCursor = () => {
-    const stage = this._hit.getStage()
-    if (stage) stage.content.style.cursor = ''
+    resetStageCursor(this._hit)
   }
 
   _onVisibleChange = () => {

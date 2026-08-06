@@ -8,12 +8,18 @@ import {
   HANDLE_CONTENT_Y_OFFSET,
   HANDLE_NAME_WIDTH,
   HANDLE_NAME_GAP,
+  BLOCK_HANDLE_LABEL_ROW,
   ELEMENT_TYPE,
   ATTR,
   getNodeWidth,
 } from './constants'
 import { getHandleModule } from './handles'
-import { handleY, getHandleRowHeight } from './handles/layout'
+import {
+  clearMeasuredRowHeight,
+  handleY,
+  getHandleRowHeight,
+  setMeasuredRowHeight,
+} from './handles/layout'
 import type { HandleModule, HandleContentLayout } from './handles/types'
 
 /** Label top padding inside a block handle's row. */
@@ -28,6 +34,17 @@ const BLOCK_LABEL_CONTENT_GAP = 4
  */
 const handleViewMap = new WeakMap<NodeHandle, HandleView>()
 
+/** Registry mapping a handle's content group back to its view. */
+const contentViewMap = new WeakMap<Konva.Group, HandleView>()
+
+/**
+ * Signal that a handle's content group resized asynchronously (e.g. an image
+ * finished loading). Re-measures the block row and resizes the owning node.
+ */
+export function notifyContentResized(group: Konva.Group) {
+  contentViewMap.get(group)?._onContentResized()
+}
+
 export class HandleView {
   readonly handle: NodeHandle
   readonly group: Konva.Group
@@ -39,10 +56,13 @@ export class HandleView {
   _module: HandleModule | null
   _layout: HandleContentLayout
   _highlighted = false
+  /** Fired after this handle's row height is re-measured. */
+  _onResize?: () => void
 
-  constructor(handle: NodeHandle) {
+  constructor(handle: NodeHandle, onResize?: () => void) {
     this.handle = handle
     this.key = handle.key
+    this._onResize = onResize
     this._module = getHandleModule(handle.type) ?? null
     this._layout = this._module?.config?.layout ?? 'inline'
 
@@ -60,7 +80,10 @@ export class HandleView {
       handle.position === HandlePosition.Right
     ) {
       const circle = new Konva.Circle({
-        x: handle.position === HandlePosition.Left ? 0 : getNodeWidth(handle.node),
+        x:
+          handle.position === HandlePosition.Left
+            ? 0
+            : getNodeWidth(handle.node),
         y,
         radius: LAYOUT.JOINT_RADIUS,
         fill: this._jointFill(),
@@ -104,9 +127,14 @@ export class HandleView {
       this._layoutContent(contentGroup)
       group.add(contentGroup)
       this._content = contentGroup
+      contentViewMap.set(contentGroup, this)
     }
 
     handleViewMap.set(handle, this)
+
+    // Measure the block content and re-position using the final row height.
+    this._measureRowHeight()
+    this.update()
   }
 
   update(): void {
@@ -116,7 +144,11 @@ export class HandleView {
     const joint = this._joint
     if (joint) {
       joint.y(y)
-      joint.x(this.handle.position === HandlePosition.Left ? 0 : getNodeWidth(this.handle.node))
+      joint.x(
+        this.handle.position === HandlePosition.Left
+          ? 0
+          : getNodeWidth(this.handle.node),
+      )
       joint.fill(this._jointFill())
     }
 
@@ -134,6 +166,10 @@ export class HandleView {
     if (content) {
       content.y(this._contentY())
     }
+
+    // Measure after the module re-rendered its content, so the row reflects
+    // the current value (wrapped text height, image size, ...).
+    this._measureRowHeight()
   }
 
   setJointHighlight(highlighted: boolean): void {
@@ -143,11 +179,34 @@ export class HandleView {
 
   destroy(): void {
     handleViewMap.delete(this.handle)
+    clearMeasuredRowHeight(this.handle)
     const content = this._content
-    if (content && this._module?.destroy) {
-      this._module.destroy(content, this.handle)
+    if (content) {
+      contentViewMap.delete(content)
+      if (this._module?.destroy) {
+        this._module.destroy(content, this.handle)
+      }
     }
     this.group.destroy()
+  }
+
+  _measureRowHeight(): void {
+    if (this._layout !== 'block') {
+      return
+    }
+    const contentHeight = this._content
+      ? this._content.getClientRect({ skipTransform: true }).height
+      : 0
+    const module = this._module
+    const minHeight = module?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+    const rowHeight =
+      BLOCK_HANDLE_LABEL_ROW + Math.max(minHeight, contentHeight)
+    setMeasuredRowHeight(this.handle, rowHeight)
+  }
+
+  _onContentResized(): void {
+    this._measureRowHeight()
+    this._onResize?.()
   }
 
   _jointFill(): string {

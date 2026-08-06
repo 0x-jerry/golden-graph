@@ -23,10 +23,7 @@ export type HandleContentLayout = 'inline' | 'block'
 export interface HandleModule {
   type: string
 
-  create(
-    handle: NodeHandle,
-    options: INodeHandleConfigOptions,
-  ): Konva.Group
+  create(handle: NodeHandle, options: INodeHandleConfigOptions): Konva.Group
 
   update?(group: Konva.Group, handle: NodeHandle): void
 
@@ -43,5 +40,12 @@ export interface HandleModule {
      * Content placement relative to the handle label. Defaults to `'inline'`.
      */
     layout?: HandleContentLayout
+
+    /**
+     * Minimum height (px) of the block content area. The rendered row grows
+     * beyond this when the measured content is taller (wrapping text, images).
+     * Defaults to `LAYOUT.HANDLE_ROW_HEIGHT`. Only applies to block handles.
+     */
+    minHeight?: number
   }
 }

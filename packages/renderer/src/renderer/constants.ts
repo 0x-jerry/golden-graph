@@ -112,8 +112,8 @@ export const HANDLE_CONTENT_X = LAYOUT.JOINT_RADIUS + 4
 export const HANDLE_CONTENT_Y_OFFSET = 8
 export const HANDLE_NAME_WIDTH = 60
 export const HANDLE_NAME_GAP = 6
-/** Row height for a block-layout handle (label on top, content below). */
-export const BLOCK_HANDLE_ROW_HEIGHT = LAYOUT.HANDLE_ROW_HEIGHT * 2
+/** Height of the label row inside a block-layout handle's row. */
+export const BLOCK_HANDLE_LABEL_ROW = LAYOUT.HANDLE_ROW_HEIGHT
 export const EXECUTOR_SHADOW_BLUR = 10
 export const ZOOM_MIN = 0.1
 export const ZOOM_MAX = 4

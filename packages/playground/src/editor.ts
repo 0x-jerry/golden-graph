@@ -51,6 +51,13 @@ export async function setup(workspace: Workspace) {
     },
   })
 
+  workspace.addNode('ImageLoader', {
+    pos: {
+      x: 500,
+      y: 350,
+    },
+  })
+
   workspace.connect(n1.getHandle('output')!, n2.getHandle('input')!)
 
   return workspace

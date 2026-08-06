@@ -25,6 +25,8 @@ export class NodeView extends EntityView<Node> {
   _tag?: Konva.Group
   /** Rendered handle views keyed by handle key. */
   _handleViews = new Map<string, HandleView>()
+  /** `size.y` last written by `_syncNodeHeight`, or `null` when hands-off. */
+  _autoY: number | null = null
 
   constructor(node: Node) {
     const width = getNodeWidth(node)
@@ -84,9 +86,14 @@ export class NodeView extends EntityView<Node> {
 
     this._syncHandles()
 
+    // Fix the body height now that handle views have measured their rows
+    // (block content can grow past the static minimum).
+    const measuredHeight = getNodeHeight(node)
+    this._body.height(measuredHeight)
+
     const resize = new ResizeHandle()
     resize.x(width - RESIZE_HANDLE_SIZE)
-    resize.y(height - RESIZE_HANDLE_SIZE)
+    resize.y(measuredHeight - RESIZE_HANDLE_SIZE)
     g.add(resize)
     this._resize = resize
   }
@@ -101,10 +108,6 @@ export class NodeView extends EntityView<Node> {
     this._name.text(node.name)
 
     const width = getNodeWidth(node)
-    const height = getNodeHeight(node)
-
-    this._body.width(width)
-    this._body.height(height)
     this._header.width(width)
 
     if (this._tag) {
@@ -116,10 +119,49 @@ export class NodeView extends EntityView<Node> {
       this._name.width(width - 16)
     }
 
+    // Re-measure handle rows first so the body/grip use the final height
+    // (block content can grow/shrink past the static minimum).
+    this._syncHandles()
+
+    const height = getNodeHeight(node)
+    this._body.width(width)
+    this._body.height(height)
+
     this._resize.x(width - RESIZE_HANDLE_SIZE)
     this._resize.y(height - RESIZE_HANDLE_SIZE)
 
-    this._syncHandles()
+    this._syncNodeHeight()
+  }
+
+  /**
+   * Keep `size.y` in sync with the content-driven height: grow when content
+   * overflows, shrink when it shrinks — but never shrink below a height the
+   * user set manually (`size.y` no longer equals our last write).
+   */
+  _syncNodeHeight(): void {
+    const node = this.entity
+    const content = getNodeContentHeight(node)
+    const current = node.size.y
+
+    if (current !== this._autoY) {
+      // Something else (manual resize) changed `size.y` since our last write.
+      if (content > current) {
+        this._writeAutoHeight(content)
+      } else {
+        this._autoY = null
+      }
+      return
+    }
+
+    if (content !== this._autoY) {
+      this._writeAutoHeight(content)
+    }
+  }
+
+  _writeAutoHeight(y: number): void {
+    const node = this.entity
+    node.setSize({ x: node.size.x, y })
+    this._autoY = y
   }
 
   /** Reflect active-selection state: accent stroke + resize grip visibility. */
@@ -158,7 +200,7 @@ export class NodeView extends EntityView<Node> {
 
       let view = this._handleViews.get(handle.key)
       if (!view) {
-        view = new HandleView(handle)
+        view = new HandleView(handle, () => this._syncNodeHeight())
         this._handleViews.set(handle.key, view)
         this.group.add(view.group)
         return
@@ -177,15 +219,23 @@ export class NodeView extends EntityView<Node> {
 }
 
 /**
- * Effective node height. Never smaller than the content-driven height
- * (header + handle rows + padding), even when `size.y` is set.
+ * Content-driven node height (header + handle rows + padding), using measured
+ * block row heights when live handle views exist.
  */
-export function getNodeHeight(node: Node): number {
+export function getNodeContentHeight(node: Node): number {
   let contentHeight = LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING
   for (const handle of node.handles) {
     contentHeight += getHandleRowHeight(handle)
   }
-  return Math.max(node.size.y, contentHeight)
+  return contentHeight
+}
+
+/**
+ * Effective node height. Never smaller than the content-driven height
+ * (header + handle rows + padding), even when `size.y` is set.
+ */
+export function getNodeHeight(node: Node): number {
+  return Math.max(node.size.y, getNodeContentHeight(node))
 }
 
 export function getHandleIndex(node: Node, handle: NodeHandle): number {
