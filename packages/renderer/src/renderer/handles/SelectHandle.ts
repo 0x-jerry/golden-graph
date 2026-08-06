@@ -5,6 +5,10 @@ import type { SelectOption } from '../components/select'
 import { availableWidth } from './utils'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
 
+export interface NodeHandleOptions {
+  options?: (SelectOption | string)[]
+}
+
 const INPUT_HEIGHT = 18
 
 class SelectModule extends Konva.Group implements NodeHandleModule {
@@ -41,5 +45,5 @@ export const selectHandleFactory: NodeHandleFactory = {
 }
 
 function readOptions(handle: NodeHandle): (SelectOption | string)[] {
-  return handle.getOptions().options ?? []
+  return handle.getOptions<NodeHandleOptions>().options ?? []
 }

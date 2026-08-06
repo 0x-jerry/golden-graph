@@ -1,4 +1,5 @@
 import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
+import { colorDefinition } from './Color'
 import { displayDefinition } from './Display'
 import { imageLoaderDefinition } from './images/ImageLoader'
 import { mathDefinitions } from './math'
@@ -13,4 +14,5 @@ export const nodeDefinitions: INodeDefinition[] = [
   toStringDefinition,
   displayDefinition,
   imageLoaderDefinition,
+  colorDefinition,
 ]

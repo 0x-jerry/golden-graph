@@ -6,6 +6,7 @@ import { numberHandleFactory } from './NumberHandle'
 import { selectHandleFactory } from './SelectHandle'
 import { displayHandleFactory } from './DisplayHandle'
 import { imageHandleFactory } from './ImageHandle'
+import { colorHandleFactory } from './ColorHandle'
 
 const factories = [
   textHandleFactory,
@@ -13,6 +14,7 @@ const factories = [
   selectHandleFactory,
   displayHandleFactory,
   imageHandleFactory,
+  colorHandleFactory,
 ]
 
 const registry = new HandleComponentRegistry<NodeHandleFactory>()

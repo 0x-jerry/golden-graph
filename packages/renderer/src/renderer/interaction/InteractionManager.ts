@@ -22,6 +22,7 @@ import { NodeDragGesture } from './NodeDragGesture'
 import { NodeResizeGesture } from './NodeResizeGesture'
 import { SelectionGesture } from './SelectionGesture'
 import type { GestureContext, IGesture, OverlayLayer } from './types'
+import { syncGroupMembership } from '../groupMembership'
 
 export type InteractionManagerEvents = {
   'node-select': [id: number]
@@ -204,6 +205,7 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
   _onPointerUp = () => {
     this._activeGesture?.end()
     this._activeGesture = null
+    syncGroupMembership(this._ws)
   }
 
   _onWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
