@@ -199,6 +199,16 @@ export class NodeView extends EntityView<Node> {
       if (index < 0) return
 
       let view = this._handleViews.get(handle.key)
+
+      // Rebuild the view when the handle object was replaced (e.g. a
+      // SubGraphNode rebuilt by `buildNode()`): layout helpers match handles
+      // by identity, so a stale handle would mis-position the row.
+      if (view && view.handle !== handle) {
+        view.destroy()
+        this._handleViews.delete(handle.key)
+        view = undefined
+      }
+
       if (!view) {
         view = new HandleView(handle, () => this._syncNodeHeight())
         this._handleViews.set(handle.key, view)

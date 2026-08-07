@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { isSubGraphNameNode, isSubGraphNode } from '@0x-jerry/golden-graph'
+import {
+  HandlePosition,
+  isSubGraphNameNode,
+  isSubGraphNode,
+} from '@0x-jerry/golden-graph'
 import { EntityViewStore } from '../../src/renderer/EntityViewStore'
 import { subscribeGraphEvents } from '../../src/renderer/GraphEventRouter'
 import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
@@ -105,5 +109,49 @@ describe('enter/exit subgraph edge cleanup', () => {
     )!
     expect(rebuilt.name).toBe('Renamed')
     expect(store._nodeViews.get(subGraphNodeId)!._name.text()).toBe('Renamed')
+  })
+
+  it('keeps handle rows in place after an input handle is replaced inside', () => {
+    const ws = createSubGraphWorkspace()
+    const subGraph = ws.subGraphs[0]!
+    const subGraphNode = ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+    const outKey = subGraphNode.handles.find(
+      (h) => h.position === HandlePosition.Right,
+    )!.key
+    const subGraphNodeId = subGraphNode.id
+
+    const container = document.createElement('div')
+    Object.defineProperty(container, 'clientWidth', { value: 800 })
+    Object.defineProperty(container, 'clientHeight', { value: 600 })
+
+    const renderer = new KonvaGraphRenderer(container, ws)
+    const store = renderer._store
+
+    const jointYs = () => {
+      const view = store._nodeViews.get(subGraphNodeId)!
+      const out = view._handleViews.get(outKey)!._joint!.y()
+      const inp = [...view._handleViews.values()]
+        .find((hv) => hv.handle.position === HandlePosition.Left)!
+        ._joint!.y()
+      return { out, inp }
+    }
+
+    const before = jointYs()
+
+    ws.enterSubGraph(subGraph.id)
+    const oldInputNode = ws.nodes.find(
+      (n) => n.type === 'subgraph.input',
+    )!
+    ws.removeNodeByIds(oldInputNode.id)
+    ws.addNode('subgraph.input')
+    ws.exitSubGraph()
+
+    // Rows keep their order/positions even though the output handle was
+    // replaced (new handle object, same key).
+    expect(jointYs()).toEqual(before)
+
+    renderer.dispose()
   })
 })
