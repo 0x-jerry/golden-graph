@@ -4,7 +4,7 @@ import type {
   ExecutorBackendEvent,
   INodeProvider,
   INodeSchema,
-} from '@0x-jerry/golden-graph'
+} from '@0x-jerry/golden-graph-protocol'
 import {
   WorkflowExecutor,
   type INodeDefinition,

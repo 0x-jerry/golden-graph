@@ -1,4 +1,5 @@
-import { nodeClassFromSchema, type INodeSchema } from '../NodeSchema'
+import type { INodeSchema } from '@0x-jerry/golden-graph-protocol'
+import { nodeClassFromSchema } from '../NodeSchema'
 import type { Workspace } from './Workspace'
 
 /**

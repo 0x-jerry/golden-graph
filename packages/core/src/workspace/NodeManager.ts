@@ -1,7 +1,7 @@
+import type { IVec2 } from '@0x-jerry/golden-graph-protocol'
 import { remove } from '@0x-jerry/utils'
 import { type Node, type NodeBaseUpdateOptions } from '../Node'
 import { isSubGraphNode } from '../SubGraphNode'
-import type { IVec2 } from '../types'
 import type { Workspace } from './Workspace'
 import { ActiveType } from './WorkspaceState'
 

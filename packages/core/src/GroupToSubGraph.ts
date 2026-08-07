@@ -1,8 +1,8 @@
+import type { INodeHandleLoc } from '@0x-jerry/golden-graph-protocol'
 import type { Edge } from './Edge'
 import type { Node } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import { SubGraph } from './SubGraph'
-import type { INodeHandleLoc } from './types'
 import type { Workspace } from './Workspace'
 
 interface ExternalEdgeInfo {

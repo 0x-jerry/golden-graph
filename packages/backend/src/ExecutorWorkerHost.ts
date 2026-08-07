@@ -4,8 +4,8 @@ import type {
   ExecutorBackendResponse,
   INodeProvider,
   INodeSchema,
-} from '@0x-jerry/golden-graph'
-import { normalizeNodeProvider } from '@0x-jerry/golden-graph'
+} from '@0x-jerry/golden-graph-protocol'
+import { normalizeNodeProvider } from '@0x-jerry/golden-graph-protocol'
 import {
   WorkflowExecutor,
   type INodeDefinition,

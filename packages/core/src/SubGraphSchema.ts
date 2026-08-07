@@ -1,8 +1,11 @@
-import { HandlePosition } from './HandlePosition'
-import { type Node, NodeType } from './Node'
-import type { INodeHandleConfig } from './NodeHandle'
-import type { INodeProvider } from './NodeProvider'
-import type { INodeSchema } from './NodeSchema'
+import {
+  HandlePosition,
+  type INodeHandleConfig,
+  type INodeProvider,
+  type INodeSchema,
+  NodeType,
+} from '@0x-jerry/golden-graph-protocol'
+import type { Node } from './Node'
 
 export const SUBGRAPH_INPUT_NODE_TYPE = 'subgraph.input'
 export const SUBGRAPH_OUTPUT_NODE_TYPE = 'subgraph.output'

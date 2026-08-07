@@ -1,9 +1,11 @@
+import {
+  type INodeHandleLoc,
+  edgeLocKey,
+} from '@0x-jerry/golden-graph-protocol'
 import { remove } from '@0x-jerry/utils'
 import { uniq } from 'lodash-es'
 import { Edge } from '../Edge'
-import { edgeLocKey } from '../helper'
 import type { NodeHandle } from '../NodeHandle'
-import type { INodeHandleLoc } from '../types'
 import type { Workspace } from './Workspace'
 
 /**

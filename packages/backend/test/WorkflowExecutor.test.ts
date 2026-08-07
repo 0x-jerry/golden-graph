@@ -7,7 +7,7 @@ import {
   type INodeHandleLoc,
   type IWorkspace,
   type HandleValueUpdate
-} from '@0x-jerry/golden-graph'
+} from '@0x-jerry/golden-graph-protocol'
 import {
   WorkflowExecutor,
   type INodeDefinition,

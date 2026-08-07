@@ -1,27 +1,31 @@
-import { type Arrayable, EventEmitter, nanoid } from '@0x-jerry/utils'
+import {
+  type Arrayable,
+  EventEmitter,
+  nanoid,
+} from '@0x-jerry/utils'
+import {
+  type INodeHandleLoc,
+  type INodeProvider,
+  type INodeSchema,
+  type IWorkspace,
+  type IVec2,
+  NodeType,
+  type ExecutorBackend,
+  normalizeSchemaNodeProvider,
+} from '@0x-jerry/golden-graph-protocol'
 import { CoordSystem } from '../CoordSystem'
 import type { Edge } from '../Edge'
 import { Executor } from '../Executor'
-import type { ExecutorBackend } from '../ExecutorBackend'
 import type { Group } from '../Group'
 import { createIncrementIdGenerator, toReadonly } from '../helper'
-import { type Node, type NodeBaseUpdateOptions, NodeType } from '../Node'
+import { type Node, type NodeBaseUpdateOptions } from '../Node'
 import type { NodeConstructor } from '../Node'
 import type { NodeHandle } from '../NodeHandle'
-import type { INodeSchema } from '../NodeSchema'
-import type { INodeProvider } from '../NodeProvider'
-import { normalizeSchemaNodeProvider } from '../NodeProvider'
 import type { IPersistent } from '../Persistent'
 import { Register } from '../Register'
 import type { SubGraph } from '../SubGraph'
 import { subGraphNodeProvider } from '../SubGraphSchema'
-import type {
-  IDisposable,
-  INodeHandleLoc,
-  IRenderer,
-  IVec2,
-  IWorkspace,
-} from '../types'
+import type { IDisposable, IRenderer } from '../types'
 import { EdgeManager } from './EdgeManager'
 import { GroupManager } from './GroupManager'
 import { NodeManager } from './NodeManager'

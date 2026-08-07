@@ -1,4 +1,7 @@
-import type { ExecutorBackend, ExecutorBackendEvent } from './ExecutorBackend'
+import type {
+  ExecutorBackend,
+  ExecutorBackendEvent,
+} from '@0x-jerry/golden-graph-protocol'
 import { toReadonly } from './helper'
 import type { Node } from './Node'
 import type { Workspace } from './Workspace'

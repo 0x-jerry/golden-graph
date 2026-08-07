@@ -6,7 +6,7 @@ import type {
   ExecutorBackendResponse,
   INodeProvider,
   INodeSchema,
-} from '@0x-jerry/golden-graph'
+} from '@0x-jerry/golden-graph-protocol'
 
 /**
  * Minimal structural subset of the DOM `Worker` used by this backend.

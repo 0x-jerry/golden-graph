@@ -1,9 +1,9 @@
+import type { IWorkspace } from '@0x-jerry/golden-graph-protocol'
 import { Edge } from '../Edge'
 import { Group } from '../Group'
 import type { Node } from '../Node'
 import type { IPersistent } from '../Persistent'
 import { SubGraph } from '../SubGraph'
-import type { IWorkspace } from '../types'
 import type { Workspace } from './Workspace'
 
 /**

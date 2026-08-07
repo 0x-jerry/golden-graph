@@ -5,20 +5,23 @@
 Root scripts (bun workspace monorepo):
 
 ```bash
-bun dev              # start playground (= bun run --filter playground dev)
-bun test             # vitest run in all @0x-jerry/* packages
-bun play:build       # build playground for production
+bun run dev              # start playground (= bun run --filter playground dev)
+bun run test             # vitest run in all @0x-jerry/* packages
+bun run play:build       # build playground for production
 ```
 
 Per-package — use `bun run --filter <pkg>`:
 
 ```bash
+bun run --filter @0x-jerry/golden-graph-protocol test  # protocol tests
 bun run --filter @0x-jerry/golden-graph test          # core tests
 bun run --filter @0x-jerry/golden-graph-backend test   # backend tests
 bun run --filter @0x-jerry/golden-graph-renderer test  # renderer tests
+bun run --filter @0x-jerry/golden-graph-protocol check # protocol typecheck (tsc)
 bun run --filter @0x-jerry/golden-graph check          # core typecheck (tsc)
 bun run --filter @0x-jerry/golden-graph-backend check  # backend typecheck (tsc)
 bun run --filter @0x-jerry/golden-graph-renderer check # renderer typecheck (vue-tsc)
+bun run --filter @0x-jerry/golden-graph-protocol build # protocol build (tsdown)
 bun run --filter @0x-jerry/golden-graph build          # core build (tsdown)
 bun run --filter @0x-jerry/golden-graph-backend build  # backend build (tsdown)
 bun run --filter @0x-jerry/golden-graph-renderer build # renderer build (vite)
@@ -43,20 +46,22 @@ cd packages/playground && bunx vue-tsc --noEmit
 
 ```
 packages/
+  protocol/  → @0x-jerry/golden-graph-protocol     JSON protocol types + the protocol doc
   core/        → @0x-jerry/golden-graph          plain TS model, zero Vue imports
   backend/     → @0x-jerry/golden-graph-backend  WorkflowExecutor, worker host
   renderer/    → @0x-jerry/golden-graph-renderer Konva + Vue components, hooks, composables
   playground/  → playground (private)            dev app, not published
 ```
 
-Dependency direction: `renderer` → `core`, `backend` → `core`, `playground` → all three. Workspace links via `workspace:*`.
+Dependency direction: `core` → `protocol`, `backend` → `core` + `protocol`, `renderer` → `core`, `playground` → all four. Workspace links via `workspace:*`.
 
 ## Architecture
 
-- **core** is pure TS — `Workspace`, `Node`, `Edge`, `Group`, `SubGraph`, `NodeSchema`, `Executor` (facade), `ExecutorBackend` (protocol), `CoordSystem`. No Vue, no DOM.
-- **backend** owns node definitions (`INodeDefinition = { schema, execute }`) and the `WorkflowExecutor` engine. Imports core types only.
+- **protocol** is pure TS — the JSON protocol types shared between core and backend: `HandlePosition`/`NodeType` enums, snapshot types (`IWorkspace`/`INode`/`IEdge`/...), `INodeSchema`, `INodeProvider` + normalization helpers, `edgeLocKey`, and the executor message types + `ExecutorBackend` contract. `docs/protocol.md` lives here. No Vue, no DOM.
+- **core** is pure TS — `Workspace`, `Node`, `Edge`, `Group`, `SubGraph`, `NodeSchema`, `Executor` (facade), `CoordSystem`. Re-exports the protocol package. No Vue, no DOM.
+- **backend** owns node definitions (`INodeDefinition = { schema, execute }`) and the `WorkflowExecutor` engine. Imports protocol types from `@0x-jerry/golden-graph-protocol` and core-owned subgraph schemas from `@0x-jerry/golden-graph`.
 - **renderer** has `KonvaRenderer.vue` (top-level, provides `Workspace`), `KonvaGraphRenderer`, `InteractionManager`, `ContextMenuBuilder`, Vue composables in `hooks/`, and UI components in `components/`.
-- Execution protocol is plain JSON (`ExecutorBackendRequest` / `ExecutorBackendResponse` in core). Frontend never executes; backend walks snapshots.
+- Execution protocol is plain JSON (`ExecutorBackendRequest` / `ExecutorBackendResponse` in the protocol package). Frontend never executes; backend walks snapshots.
 - Subgraph interface nodes (`subgraph.input` / `subgraph.output`) are core-owned schemas, auto-registered by `Workspace`.
 - Execute functions must be worker-safe (no DOM); handle values must be structured-cloneable.
 
@@ -164,7 +169,7 @@ Pure-TS module in **renderer** (`packages/renderer/src/layout/`), no external de
 
 ## Executor protocol (plain JSON)
 
-**Full reference: [`docs/protocol.md`](./docs/protocol.md).** All messages are plain JSON, defined in `core/src/ExecutorBackend.ts`.
+**Full reference: [`packages/protocol/docs/protocol.md`](./packages/protocol/docs/protocol.md).** All messages are plain JSON, defined in `packages/protocol/src/ExecutorBackend.ts`.
 
 - Frontend → backend: `{ type: 'execute', req: ExecuteRequest }` | `{ type: 'list-node-providers' }`. Backend → frontend: `progress` | `handle-updates` | `finish` (with `error?`) | `node-providers`.
 - `ExecuteRequest = { snapshot: IWorkspace; entryNodeIds: number[]; debug: boolean }` — the backend walks the snapshot directly, no `Workspace` instance.

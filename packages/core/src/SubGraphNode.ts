@@ -1,6 +1,6 @@
+import type { INode } from '@0x-jerry/golden-graph-protocol'
 import { Node } from './Node'
 import type { SubGraph } from './SubGraph'
-import type { INode } from './types'
 import {
   isSubGraphInputNode,
   isSubGraphOutputNode,

@@ -1,23 +1,24 @@
 import { sleep } from '@0x-jerry/utils'
 import { isEqual } from 'lodash-es'
-import { collectNodeProviders, type INodeProvider } from '@0x-jerry/golden-graph'
-import type {
-  HandleValueUpdate,
-  INodeSchema,
-  IEdge,
-  INode,
-  INodeHandleLoc,
-  ISubGraph,
-  IWorkspace,
-} from '@0x-jerry/golden-graph'
+import {
+  collectNodeProviders,
+  type INodeProvider,
+  HandlePosition,
+  NodeType,
+  edgeLocKey,
+  type HandleValueUpdate,
+  type INodeSchema,
+  type IEdge,
+  type INode,
+  type INodeHandleLoc,
+  type ISubGraph,
+  type IWorkspace,
+} from '@0x-jerry/golden-graph-protocol'
 import {
   SUBGRAPH_INPUT_NODE_TYPE,
   SUBGRAPH_OUTPUT_NODE_TYPE,
   subGraphInputNodeSchema,
   subGraphOutputNodeSchema,
-  NodeType,
-  HandlePosition,
-  edgeLocKey,
 } from '@0x-jerry/golden-graph'
 
 /**

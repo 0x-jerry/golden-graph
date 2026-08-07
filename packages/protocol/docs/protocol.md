@@ -3,8 +3,8 @@
 This document is the authoritative reference for every protocol between the
 core (`@0x-jerry/golden-graph`) and the backend
 (`@0x-jerry/golden-graph-backend`). Types are defined in
-`packages/core/src/ExecutorBackend.ts`, `packages/core/src/types.ts`,
-`packages/core/src/NodeSchema.ts` and `packages/core/src/NodeProvider.ts`.
+`packages/protocol/src/ExecutorBackend.ts`, `packages/protocol/src/types.ts`,
+`packages/protocol/src/NodeSchema.ts` and `packages/protocol/src/NodeProvider.ts`.
 
 ## 1. Overview & invariants
 

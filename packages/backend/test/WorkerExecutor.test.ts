@@ -9,9 +9,9 @@ import {
 import {
   HandlePosition,
   NodeType,
-  Workspace,
   type INodeProvider,
-} from '@0x-jerry/golden-graph'
+} from '@0x-jerry/golden-graph-protocol'
+import { Workspace } from '@0x-jerry/golden-graph'
 
 const calls: string[] = []
 

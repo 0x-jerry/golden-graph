@@ -1,6 +1,6 @@
+import type { ICoordinate, IVec2 } from '@0x-jerry/golden-graph-protocol'
 import { toReadonly } from './helper'
 import type { IPersistent } from './Persistent'
-import type { ICoordinate, IVec2 } from './types'
 import type { Workspace } from './Workspace'
 
 export class CoordSystem implements IPersistent<ICoordinate> {

@@ -1,9 +1,9 @@
+import type { IWorkspace } from '@0x-jerry/golden-graph-protocol'
 import { remove } from '@0x-jerry/utils'
 import { convertGroupToSubGraph } from '../GroupToSubGraph'
 import type { SubGraph } from '../SubGraph'
 import type { SubGraphNode } from '../SubGraphNode'
 import { isSubGraphNode } from '../SubGraphNode'
-import type { IWorkspace } from '../types'
 import type { Workspace } from './Workspace'
 
 /**

@@ -1,9 +1,10 @@
+import type { ISubGraph } from '@0x-jerry/golden-graph-protocol'
 import type { Edge } from './Edge'
 import { toReadonly } from './helper'
 import type { Node } from './Node'
 import type { IPersistent } from './Persistent'
 import { SubGraphNode } from './SubGraphNode'
-import type { IDisposable, ISubGraph } from './types'
+import type { IDisposable } from './types'
 import { Workspace } from './Workspace'
 
 /**

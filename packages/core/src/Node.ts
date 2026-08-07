@@ -1,24 +1,19 @@
-import type { HandlePosition } from './HandlePosition'
+import {
+  type HandlePosition,
+  type INode,
+  type INodeHandleConfig,
+  NodeType,
+  type IVec2,
+} from '@0x-jerry/golden-graph-protocol'
 import { toReadonly, type Factory } from './helper'
-import { type INodeHandleConfig, NodeHandle } from './NodeHandle'
+import { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
-import type { INode, IVec2, ObjectAny } from './types'
+import type { ObjectAny } from './types'
 import type { Workspace } from './Workspace'
 
 export interface NodeBaseUpdateOptions {
   pos?: IVec2
   data?: ObjectAny
-}
-
-export enum NodeType {
-  /**
-   * Default node type.
-   */
-  None = 0,
-  /**
-   * Executor should start from this node.
-   */
-  Entry = 1,
 }
 
 export class Node implements IPersistent<INode> {

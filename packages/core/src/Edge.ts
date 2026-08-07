@@ -1,7 +1,7 @@
+import type { IEdge, INodeHandleLoc } from '@0x-jerry/golden-graph-protocol'
 import { toReadonly } from './helper'
 import type { NodeHandle } from './NodeHandle'
 import type { IPersistent } from './Persistent'
-import type { IEdge, INodeHandleLoc } from './types'
 import type { Workspace } from './Workspace'
 
 export class Edge implements IPersistent<IEdge> {
