@@ -18,6 +18,7 @@ import {
   SUBGRAPH_INPUT_NODE_TYPE,
   SUBGRAPH_OUTPUT_NODE_TYPE,
   subGraphInputNodeSchema,
+  subGraphNameNodeSchema,
   subGraphOutputNodeSchema,
 } from '@0x-jerry/golden-graph'
 
@@ -83,6 +84,7 @@ export const subGraphDefinitionProvider: INodeProvider<INodeDefinition> = {
   nodes: {
     input: { schema: subGraphInputNodeSchema },
     output: { schema: subGraphOutputNodeSchema },
+    name: { schema: subGraphNameNodeSchema },
   },
 }
 

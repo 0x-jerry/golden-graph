@@ -3,6 +3,7 @@ import { Node } from './Node'
 import type { SubGraph } from './SubGraph'
 import {
   isSubGraphInputNode,
+  isSubGraphNameNode,
   isSubGraphOutputNode,
   subGraphInputToHandleConfig,
   subGraphOutputToHandleConfig,
@@ -55,6 +56,16 @@ export class SubGraphNode extends Node {
   buildNode(): this {
     const handles = this._subGraph!.workspace.nodes
 
+    // Read the display name before rebuilding handles, so the events emitted
+    // below (and any explicit update) carry the final name.
+    const nameNode = handles.find(isSubGraphNameNode)
+    if (nameNode) {
+      const name = nameNode.getData<string>('Name')
+      if (name) {
+        this.name = name
+      }
+    }
+
     const inputs = handles.filter(isSubGraphInputNode)
     const outputs = handles.filter(isSubGraphOutputNode)
 
@@ -67,6 +78,11 @@ export class SubGraphNode extends Node {
     for (const input of inputs) {
       this.addHandle(subGraphInputToHandleConfig(input))
     }
+
+    // Notify after a name change so the renderer repaints even when there
+    // are no handles left to fire `node:changed` (e.g. an interface-less
+    // subgraph). Only emitted when attached to a workspace.
+    this._workspace?.events.emit('node:changed', this)
 
     return this
   }

@@ -3,6 +3,7 @@ import type { Edge } from './Edge'
 import type { Node } from './Node'
 import type { NodeHandle } from './NodeHandle'
 import { SubGraph } from './SubGraph'
+import { SUBGRAPH_NAME_NODE_TYPE } from './SubGraphSchema'
 import type { Workspace } from './Workspace'
 
 interface ExternalEdgeInfo {
@@ -51,7 +52,7 @@ export function convertGroupToSubGraph(
   migrateContent(context, subGraph, group.nodes)
   createInterfaceNodes(context, subGraph)
 
-  const subGraphNode = createSubGraphNode(context, subGraph, group.pos)
+  const subGraphNode = createSubGraphNode(subGraph, group.pos)
   context.workspace.addRawNode(subGraphNode)
 
   reconnectExternalEdges(context, subGraphNode)
@@ -190,6 +191,16 @@ function createInterfaceNodes(ctx: ConversionContext, subGraph: SubGraph) {
       })
     }
   }
+
+  // The subgraph name node carries the collapsed node's display name. It is
+  // read by `SubGraphNode.buildNode()` on the parent graph, so the name stays
+  // editable inside the inner workspace and survives JSON round-trips.
+  const group = validateAndGetGroup(ctx)
+  subGraph.workspace.addNode(SUBGRAPH_NAME_NODE_TYPE, {
+    data: {
+      Name: group.name,
+    },
+  })
 }
 
 interface CreateInterfaceNodeOptions {
@@ -244,14 +255,11 @@ function createOutputNode({
 }
 
 function createSubGraphNode(
-  ctx: ConversionContext,
   subGraph: SubGraph,
   pos: { x: number; y: number },
 ) {
   const subGraphNode = subGraph.buildNode()
 
-  const group = validateAndGetGroup(ctx)
-  subGraphNode.name = group.name
   subGraphNode.moveTo(pos.x, pos.y)
 
   return subGraphNode

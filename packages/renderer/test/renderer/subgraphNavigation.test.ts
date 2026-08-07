@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { isSubGraphNameNode, isSubGraphNode } from '@0x-jerry/golden-graph'
 import { EntityViewStore } from '../../src/renderer/EntityViewStore'
 import { subscribeGraphEvents } from '../../src/renderer/GraphEventRouter'
 import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
@@ -63,5 +64,46 @@ describe('enter/exit subgraph edge cleanup', () => {
     expect(edgeLines()).toBe(parentEdgeCount)
 
     renderer.dispose()
+  })
+
+  it('repaints the SubGraphNode title after the name node is edited inside', () => {
+    const ws = createSubGraphWorkspace()
+    const subGraph = ws.subGraphs[0]!
+    const subGraphNode = ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+    const subGraphNodeId = subGraphNode.id
+
+    const store = new EntityViewStore(ws)
+    subscribeGraphEvents(
+      ws,
+      store,
+      {
+        syncCoord: () => {},
+        syncState: () => {},
+        syncExecutor: () => {},
+        onHandleUpdated: () => {},
+        onHandleConnectionChanged: () => {},
+      } as never,
+      { add: () => {} } as never,
+    )
+    store.renderAll()
+
+    expect(store._nodeViews.get(subGraphNodeId)!._name.text()).toBe(
+      subGraphNode.name,
+    )
+
+    ws.enterSubGraph(subGraph.id)
+
+    const nameNode = ws.nodes.find(isSubGraphNameNode)!
+    nameNode.setData('Name', 'Renamed')
+
+    ws.exitSubGraph()
+
+    const rebuilt = ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+    expect(rebuilt.name).toBe('Renamed')
+    expect(store._nodeViews.get(subGraphNodeId)!._name.text()).toBe('Renamed')
   })
 })

@@ -3,6 +3,7 @@ import {
   Group,
   HandlePosition,
   Workspace,
+  isSubGraphNameNode,
   isSubGraphNode,
   type INodeSchema,
 } from '../src'
@@ -180,5 +181,69 @@ describe('enterSubGraph/exitSubGraph', () => {
     // external connections are restored on the rebuilt node
     expect(ws.queryEdges(extIn.getHandle('value')!.loc).length).toBe(1)
     expect(ws.queryEdges(extOut.getHandle('a')!.loc).length).toBe(1)
+  })
+})
+
+describe('subgraph name node', () => {
+  it('creates a subgraph.name node seeded with the group name', () => {
+    const ws = createWs()
+    const n1 = ws.addNode('Number')
+
+    const group = groupNodes(ws, n1.id)
+    group.setName('My Group')
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraph = ws.subGraphs[0]!
+    const nameNode = subGraph.workspace.nodes.find(isSubGraphNameNode)!
+    expect(nameNode).toBeDefined()
+    expect(nameNode.getData('Name')).toBe('My Group')
+  })
+
+  it('renames the parent SubGraphNode when the name node changes inside', () => {
+    const ws = createWs()
+    const n1 = ws.addNode('Number')
+
+    const group = groupNodes(ws, n1.id)
+    group.setName('My Group')
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraph = ws.subGraphs[0]!
+    const subGraphNode = ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+    expect(subGraphNode.name).toBe('My Group')
+
+    ws.enterSubGraph(subGraph.id)
+
+    const nameNode = ws.nodes.find(isSubGraphNameNode)!
+    nameNode.setData('Name', 'Renamed')
+
+    ws.exitSubGraph()
+
+    const rebuilt = ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+    expect(rebuilt.name).toBe('Renamed')
+  })
+
+  it('keeps the subgraph name across JSON round-trips', () => {
+    const ws = createWs()
+    const n1 = ws.addNode('Number')
+
+    const group = groupNodes(ws, n1.id)
+    group.setName('My Group')
+    ws.convertGroupToSubGraph(group.id)
+
+    const ws2 = createWs()
+    ws2.fromJSON(ws.toJSON())
+
+    const subGraph = ws2.subGraphs[0]!
+    const subGraphNode = ws2.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+    const nameNode = subGraph.workspace.nodes.find(isSubGraphNameNode)!
+
+    expect(nameNode.getData('Name')).toBe('My Group')
+    expect(subGraphNode.name).toBe('My Group')
   })
 })

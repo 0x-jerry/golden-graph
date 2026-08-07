@@ -262,8 +262,8 @@ describe('Workspace', () => {
 
     const subGraph = ws.subGraphs[0]!
 
-    // Both nodes in subgraph
-    expect(subGraph.workspace.nodes.length).toBe(2)
+    // Both nodes + the subgraph name node are in the subgraph
+    expect(subGraph.workspace.nodes.length).toBe(3)
 
     // Edge should be in subgraph
     expect(subGraph.workspace.edges.length).toBe(1)

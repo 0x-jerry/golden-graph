@@ -9,6 +9,7 @@ import type { Node } from './Node'
 
 export const SUBGRAPH_INPUT_NODE_TYPE = 'subgraph.input'
 export const SUBGRAPH_OUTPUT_NODE_TYPE = 'subgraph.output'
+export const SUBGRAPH_NAME_NODE_TYPE = 'subgraph.name'
 
 /**
  * Schema of the subgraph interface input node (entry point inside a
@@ -76,6 +77,26 @@ export function isSubGraphInputNode(node: Node) {
 }
 
 /**
+ * Schema of the subgraph name node (the collapsed `SubGraphNode`'s display
+ * name). Auto-created on group → subgraph conversion and registered by every
+ * `Workspace`, so the subgraph name survives JSON round-trips and stays
+ * editable inside the inner workspace.
+ */
+export const subGraphNameNodeSchema: INodeSchema = {
+  type: SUBGRAPH_NAME_NODE_TYPE,
+  name: 'Graph Name',
+  internal: true,
+  handles: [
+    {
+      name: 'Name',
+      key: 'Name',
+      accepts: 'string',
+      type: 'text',
+    },
+  ],
+}
+
+/**
  * Core-side provider registering the subgraph interface nodes. Registered
  * automatically by every `Workspace` (like the legacy constructor
  * `registerNodeSchema` calls), so `fromJSON` can always restore interface
@@ -88,11 +109,16 @@ export const subGraphNodeProvider: INodeProvider<INodeSchema> = {
   nodes: {
     input: subGraphInputNodeSchema,
     output: subGraphOutputNodeSchema,
+    name: subGraphNameNodeSchema,
   },
 }
 
 export function isSubGraphOutputNode(node: Node) {
   return node.type === SUBGRAPH_OUTPUT_NODE_TYPE
+}
+
+export function isSubGraphNameNode(node: Node) {
+  return node.type === SUBGRAPH_NAME_NODE_TYPE
 }
 
 export function subGraphInputToHandleConfig(node: Node): INodeHandleConfig {
