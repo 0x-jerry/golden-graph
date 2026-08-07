@@ -86,47 +86,53 @@ export class SubGraphManager {
 
     subGraph.workspace.fromJSON(subGraphWorkspaceData)
 
-    // Rebuild the existing SubGraphNode's handles in place and reconnect the
-    // surviving external edges.
-    const subGraphNode = this.ws.nodes.find(
-      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
-    ) as SubGraphNode | undefined
-    if (!subGraphNode) {
+    // Rebuild every SubGraphNode referencing this sub-graph in place (there
+    // can be several — copies share one inner workspace) and reconnect the
+    // surviving external edges, so each one reflects the renamed interface.
+    const subGraphNodes = this.ws.nodes.filter(
+      (n): n is SubGraphNode =>
+        isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )
+
+    if (!subGraphNodes.length) {
       throw new Error(`Can not find sub graph node by id ${subGraph.id}`)
     }
 
-    const edges = this.ws.queryConnectedEdges(subGraphNode.id)
+    for (const subGraphNode of subGraphNodes) {
+      const edges = this.ws.queryConnectedEdges(subGraphNode.id)
 
-    const connections = edges.map((edge) => {
-      const isStart = edge.start.node.id === subGraphNode.id
-      const myHandle = isStart ? edge.start : edge.end
-      const otherHandle = isStart ? edge.end : edge.start
+      const connections = edges.map((edge) => {
+        const isStart = edge.start.node.id === subGraphNode.id
+        const myHandle = isStart ? edge.start : edge.end
+        const otherHandle = isStart ? edge.end : edge.start
 
-      const isOtherOnOldNode = otherHandle.node.id === subGraphNode.id
+        const isOtherOnOldNode = otherHandle.node.id === subGraphNode.id
 
-      return {
-        myHandleKey: myHandle.key,
-        otherHandle,
-        otherHandleKey: otherHandle.key,
-        isOtherOnOldNode,
-      }
-    })
+        return {
+          myHandleKey: myHandle.key,
+          otherHandle,
+          otherHandleKey: otherHandle.key,
+          isOtherOnOldNode,
+        }
+      })
 
-    // Drop the old edges (and their handle back-references) before the handles
-    // are rebuilt, then recreate the connections against the new handles.
-    this.ws.removeEdgeByIds(...edges.map((e) => e.id))
+      // Drop the old edges (and their handle back-references) before the
+      // handles are rebuilt, then recreate the connections against the new
+      // handles.
+      this.ws.removeEdgeByIds(...edges.map((e) => e.id))
 
-    subGraphNode.buildNode()
+      subGraphNode.buildNode()
 
-    for (const conn of connections) {
-      const newHandle = subGraphNode.getHandle(conn.myHandleKey)
+      for (const conn of connections) {
+        const newHandle = subGraphNode.getHandle(conn.myHandleKey)
 
-      const targetHandle = conn.isOtherOnOldNode
-        ? subGraphNode.getHandle(conn.otherHandleKey)
-        : conn.otherHandle
+        const targetHandle = conn.isOtherOnOldNode
+          ? subGraphNode.getHandle(conn.otherHandleKey)
+          : conn.otherHandle
 
-      if (newHandle && targetHandle) {
-        this.ws.connect(targetHandle, newHandle)
+        if (newHandle && targetHandle) {
+          this.ws.connect(targetHandle, newHandle)
+        }
       }
     }
   }

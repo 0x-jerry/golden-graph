@@ -5,6 +5,7 @@ import {
   type INodeSchema,
   NodeType,
 } from '@0x-jerry/golden-graph-protocol'
+import { NodeHandleType } from './NodeHandle'
 import type { Node } from './Node'
 
 export const SUBGRAPH_INPUT_NODE_TYPE = 'subgraph.input'
@@ -38,6 +39,9 @@ export const subGraphInputNodeSchema: INodeSchema = {
       name: 'Type',
       key: 'Type',
       accepts: 'string',
+      // Accept-anything by default so a freshly added input handle can be
+      // connected to external nodes before its type is narrowed.
+      value: NodeHandleType.All,
     },
   ],
 }

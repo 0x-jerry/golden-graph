@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   Group,
   HandlePosition,
+  NodeHandleType,
   Workspace,
   isSubGraphNameNode,
   isSubGraphNode,
@@ -245,5 +246,60 @@ describe('subgraph name node', () => {
 
     expect(nameNode.getData('Name')).toBe('My Group')
     expect(subGraphNode.name).toBe('My Group')
+  })
+
+  it('renames every SubGraphNode sharing the subgraph on exit', () => {
+    const ws = createWs()
+    const n1 = ws.addNode('Number')
+
+    const group = groupNodes(ws, n1.id)
+    group.setName('My Group')
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraph = ws.subGraphs[0]!
+    ws.copySubGraphNode(subGraph.id)
+
+    const shared = ws.nodes.filter(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )
+    expect(shared).toHaveLength(2)
+
+    ws.enterSubGraph(subGraph.id)
+
+    const nameNode = ws.nodes.find(isSubGraphNameNode)!
+    nameNode.setData('Name', 'Renamed')
+
+    ws.exitSubGraph()
+
+    const rebuilt = ws.nodes.filter(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )
+    expect(rebuilt.map((n) => n.name)).toEqual(['Renamed', 'Renamed'])
+  })
+
+  it('collapses a freshly added input node to an accept-all handle', () => {
+    const ws = createWs()
+    const n1 = ws.addNode('Number')
+
+    const group = groupNodes(ws, n1.id)
+    ws.convertGroupToSubGraph(group.id)
+
+    const subGraphId = ws.subGraphs[0]!.id
+
+    ws.enterSubGraph(subGraphId)
+    ws.addNode('subgraph.input')
+    ws.exitSubGraph()
+
+    // Re-fetch: `exitSubGraph` rebuilds `SubGraph` objects via `fromJSON`.
+    const subGraph = ws.subGraphs.find((s) => s.id === subGraphId)!
+    const newInput = subGraph.workspace.nodes.find(
+      (n) => n.type === 'subgraph.input',
+    )!
+    const rebuilt = ws.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    )!
+
+    const handle = rebuilt.getHandle(String(newInput.id))
+    expect(handle?.accepts).toContain(NodeHandleType.All)
   })
 })

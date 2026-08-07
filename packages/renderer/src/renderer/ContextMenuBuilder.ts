@@ -1,5 +1,5 @@
 import type { Workspace } from '@0x-jerry/golden-graph'
-import { isSubGraphNode } from '@0x-jerry/golden-graph'
+import { SUBGRAPH_NAME_NODE_TYPE, isSubGraphNode } from '@0x-jerry/golden-graph'
 import { autoLayout } from '../layout'
 import type { CoreMenuItem, ContextMenuContext } from './types'
 import { ContextMenuTargetType } from './types'
@@ -52,6 +52,9 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
 /**
  * "Add Node" submenu: one submenu per node provider (`provider.name`),
  * each listing the provider's non-internal nodes by their display `name`.
+ * While inside a subgraph the internal interface nodes (`subgraph.input` /
+ * `subgraph.output` / `subgraph.name`) are also exposed so the inner
+ * workspace can be edited.
  */
 function addNodeMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
   const children: CoreMenuItem[] = []
@@ -60,7 +63,24 @@ function addNodeMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
     const nodeItems: CoreMenuItem[] = []
 
     for (const schema of Object.values(provider.nodes)) {
-      if (schema.internal || !schema.type) {
+      if (!schema.type) {
+        continue
+      }
+
+      // The subgraph interface nodes are internal by default — only addable
+      // inside a subgraph's inner workspace. Other internal nodes stay hidden.
+      if (
+        schema.internal &&
+        !(ws.isActiveSubGraph && provider.id === 'subgraph')
+      ) {
+        continue
+      }
+
+      // A subgraph has at most one name node; hide the entry once one exists.
+      if (
+        schema.type === SUBGRAPH_NAME_NODE_TYPE &&
+        ws.nodes.some((n) => n.type === SUBGRAPH_NAME_NODE_TYPE)
+      ) {
         continue
       }
 
