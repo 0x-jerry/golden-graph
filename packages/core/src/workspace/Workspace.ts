@@ -9,13 +9,12 @@ import { type Node, type NodeBaseUpdateOptions, NodeType } from '../Node'
 import type { NodeConstructor } from '../Node'
 import type { NodeHandle } from '../NodeHandle'
 import type { INodeSchema } from '../NodeSchema'
+import type { INodeProvider } from '../NodeProvider'
+import { normalizeSchemaNodeProvider } from '../NodeProvider'
 import type { IPersistent } from '../Persistent'
 import { Register } from '../Register'
 import type { SubGraph } from '../SubGraph'
-import {
-  subGraphInputNodeSchema,
-  subGraphOutputNodeSchema,
-} from '../SubGraphSchema'
+import { subGraphNodeProvider } from '../SubGraphSchema'
 import type {
   IDisposable,
   INodeHandleLoc,
@@ -111,6 +110,8 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   _nodeRegister = new Register<NodeConstructor>()
 
+  _providerRegister = new Map<string, INodeProvider<INodeSchema>>()
+
   _workspaceDataStack: IWorkspaceData[] = []
 
   _state = {
@@ -138,8 +139,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
     // Internal node types must always be registered so that `fromJSON`
     // (e.g. `enterSubGraph`) can restore subgraph interface nodes.
-    this.registerNodeSchema(subGraphInputNodeSchema)
-    this.registerNodeSchema(subGraphOutputNodeSchema)
+    this.registerNodeProvider(subGraphNodeProvider)
   }
 
   get state() {
@@ -178,6 +178,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     return toReadonly(this._nodeRegister)
   }
 
+  get providers() {
+    return toReadonly([...this._providerRegister.values()])
+  }
+
   get renderer() {
     return this._renderer
   }
@@ -188,7 +192,7 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
 
   /**
    * Attach (or replace) the executor backend after construction. The
-   * backend serves node schemas via `getNodeSchemas()` and runs
+   * backend serves node providers via `getNodeProviders()` and runs
    * workflows on `execute()`.
    */
   setExecutorBackend(backend: ExecutorBackend) {
@@ -205,12 +209,27 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   }
 
   /**
-   * Fetch all node schemas from the configured executor backend and
+   * Register a batch of nodes by provider. Each schema's `type` is
+   * auto-generated from the provider id + record key (see
+   * `deriveNodeType`); re-registering the same provider id merges its
+   * nodes with the existing ones.
+   */
+  registerNodeProvider(provider: INodeProvider<INodeSchema>) {
+    const normalized = normalizeSchemaNodeProvider(provider)
+    this._providerRegister.set(normalized.id, normalized)
+
+    for (const schema of Object.values(normalized.nodes)) {
+      this.registerNodeSchema(schema)
+    }
+  }
+
+  /**
+   * Fetch all node providers from the configured executor backend and
    * register them for rendering. Call this once after attaching a
    * backend, before adding nodes to the graph.
    */
-  async loadNodeSchemasFromBackend() {
-    return this._schemaManager.loadNodeSchemasFromBackend()
+  async loadNodeProvidersFromBackend() {
+    return this._schemaManager.loadNodeProvidersFromBackend()
   }
 
   moveActiveNodes(delta: IVec2) {

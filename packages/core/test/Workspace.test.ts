@@ -108,7 +108,7 @@ describe('Workspace', () => {
   //   const ws = new Workspace({
   //     executorBackend: new DirectExecutorBackend(executeDefinitions),
   //   })
-  //   await ws.loadNodeSchemasFromBackend()
+  //   await ws.loadNodeProvidersFromBackend()
 
   //   const s = ws.addNode('Source', { pos: { x: 0, y: 0 } })
   //   const p = ws.addNode('Process', { pos: { x: 0, y: 0 } })

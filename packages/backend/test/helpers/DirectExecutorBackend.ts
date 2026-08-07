@@ -2,6 +2,7 @@ import type {
   ExecuteRequest,
   ExecutorBackend,
   ExecutorBackendEvent,
+  INodeProvider,
   INodeSchema,
 } from '@0x-jerry/golden-graph'
 import {
@@ -33,8 +34,16 @@ export class DirectExecutorBackend implements ExecutorBackend {
     })
   }
 
-  async getNodeSchemas(): Promise<INodeSchema[]> {
-    return structuredClone(this.definitions.map((def) => def.schema))
+  async getNodeProviders(): Promise<INodeProvider<INodeSchema>[]> {
+    const nodes: Record<string, INodeSchema> = {}
+
+    for (const def of this.definitions) {
+      if (def.schema.type) {
+        nodes[def.schema.type] = def.schema
+      }
+    }
+
+    return structuredClone([{ id: '', name: 'Direct', nodes }])
   }
 
   async execute(

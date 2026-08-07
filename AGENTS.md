@@ -101,21 +101,21 @@ export interface INodeDefinition {
 }
 ```
 
-- `INodeSchema` fields: `type` (unique id, e.g. `'Math.Op'`), `name` (header + "Add Node" menu label), `description?`, `internal?` (hidden from menu), `nodeType?` (`NodeType.Entry = 1` marks execution start), `handles: INodeHandleConfig[]`
+- `INodeSchema` fields: `type` (optional on authored schemas — auto-generated as `id ? \`${id}.${key}\` : key` when registered via a provider; required for direct `registerNodeSchema`), `name` (header + "Add Node" menu label), `description?`, `internal?` (hidden from menu), `nodeType?` (`NodeType.Entry = 1` marks execution start), `handles: INodeHandleConfig[]`
 - `INodeHandleConfig` fields: `key` (unique within node, required for `getData`), `accepts` (data type(s) for connection matching, `'*'` = anything), `type` (render component: `'text' | 'number' | 'select' | 'image' | 'display'`, registered in renderer `handles/index.ts`), `name` (label; empty name reserves no fixed column), `position` (`Left` = input, `Right` = output, `None` = layout-only row), `value` (initial), `options` (render props; select choices come from `options.options`)
 - `ctx.getData(key)` resolves inputs through incoming edges; `ctx.setData(key, value)` writes run state and streams a `handle-updates` event to the frontend
 - `execute` runs **in a Web Worker** — no DOM; handle values must be structured-cloneable. `execute` is optional (Entry sources / Display sinks can omit it)
 
-Registration flow: `packages/playground/src/nodes/index.ts` array → worker entry `new ExecutorWorkerHost(nodeDefinitions)` → frontend `await workspace.loadNodeSchemasFromBackend()` → `registerNodeSchema` builds a render-only `Node` subclass. Minimal example (mirror `packages/playground/src/nodes/math/Op.ts`):
+Registration flow: `packages/playground/src/nodes/index.ts` provider array → worker entry `new ExecutorWorkerHost()` + `host.addProviders(nodeProviders)` → frontend `await workspace.loadNodeProvidersFromBackend()` → `registerNodeProvider` stamps `type` and builds a render-only `Node` subclass per schema; the "Add Node" menu groups nodes by `provider.name`. Minimal example (mirror `packages/playground/src/nodes/math/Op.ts`):
 
 ```ts
 import { HandlePosition } from '@0x-jerry/golden-graph'
+import type { INodeProvider } from '@0x-jerry/golden-graph'
 import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 
 export const addDefinition: INodeDefinition = {
   schema: {
-    type: 'Math.Add',
-    name: 'Math - Add',
+    name: 'Math - Add', // `type` is omitted — derived from provider id + key
     handles: [
       { key: 'a', name: 'A', position: HandlePosition.Left, accepts: 'number', value: 0 },
       { key: 'b', name: 'B', position: HandlePosition.Left, accepts: 'number', value: 0 },
@@ -128,9 +128,15 @@ export const addDefinition: INodeDefinition = {
     ctx.setData('out', a + b)
   },
 }
+
+export const mathNodeProvider: INodeProvider<INodeDefinition> = {
+  id: 'Math',
+  name: 'Math',
+  nodes: { Add: addDefinition }, // type auto-generated as `Math.Add`
+}
 ```
 
-Then add it to `nodes/index.ts`. No renderer changes needed unless you add a new `options.type`.
+Then add the provider to the `nodeProviders` array in `nodes/index.ts`. No renderer changes needed unless you add a new `options.type`.
 
 ## Auto-layout
 
@@ -158,9 +164,12 @@ Pure-TS module in **renderer** (`packages/renderer/src/layout/`), no external de
 
 ## Executor protocol (plain JSON)
 
-- Frontend → backend: `{ type: 'execute', req: ExecuteRequest }` | `{ type: 'list-node-schemas' }`. Backend → frontend: `progress` | `handle-updates` | `finish` (with `error?`) | `node-schemas`.
+**Full reference: [`docs/protocol.md`](./docs/protocol.md).** All messages are plain JSON, defined in `core/src/ExecutorBackend.ts`.
+
+- Frontend → backend: `{ type: 'execute', req: ExecuteRequest }` | `{ type: 'list-node-providers' }`. Backend → frontend: `progress` | `handle-updates` | `finish` (with `error?`) | `node-providers`.
 - `ExecuteRequest = { snapshot: IWorkspace; entryNodeIds: number[]; debug: boolean }` — the backend walks the snapshot directly, no `Workspace` instance.
-- Backend contract: `getNodeSchemas()`, `execute(req, onEvent)` (resolves when all events delivered, rejects on failure), optional `dispose()`.
+- Backend contract: `getNodeProviders()`, `execute(req, onEvent)` (resolves when all events delivered, rejects on failure), optional `dispose()`.
+- Node schemas are served as `INodeProvider<INodeSchema>` (`id`, `name`, `nodes: Record<key, schema>`); node `type` is derived as `id ? \`${id}.${key}\` : key`. Subgraph interface nodes (`subgraph.input`/`subgraph.output`) are core-side, not served.
 - `WorkerLike` / `WorkerScopeLike` are structural subsets of the DOM worker types — keeps backends testable in jsdom and in-process.
 - `WorkflowExecutor` is stack-based from entry nodes, re-queuing until all upstream nodes processed; **diff cache keyed by node id** (ids are stable across snapshots) — a node re-runs only when its fully-resolved data changed; `MAX_ITERATIONS = 100_000` loop guard; debug mode sleeps 100 ms per changed node; unknown node types throw at runtime (subgraph interface nodes excluded); nested subgraphs get lazy child executors with silent events.
 

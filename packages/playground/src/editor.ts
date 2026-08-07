@@ -8,7 +8,7 @@ export async function setup(workspace: Workspace) {
   )
   workspace.setExecutorBackend(new WorkerExecutorBackend(worker))
 
-  await workspace.loadNodeSchemasFromBackend()
+  await workspace.loadNodeProvidersFromBackend()
 
   const n1 = workspace.addNode('Number', {
     pos: {

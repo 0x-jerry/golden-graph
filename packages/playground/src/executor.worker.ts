@@ -1,4 +1,5 @@
 import { ExecutorWorkerHost } from '@0x-jerry/golden-graph-backend'
-import { nodeDefinitions } from './nodes'
+import { nodeProviders } from './nodes'
 
-new ExecutorWorkerHost(nodeDefinitions)
+const host = new ExecutorWorkerHost()
+host.addProviders(nodeProviders)

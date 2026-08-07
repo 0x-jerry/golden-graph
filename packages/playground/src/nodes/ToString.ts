@@ -3,7 +3,6 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 
 export const toStringDefinition: INodeDefinition = {
   schema: {
-    type: 'ToString',
     name: 'To String',
     handles: [
       {

@@ -1,3 +1,4 @@
+import type { INodeProvider } from './NodeProvider'
 import type { INodeSchema } from './NodeSchema'
 import type { IWorkspace } from './types'
 
@@ -18,7 +19,7 @@ export interface HandleValueUpdate {
  * The payload is plain JSON, so backends can live anywhere: a Web Worker,
  * a WebSocket server written in any language, etc. The backend walks the
  * `snapshot` directly (nodes, edges, subgraphs) — node shapes come from
- * the schemas it serves via `getNodeSchemas()`, and it keeps its own diff
+ * the providers it serves via `getNodeProviders()`, and it keeps its own diff
  * cache keyed by node id (ids are stable across snapshots).
  */
 export interface ExecuteRequest {
@@ -70,37 +71,39 @@ export type ExecutorBackendRequest =
       req: ExecuteRequest
     }
   | {
-      /** Ask the backend for the JSON schemas of all nodes it defines. */
-      type: 'list-node-schemas'
+      /** Ask the backend for all node providers it defines. */
+      type: 'list-node-providers'
     }
 
 /**
  * Wire messages sent from an executor backend transport to the frontend:
- * run events plus the node schema list response.
+ * run events plus the node provider list response.
  */
 export type ExecutorBackendResponse =
   | ExecutorBackendEvent
   | {
-      /** Answer to `list-node-schemas`. */
-      type: 'node-schemas'
-      schemas: INodeSchema[]
+      /** Answer to `list-node-providers`. */
+      type: 'node-providers'
+      providers: INodeProvider<INodeSchema>[]
     }
 
 /**
  * Pluggable executor backend.
  *
  * Ownership model: the backend owns node *definitions* — the JSON node
- * shape (`INodeSchema`) plus the execute function — and workflow
- * execution. The frontend only renders nodes from the fetched schemas,
- * builds the graph, and sends snapshots over.
+ * shape (`INodeSchema`) plus the execute function — organized in node
+ * providers, and owns workflow execution. The frontend only renders nodes
+ * from the fetched provider schemas, builds the graph, and sends snapshots
+ * over.
  *
  * Implementations:
  *
- * - `WorkerExecutorBackend` (in `src/backend/`) — reference backend
- *   running the JSON-native `WorkflowExecutor` inside a Web Worker.
+ * - `WorkerExecutorBackend` (in `@0x-jerry/golden-graph-backend`) —
+ *   reference backend running the JSON-native `WorkflowExecutor` inside a
+ *   Web Worker.
  * - Any out-of-process backend (any language) can implement the same JSON
- *   protocol over e.g. WebSocket: answer `list-node-schemas` with the
- *   node's schemas, receive an `ExecuteRequest`, stream
+ *   protocol over e.g. WebSocket: answer `list-node-providers` with the
+ *   node providers' schemas, receive an `ExecuteRequest`, stream
  *   `ExecutorBackendEvent`s back.
  *
  * Contract: `execute()` resolves after the run completed (all events for
@@ -109,11 +112,12 @@ export type ExecutorBackendResponse =
  */
 export interface ExecutorBackend {
   /**
-   * Return the JSON schemas of all nodes defined by this backend. The
-   * frontend registers them via `workspace.registerNodeSchema()` so the
-   * nodes can be rendered and wired into graphs.
+   * Return all node providers defined by this backend. The frontend
+   * registers them via `workspace.registerNodeProvider()` so the nodes can
+   * be rendered and wired into graphs; provider `name` drives the "Add
+   * Node" menu grouping.
    */
-  getNodeSchemas(): Promise<INodeSchema[]>
+  getNodeProviders(): Promise<INodeProvider<INodeSchema>[]>
 
   execute(
     req: ExecuteRequest,

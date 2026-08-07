@@ -9,30 +9,38 @@ export class NodeSchemaManager {
   constructor(readonly ws: Workspace) {}
 
   registerNodeSchema(schema: INodeSchema) {
+    if (!schema.type) {
+      throw new Error(
+        'Can not register node schema: `type` is required. ' +
+          'Register the schema via a provider to auto-generate it from ' +
+          'the provider id + key.',
+      )
+    }
+
     this.ws._nodeRegister.set(schema.type, nodeClassFromSchema(schema))
   }
 
   /**
-   * Fetch all node schemas from the configured executor backend and
-   * register them for rendering. Call this once after attaching a
-   * backend, before adding nodes to the graph.
+   * Fetch all node providers from the configured executor backend and
+   * register them for rendering. Call this once after attaching a backend,
+   * before adding nodes to the graph.
    */
-  async loadNodeSchemasFromBackend() {
+  async loadNodeProvidersFromBackend() {
     const backend = this.ws._executor.backend
 
     if (!backend) {
       throw new Error(
-        'Can not load node schemas: no executor backend is configured. ' +
+        'Can not load node providers: no executor backend is configured. ' +
           'Pass `executorBackend` to the Workspace options.',
       )
     }
 
-    const schemas = await backend.getNodeSchemas()
+    const providers = await backend.getNodeProviders()
 
-    for (const schema of schemas) {
-      this.registerNodeSchema(schema)
+    for (const provider of providers) {
+      this.ws.registerNodeProvider(provider)
     }
 
-    return schemas
+    return providers
   }
 }

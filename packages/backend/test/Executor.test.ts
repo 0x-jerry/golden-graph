@@ -36,10 +36,10 @@ describe('Executor (frontend facade)', () => {
     await expect(ws.execute()).rejects.toThrow(/no executor backend/)
   })
 
-  it('throws when loading node schemas without a backend', async () => {
+  it('throws when loading node providers without a backend', async () => {
     const ws = new Workspace()
 
-    await expect(ws.loadNodeSchemasFromBackend()).rejects.toThrow(
+    await expect(ws.loadNodeProvidersFromBackend()).rejects.toThrow(
       /no executor backend/,
     )
   })

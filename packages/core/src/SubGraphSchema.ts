@@ -1,6 +1,7 @@
 import { HandlePosition } from './HandlePosition'
 import { type Node, NodeType } from './Node'
 import type { INodeHandleConfig } from './NodeHandle'
+import type { INodeProvider } from './NodeProvider'
 import type { INodeSchema } from './NodeSchema'
 
 export const SUBGRAPH_INPUT_NODE_TYPE = 'subgraph.input'
@@ -69,6 +70,22 @@ export const subGraphOutputNodeSchema: INodeSchema = {
 
 export function isSubGraphInputNode(node: Node) {
   return node.type === SUBGRAPH_INPUT_NODE_TYPE
+}
+
+/**
+ * Core-side provider registering the subgraph interface nodes. Registered
+ * automatically by every `Workspace` (like the legacy constructor
+ * `registerNodeSchema` calls), so `fromJSON` can always restore interface
+ * nodes. Node types derive from `'subgraph'` + `'input'`/`'output'` =
+ * `subgraph.input` / `subgraph.output`.
+ */
+export const subGraphNodeProvider: INodeProvider<INodeSchema> = {
+  id: 'subgraph',
+  name: 'SubGraph',
+  nodes: {
+    input: subGraphInputNodeSchema,
+    output: subGraphOutputNodeSchema,
+  },
 }
 
 export function isSubGraphOutputNode(node: Node) {

@@ -24,13 +24,7 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
   const items: CoreMenuItem[] = [
     {
       label: 'Add Node',
-      children: Array.from(ws.nodeRegister.entries())
-        .filter(([, ctor]) => !ctor.internal)
-        .map(([type]) => ({
-          label: type,
-          action: () =>
-            ws.addNode(type, ctx.pos ? { pos: ctx.pos } : undefined),
-        })),
+      children: addNodeMenu(ws, ctx),
     },
     {
       label: 'Auto Layout',
@@ -53,6 +47,35 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
   }
 
   return items
+}
+
+/**
+ * "Add Node" submenu: one submenu per node provider (`provider.name`),
+ * each listing the provider's non-internal nodes by their display `name`.
+ */
+function addNodeMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
+  const children: CoreMenuItem[] = []
+
+  for (const provider of ws.providers) {
+    const nodeItems: CoreMenuItem[] = []
+
+    for (const schema of Object.values(provider.nodes)) {
+      if (schema.internal || !schema.type) {
+        continue
+      }
+
+      nodeItems.push({
+        label: schema.name,
+        action: () => ws.addNode(schema.type!, ctx.pos ? { pos: ctx.pos } : undefined),
+      })
+    }
+
+    if (nodeItems.length) {
+      children.push({ label: provider.name, children: nodeItems })
+    }
+  }
+
+  return children
 }
 
 function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {

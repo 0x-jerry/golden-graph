@@ -3,7 +3,6 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 
 export const numberDefinition: INodeDefinition = {
   schema: {
-    type: 'Number',
     name: 'Number Input',
     nodeType: NodeType.Entry,
     handles: [

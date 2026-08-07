@@ -4,7 +4,8 @@ import type {
   ExecutorBackendEvent,
   ExecutorBackendRequest,
   ExecutorBackendResponse,
-  INodeSchema
+  INodeProvider,
+  INodeSchema,
 } from '@0x-jerry/golden-graph'
 
 /**
@@ -26,18 +27,19 @@ export interface WorkerLike {
 }
 
 /**
- * Executor backend that fetches node schemas and runs workflows inside a
+ * Executor backend that fetches node providers and runs workflows inside a
  * Web Worker.
  *
  * The worker entry must create an `ExecutorWorkerHost` holding the node
- * definitions:
+ * providers:
  *
  * ```ts
  * // executor.worker.ts
  * import { ExecutorWorkerHost } from '@0x-jerry/golden-graph'
- * import { nodeDefinitions } from './nodes'
+ * import { nodeProviders } from './nodes'
  *
- * new ExecutorWorkerHost(nodeDefinitions)
+ * const host = new ExecutorWorkerHost()
+ * host.addProviders(nodeProviders)
  * ```
  *
  * ```ts
@@ -47,14 +49,14 @@ export interface WorkerLike {
  *   }),
  * )
  * const workspace = new Workspace({ executorBackend: backend })
- * await workspace.loadNodeSchemasFromBackend()
+ * await workspace.loadNodeProvidersFromBackend()
  * ```
  */
 export class WorkerExecutorBackend implements ExecutorBackend {
   _resolve?: () => void
   _reject?: (error: Error) => void
   _onEvent?: (event: ExecutorBackendEvent) => void
-  _schemasResolve?: (schemas: INodeSchema[]) => void
+  _providersResolve?: (providers: INodeProvider<INodeSchema>[]) => void
 
   constructor(readonly worker: WorkerLike) {
     this.worker.addEventListener('message', (event) => {
@@ -62,16 +64,16 @@ export class WorkerExecutorBackend implements ExecutorBackend {
     })
   }
 
-  getNodeSchemas(): Promise<INodeSchema[]> {
-    if (this._schemasResolve) {
+  getNodeProviders(): Promise<INodeProvider<INodeSchema>[]> {
+    if (this._providersResolve) {
       return Promise.reject(
-        new Error('WorkerExecutorBackend.getNodeSchemas is already in flight'),
+        new Error('WorkerExecutorBackend.getNodeProviders is already in flight'),
       )
     }
 
-    return new Promise<INodeSchema[]>((resolve) => {
-      this._schemasResolve = resolve
-      this._post({ type: 'list-node-schemas' })
+    return new Promise<INodeProvider<INodeSchema>[]>((resolve) => {
+      this._providersResolve = resolve
+      this._post({ type: 'list-node-providers' })
     })
   }
 
@@ -104,9 +106,9 @@ export class WorkerExecutorBackend implements ExecutorBackend {
   }
 
   _handleMessage(message: ExecutorBackendResponse) {
-    if (message.type === 'node-schemas') {
-      this._schemasResolve?.(message.schemas)
-      this._schemasResolve = undefined
+    if (message.type === 'node-providers') {
+      this._providersResolve?.(message.providers)
+      this._providersResolve = undefined
       return
     }
 

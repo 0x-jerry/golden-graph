@@ -1,5 +1,6 @@
 import { sleep } from '@0x-jerry/utils'
 import { isEqual } from 'lodash-es'
+import { collectNodeProviders, type INodeProvider } from '@0x-jerry/golden-graph'
 import type {
   HandleValueUpdate,
   INodeSchema,
@@ -55,6 +56,33 @@ export type NodeExecuteFn = (
 export interface INodeDefinition {
   schema: INodeSchema
   execute?: NodeExecuteFn
+}
+
+export function nodeDefinitionTypeOf(def: INodeDefinition): string | undefined {
+  return def.schema.type
+}
+
+export function nodeDefinitionWithType(
+  def: INodeDefinition,
+  type: string,
+): INodeDefinition {
+  return { ...def, schema: { ...def.schema, type } }
+}
+
+/**
+ * Backend-side provider registering the subgraph interface nodes, mirroring
+ * core's `subGraphNodeProvider`. Auto-registered by every `WorkflowExecutor`
+ * so subgraph interface nodes resolve like any other node type (no hard-coded
+ * branches in `_schemaOf`). Not served to the frontend — the frontend
+ * registers the interface schemas itself.
+ */
+export const subGraphDefinitionProvider: INodeProvider<INodeDefinition> = {
+  id: 'subgraph',
+  name: 'SubGraph',
+  nodes: {
+    input: { schema: subGraphInputNodeSchema },
+    output: { schema: subGraphOutputNodeSchema },
+  },
 }
 
 export interface WorkflowExecutorEvents {
@@ -133,9 +161,41 @@ export class WorkflowExecutor {
   ) {
     this._events = events
 
+    // Internal subgraph interface nodes are always registered (mirroring
+    // the frontend `Workspace` constructor), so `_schemaOf` and the
+    // no-definition guard need no subgraph special-casing.
+    const internal = collectNodeProviders(
+      [subGraphDefinitionProvider],
+      nodeDefinitionTypeOf,
+      nodeDefinitionWithType,
+    )
+
+    for (const [type, def] of internal) {
+      this._definitions.set(type, def)
+    }
+
+    this.addDefinitions(definitions)
+  }
+
+  /**
+   * Register additional node definitions after construction (e.g. when a
+   * worker host receives new providers). Existing subgraph child executors
+   * snapshot the previous definition set, so they are dropped and rebuilt
+   * lazily on the next nested run.
+   */
+  addDefinitions(definitions: Iterable<INodeDefinition>): void {
     for (const def of definitions) {
+      if (!def.schema.type) {
+        throw new Error(
+          'Can not register node definition: `schema.type` is required. ' +
+            'Register the definition via a provider to auto-generate it.',
+        )
+      }
+
       this._definitions.set(def.schema.type, def)
     }
+
+    this._subExecutors.clear()
   }
 
   async execute(graph: IWorkspace, entryNodeIds: number[], debug: boolean) {
@@ -230,22 +290,17 @@ export class WorkflowExecutor {
       } else {
         const def = this._definitions.get(node.type)
 
-        // Subgraph interface nodes are handled by `_processSubGraphNode` /
-        // schema injection and legitimately have no definition. Any other
-        // node without a registered definition is a silent no-op today —
-        // fail loudly instead so misconfigured graphs are easy to find.
-        if (
-          !def &&
-          node.type !== SUBGRAPH_INPUT_NODE_TYPE &&
-          node.type !== SUBGRAPH_OUTPUT_NODE_TYPE
-        ) {
+        // Fail loudly on unknown node types so misconfigured graphs are easy
+        // to find. Subgraph interface nodes always have a definition (the
+        // auto-registered internal `subgraph` provider).
+        if (!def) {
           throw new Error(
             `Can not execute node type [${node.type}] (node id ${node.id}): ` +
               'no definition is registered on the backend',
           )
         }
 
-        await def?.execute?.(ctx)
+        await def.execute?.(ctx)
       }
 
       if (updates.length) {
@@ -423,14 +478,6 @@ export class WorkflowExecutor {
   }
 
   _schemaOf(node: INode): INodeSchema | undefined {
-    if (node.type === SUBGRAPH_INPUT_NODE_TYPE) {
-      return subGraphInputNodeSchema
-    }
-
-    if (node.type === SUBGRAPH_OUTPUT_NODE_TYPE) {
-      return subGraphOutputNodeSchema
-    }
-
     return this._definitions.get(node.type)?.schema
   }
 

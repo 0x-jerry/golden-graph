@@ -13,8 +13,13 @@ import type { INodeHandleConfig } from './NodeHandle'
 export interface INodeSchema {
   /**
    * Unique node type id, e.g. `'Math.Op'`.
+   *
+   * Optional on authored schemas: when the schema is registered via a
+   * provider, the type is auto-generated as
+   * `provider.id ? \`${provider.id}.${key}\` : key`. Direct
+   * `registerNodeSchema()` (no provider) still requires it.
    */
-  type: string
+  type?: string
 
   /**
    * Display name shown in the node header and the "Add Node" menu.

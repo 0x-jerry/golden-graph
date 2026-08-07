@@ -3,7 +3,6 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 
 export const imageLoaderDefinition: INodeDefinition = {
   schema: {
-    type: 'ImageLoader',
     name: 'Image Loader',
     nodeType: NodeType.Entry,
     handles: [

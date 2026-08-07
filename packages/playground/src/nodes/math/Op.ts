@@ -3,7 +3,6 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 
 export const mathOpDefinition: INodeDefinition = {
   schema: {
-    type: 'Math.Op',
     name: 'Math - Op',
     handles: [
       {

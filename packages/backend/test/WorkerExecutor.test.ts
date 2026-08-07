@@ -6,7 +6,12 @@ import {
   type WorkerLike,
   type WorkerScopeLike,
 } from '../src'
-import { HandlePosition, NodeType, Workspace } from '@0x-jerry/golden-graph'
+import {
+  HandlePosition,
+  NodeType,
+  Workspace,
+  type INodeProvider,
+} from '@0x-jerry/golden-graph'
 
 const calls: string[] = []
 
@@ -60,11 +65,21 @@ const definitions: INodeDefinition[] = [
 
 type Listener = (event: { data: unknown }) => void
 
+function defaultProviders(): INodeProvider<INodeDefinition>[] {
+  const nodes: Record<string, INodeDefinition> = {}
+
+  for (const def of definitions) {
+    nodes[def.schema.type!] = def
+  }
+
+  return [{ id: '', name: 'test', nodes }]
+}
+
 /**
  * In-process loopback between `WorkerExecutorBackend` and
  * `ExecutorWorkerHost`, standing in for the worker's postMessage channel.
  */
-function createLoopback() {
+function createLoopback(providers: INodeProvider<INodeDefinition>[] = defaultProviders()) {
   const hostListeners: Listener[] = []
   const clientListeners: Listener[] = []
 
@@ -92,7 +107,8 @@ function createLoopback() {
     terminate: () => {},
   }
 
-  const host = new ExecutorWorkerHost(definitions, scope)
+  const host = new ExecutorWorkerHost(scope)
+  host.addProviders(providers)
   const backend = new WorkerExecutorBackend(worker)
 
   return { host, backend }
@@ -101,15 +117,17 @@ function createLoopback() {
 async function createWs() {
   const { backend } = createLoopback()
   const ws = new Workspace({ executorBackend: backend })
-  await ws.loadNodeSchemasFromBackend()
+  await ws.loadNodeProvidersFromBackend()
   return ws
 }
 
 describe('WorkerExecutorBackend', () => {
-  it('serves the backend-defined node schemas as JSON', async () => {
+  it('serves the backend-defined node providers as JSON', async () => {
     const { backend } = createLoopback()
 
-    const schemas = await backend.getNodeSchemas()
+    const providers = await backend.getNodeProviders()
+
+    const schemas = providers.flatMap((p) => Object.values(p.nodes))
 
     expect(schemas.map((s) => s.type)).toEqual(['Source', 'Step', 'Failing'])
     expect(schemas[0]).toEqual(definitions[0]!.schema)
@@ -123,6 +141,64 @@ describe('WorkerExecutorBackend', () => {
     expect(s.nodeType).toBe(NodeType.Entry)
     expect(s.getHandle('out')?.isRight).toBe(true)
     expect(s.getData('out')).toBe(1)
+  })
+
+  it('auto-generates node types from provider id + key and executes them', async () => {
+    const sourceProvider: INodeProvider<INodeDefinition> = {
+      id: '',
+      name: 'Base',
+      nodes: {
+        Source: {
+          schema: {
+            name: 'Source',
+            nodeType: NodeType.Entry,
+            handles: [
+              { key: 'out', position: HandlePosition.Right, accepts: 'number', value: 1 },
+            ],
+          },
+        },
+      },
+    }
+
+    const mathProvider: INodeProvider<INodeDefinition> = {
+      id: 'Math',
+      name: 'Math',
+      nodes: {
+        Add: {
+          schema: {
+            name: 'Math - Add',
+            handles: [
+              { key: 'a', position: HandlePosition.Left, accepts: 'number', value: 0 },
+              { key: 'b', position: HandlePosition.Left, accepts: 'number', value: 0 },
+              { key: 'out', position: HandlePosition.Right, accepts: 'number', value: 0 },
+            ],
+          },
+          execute: (ctx) => {
+            const a = ctx.getData<number>('a') ?? 0
+            const b = ctx.getData<number>('b') ?? 0
+            ctx.setData('out', a + b)
+          },
+        },
+      },
+    }
+
+    const { backend } = createLoopback([sourceProvider, mathProvider])
+    const ws = new Workspace({ executorBackend: backend })
+    await ws.loadNodeProvidersFromBackend()
+
+    // types are derived (`Math.Add`); the internal `subgraph` provider is
+    // registered by the Workspace itself, before the served ones
+    expect(ws.providers.map((p) => p.name)).toEqual(['SubGraph', 'Base', 'Math'])
+    expect(ws.nodeRegister.has('Math.Add')).toBe(true)
+
+    const source = ws.addNode('Source')
+    const n = ws.addNode('Math.Add')
+    n.setData('b', 3)
+
+    ws.connect(source.getHandle('out')!, n.getHandle('a')!)
+
+    await ws.execute()
+    expect(n.getData('out')).toBe(4)
   })
 
   it('processes dependencies before dependents and writes results back', async () => {
