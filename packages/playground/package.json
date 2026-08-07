@@ -6,14 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check": "vue-tsc --noEmit",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@iconify-json/carbon": "latest",
     "@vitejs/plugin-vue": "^6.0.3",
     "less": "^4.5.1",
+    "typescript": "npm:typescript-native-bridge@6.0.3-bridge.9.tsgo.7.0.2",
     "unplugin-icons": "latest",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vue-tsc": "^3.3.9"
   },
   "dependencies": {
     "vue": "^3.5.26",
