@@ -119,7 +119,9 @@ function createExecutor(collected?: CollectedEvents) {
     onHandleUpdates: (updates) => collected?.updates.push(...updates),
   }
 
-  return new WorkflowExecutor(definitions, events)
+  const executor = new WorkflowExecutor(events)
+  executor.addDefinitions(definitions)
+  return executor
 }
 
 /**

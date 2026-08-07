@@ -24,7 +24,7 @@ export class DirectExecutorBackend implements ExecutorBackend {
   constructor(definitions: INodeDefinition[]) {
     this.definitions = definitions
 
-    this._executor = new WorkflowExecutor(definitions, {
+    this._executor = new WorkflowExecutor({
       onProgress: (nodeId) => {
         this._onEvent?.({ type: 'progress', currentNodeId: nodeId })
       },
@@ -32,6 +32,7 @@ export class DirectExecutorBackend implements ExecutorBackend {
         this._onEvent?.({ type: 'handle-updates', updates })
       },
     })
+    this._executor.addDefinitions(definitions)
   }
 
   async getNodeProviders(): Promise<INodeProvider<INodeSchema>[]> {

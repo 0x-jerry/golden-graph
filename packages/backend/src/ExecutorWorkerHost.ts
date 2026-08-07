@@ -62,7 +62,7 @@ export class ExecutorWorkerHost {
   constructor(
     readonly _scope: WorkerScopeLike = globalThis as unknown as WorkerScopeLike,
   ) {
-    this.executor = new WorkflowExecutor([], {
+    this.executor = new WorkflowExecutor({
       onProgress: (nodeId) => {
         this._post({ type: 'progress', currentNodeId: nodeId })
       },

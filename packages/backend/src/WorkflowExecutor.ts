@@ -156,10 +156,7 @@ export class WorkflowExecutor {
    */
   _subExecutors = new Map<number, WorkflowExecutor>()
 
-  constructor(
-    definitions: Iterable<INodeDefinition>,
-    events: WorkflowExecutorEvents,
-  ) {
+  constructor(events: WorkflowExecutorEvents) {
     this._events = events
 
     // Internal subgraph interface nodes are always registered (mirroring
@@ -174,8 +171,6 @@ export class WorkflowExecutor {
     for (const [type, def] of internal) {
       this._definitions.set(type, def)
     }
-
-    this.addDefinitions(definitions)
   }
 
   /**
@@ -371,7 +366,8 @@ export class WorkflowExecutor {
     let executor = this._subExecutors.get(subGraphId)
 
     if (!executor) {
-      executor = new WorkflowExecutor(this._definitions.values(), SILENT_EVENTS)
+      executor = new WorkflowExecutor(SILENT_EVENTS)
+      executor.addDefinitions(this._definitions.values())
       this._subExecutors.set(subGraphId, executor)
     }
 
