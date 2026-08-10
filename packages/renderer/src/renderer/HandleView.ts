@@ -11,10 +11,12 @@ import {
   BLOCK_HANDLE_LABEL_ROW,
   ELEMENT_TYPE,
   ATTR,
+  JOINT_CURSOR,
   getNodeWidth,
 } from './constants'
+import { resetStageCursor, setStageCursor } from './cursor'
 import { getHandleFactory } from './handles'
-import { createJointShape, jointColor, resolveJointStyle } from './joint'
+import { createJointShape, resolveJointStyle } from './joint'
 import {
   clearMeasuredRowHeight,
   getHandleRowHeight,
@@ -91,6 +93,10 @@ export class HandleView {
       joint.stroke(COLORS.BORDER)
       joint.strokeWidth(1)
       joint.name(ELEMENT_TYPE.JOINT)
+      joint.on('mouseover pointerover', () =>
+        setStageCursor(joint, JOINT_CURSOR),
+      )
+      joint.on('mouseout pointerout', () => resetStageCursor(joint))
       group.add(joint)
       this._joint = joint
     }
@@ -176,6 +182,11 @@ export class HandleView {
       contentViewMap.delete(module)
       module.destroy()
     }
+    // Release the cursor if the pointer rests on the joint at teardown — no
+    // `mouseout` fires without pointer movement. Must precede the group destroy.
+    if (this._joint) {
+      resetStageCursor(this._joint)
+    }
     this.group.destroy()
   }
 
@@ -204,10 +215,7 @@ export class HandleView {
     if (this._highlighted) {
       return COLORS.JOINT_HIGHLIGHT
     }
-    const style = resolveJointStyle(this.handle)
-    return this.handle.isConnected
-      ? jointColor(style, 1)
-      : jointColor(style, 0.35)
+    return resolveJointStyle(this.handle).color
   }
 
   _blockRowTop(rowCenterY: number): number {

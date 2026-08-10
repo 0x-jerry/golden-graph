@@ -119,6 +119,8 @@ export const HANDLE_CONTENT_X = LAYOUT.JOINT_RADIUS + 4
 export const HANDLE_CONTENT_Y_OFFSET = 8
 export const HANDLE_NAME_WIDTH = 60
 export const HANDLE_NAME_GAP = 6
+/** Stage-container cursor while the pointer hovers a handle joint. */
+export const JOINT_CURSOR = 'crosshair'
 /** Height of the label row inside a block-layout handle's row. */
 export const BLOCK_HANDLE_LABEL_ROW = LAYOUT.HANDLE_ROW_HEIGHT
 export const EXECUTOR_SHADOW_BLUR = 10

@@ -3,7 +3,13 @@ import Konva from 'konva'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { addHandle, makeEdge, makeNode } from '../helpers/entities'
 import { EdgeView } from '../../src/renderer/EdgeView'
-import { HandleView, setJointHighlight } from '../../src/renderer/HandleView'
+import {
+  HandleView,
+  getHandleView,
+  setJointHighlight,
+} from '../../src/renderer/HandleView'
+import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
+import { createWorkspace } from '../helpers/workspace'
 import {
   DEFAULT_JOINT_STYLE,
   createJointShape,
@@ -14,7 +20,7 @@ import {
   registerHandleFactory,
   getHandleFactory,
 } from '../../src/renderer/handles'
-import { COLORS, LAYOUT } from '../../src/renderer/constants'
+import { COLORS, LAYOUT, JOINT_CURSOR } from '../../src/renderer/constants'
 
 describe('resolveJointStyle', () => {
   it('maps each built-in handle type to its registered joint style', () => {
@@ -67,12 +73,12 @@ describe('HandleView joint rendering', () => {
 
     const view = new HandleView(handle)
     expect(view._joint).toBeInstanceOf(Konva.Shape)
-    // Unconnected → dimmed type color.
-    expect(view._joint!.fill()).toBe(jointColor(DEFAULT_JOINT_STYLE, 0.35))
+    // Unconnected joints keep their full type color.
+    expect(view._joint!.fill()).toBe(DEFAULT_JOINT_STYLE.color)
     view.destroy()
   })
 
-  it('uses full type color when connected and highlight while hovered', () => {
+  it('uses the full type color connected and while hovered', () => {
     const node = makeNode(3, 'C')
     const handle = addHandle(node, 'out', {
       position: HandlePosition.Right,
@@ -82,19 +88,17 @@ describe('HandleView joint rendering', () => {
     const otherHandle = addHandle(other, 'in', { type: 'text' })
 
     const view = new HandleView(handle)
-    expect(view._joint!.fill()).toBe(
-      jointColor(resolveJointStyle(handle), 0.35),
-    )
+    expect(view._joint!.fill()).toBe(resolveJointStyle(handle).color)
 
     handle._connectedHandle = otherHandle
     view.update()
-    expect(view._joint!.fill()).toBe(jointColor(resolveJointStyle(handle), 1))
+    expect(view._joint!.fill()).toBe(resolveJointStyle(handle).color)
 
     setJointHighlight(handle, true)
     expect(view._joint!.fill()).toBe(COLORS.JOINT_HIGHLIGHT)
 
     setJointHighlight(handle, false)
-    expect(view._joint!.fill()).toBe(jointColor(resolveJointStyle(handle), 1))
+    expect(view._joint!.fill()).toBe(resolveJointStyle(handle).color)
     view.destroy()
   })
 })
@@ -120,9 +124,7 @@ describe('registerHandleFactory', () => {
     const view = new HandleView(handle)
     expect(view._factory).toBeDefined()
     expect(view._module).toBeNull()
-    expect(view._joint!.fill()).toBe(
-      jointColor({ color: '#22d3ee', shape: 'triangle' }, 0.35),
-    )
+    expect(view._joint!.fill()).toBe('#22d3ee')
     view.destroy()
   })
 
@@ -183,5 +185,32 @@ describe('EdgeView stroke', () => {
     expect(rect.y).toBeCloseTo(40 - LAYOUT.JOINT_RADIUS, 0)
     expect(rect.width).toBeCloseTo(LAYOUT.JOINT_RADIUS * 2, 0)
     expect(rect.height).toBeCloseTo(LAYOUT.JOINT_RADIUS * 2, 0)
+  })
+})
+
+describe('joint cursor', () => {
+  it('sets the stage cursor on joint hover and resets on leave/destroy', () => {
+    const ws = createWorkspace()
+    ws.addNode('Number').moveTo(0, 0)
+    const container = document.createElement('div')
+    Object.defineProperty(container, 'clientWidth', { value: 800 })
+    Object.defineProperty(container, 'clientHeight', { value: 600 })
+
+    const renderer = new KonvaGraphRenderer(container, ws)
+    const handle = ws.nodes[0]!.getHandle('value')!
+    const joint = getHandleView(handle)!._joint!
+    const cursor = () => renderer.stage.content.style.cursor
+
+    try {
+      expect(cursor()).toBe('')
+
+      joint.fire('mouseover')
+      expect(cursor()).toBe(JOINT_CURSOR)
+
+      joint.fire('mouseout')
+      expect(cursor()).toBe('')
+    } finally {
+      renderer.dispose()
+    }
   })
 })
