@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Group, HandlePosition, Workspace } from '@0x-jerry/golden-graph'
 import { buildDefaultContextMenu } from '../../src/renderer'
+import { collectAddableNodes } from '../../src/renderer'
 import { ContextMenuTargetType } from '../../src/renderer/types'
 
 function createWorkspaceWithProviders() {
@@ -45,24 +46,31 @@ function addNodeItem(ws: Workspace) {
 }
 
 describe('ContextMenuBuilder (Add Node)', () => {
-  it('groups nodes into provider submenus by provider name', () => {
+  it('renders a flat Add Node item that opens the picker dialog', () => {
     const ws = createWorkspaceWithProviders()
     const addNode = addNodeItem(ws)
 
-    expect(addNode.children?.map((c) => c.label)).toEqual(['Base', 'Math'])
-    expect(addNode.children![0]!.children?.map((c) => c.label)).toEqual([
-      'Number',
-    ])
-    expect(addNode.children![1]!.children?.map((c) => c.label)).toEqual([
-      'Math - Op',
-    ])
+    expect(addNode.key).toBe('add-node')
+    expect(addNode.children).toBeUndefined()
+  })
+})
+
+describe('collectAddableNodes', () => {
+  it('groups nodes into providers by provider name', () => {
+    const ws = createWorkspaceWithProviders()
+    const groups = collectAddableNodes(ws)
+
+    expect(groups.map((g) => g.providerName)).toEqual(['Base', 'Math'])
+    expect(groups[0]!.nodes.map((n) => n.name)).toEqual(['Number'])
+    expect(groups[1]!.nodes.map((n) => n.name)).toEqual(['Math - Op'])
+    expect(groups[1]!.nodes[0]!.type).toBe('Math.Op')
   })
 
   it('hides the internal subgraph provider (no visible nodes)', () => {
     const ws = createWorkspaceWithProviders()
-    const addNode = addNodeItem(ws)
+    const groups = collectAddableNodes(ws)
 
-    expect(addNode.children?.map((c) => c.label)).not.toContain('SubGraph')
+    expect(groups.map((g) => g.providerName)).not.toContain('SubGraph')
   })
 
   it('exposes the subgraph interface nodes inside a subgraph', () => {
@@ -81,24 +89,22 @@ describe('ContextMenuBuilder (Add Node)', () => {
     expect(ws.isActiveSubGraph).toBe(true)
 
     // The name node is auto-created on conversion, so it is not listed again.
-    const subGraphMenu = addNodeItem(ws).children?.find(
-      (c) => c.label === 'SubGraph',
+    const subGraphGroup = collectAddableNodes(ws).find(
+      (g) => g.providerName === 'SubGraph',
     )
-    expect(subGraphMenu?.children?.map((c) => c.label)).toEqual([
+    expect(subGraphGroup?.nodes.map((n) => n.name)).toEqual([
       'Input Handle',
       'Output Handle',
     ])
-
-    const inputItem = subGraphMenu!.children!.find(
-      (c) => c.label === 'Input Handle',
-    )!
-    inputItem.action?.()
-    expect(ws.nodes.some((n) => n.type === 'subgraph.input')).toBe(true)
+    expect(subGraphGroup?.nodes.map((n) => n.type)).toEqual([
+      'subgraph.input',
+      'subgraph.output',
+    ])
 
     ws.exitSubGraph()
 
     // Outside the subgraph the interface provider stays hidden.
-    expect(addNodeItem(ws).children?.map((c) => c.label)).not.toContain(
+    expect(collectAddableNodes(ws).map((g) => g.providerName)).not.toContain(
       'SubGraph',
     )
   })
@@ -119,22 +125,23 @@ describe('ContextMenuBuilder (Add Node)', () => {
     const nameNode = ws.nodes.find((n) => n.type === 'subgraph.name')!
     ws.removeNodeByIds(nameNode.id)
 
-    const subGraphMenu = addNodeItem(ws).children?.find(
-      (c) => c.label === 'SubGraph',
+    const subGraphGroup = collectAddableNodes(ws).find(
+      (g) => g.providerName === 'SubGraph',
     )
-    expect(subGraphMenu?.children?.map((c) => c.label)).toEqual([
+    expect(subGraphGroup?.nodes.map((n) => n.name)).toEqual([
       'Input Handle',
       'Output Handle',
       'Graph Name',
     ])
   })
 
-  it('adds a node of the derived type when a menu action runs', () => {
+  it('provides a type that adds a node of the derived type', () => {
     const ws = createWorkspaceWithProviders()
-    const addNode = addNodeItem(ws)
+    const mathOp = collectAddableNodes(ws).find(
+      (g) => g.providerName === 'Math',
+    )!.nodes[0]!
 
-    const mathOp = addNode.children!.find((c) => c.label === 'Math')!
-    mathOp.children![0]!.action?.()
+    ws.addNode(mathOp.type)
 
     const nodes = ws.nodes
     expect(nodes.length).toBe(1)

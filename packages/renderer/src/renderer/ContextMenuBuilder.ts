@@ -1,5 +1,5 @@
 import type { Workspace } from '@0x-jerry/golden-graph'
-import { SUBGRAPH_NAME_NODE_TYPE, isSubGraphNode } from '@0x-jerry/golden-graph'
+import { isSubGraphNode } from '@0x-jerry/golden-graph'
 import { autoLayout } from '../layout'
 import type { CoreMenuItem, ContextMenuContext } from './types'
 import { ContextMenuTargetType } from './types'
@@ -12,7 +12,7 @@ export function buildDefaultContextMenu(
 ): CoreMenuItem[] {
   switch (ctx.type) {
     case ContextMenuTargetType.Canvas:
-      return canvasMenu(ws, ctx)
+      return canvasMenu(ws)
     case ContextMenuTargetType.Node:
       return nodeMenu(ws, ctx.id!)
     case ContextMenuTargetType.Group:
@@ -20,11 +20,11 @@ export function buildDefaultContextMenu(
   }
 }
 
-function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
+function canvasMenu(ws: Workspace): CoreMenuItem[] {
   const items: CoreMenuItem[] = [
     {
+      key: 'add-node',
       label: 'Add Node',
-      children: addNodeMenu(ws, ctx),
     },
     {
       label: 'Auto Layout',
@@ -47,55 +47,6 @@ function canvasMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
   }
 
   return items
-}
-
-/**
- * "Add Node" submenu: one submenu per node provider (`provider.name`),
- * each listing the provider's non-internal nodes by their display `name`.
- * While inside a subgraph the internal interface nodes (`subgraph.input` /
- * `subgraph.output` / `subgraph.name`) are also exposed so the inner
- * workspace can be edited.
- */
-function addNodeMenu(ws: Workspace, ctx: ContextMenuContext): CoreMenuItem[] {
-  const children: CoreMenuItem[] = []
-
-  for (const provider of ws.providers) {
-    const nodeItems: CoreMenuItem[] = []
-
-    for (const schema of Object.values(provider.nodes)) {
-      if (!schema.type) {
-        continue
-      }
-
-      // The subgraph interface nodes are internal by default — only addable
-      // inside a subgraph's inner workspace. Other internal nodes stay hidden.
-      if (
-        schema.internal &&
-        !(ws.isActiveSubGraph && provider.id === 'subgraph')
-      ) {
-        continue
-      }
-
-      // A subgraph has at most one name node; hide the entry once one exists.
-      if (
-        schema.type === SUBGRAPH_NAME_NODE_TYPE &&
-        ws.nodes.some((n) => n.type === SUBGRAPH_NAME_NODE_TYPE)
-      ) {
-        continue
-      }
-
-      nodeItems.push({
-        label: schema.name,
-        action: () => ws.addNode(schema.type!, ctx.pos ? { pos: ctx.pos } : undefined),
-      })
-    }
-
-    if (nodeItems.length) {
-      children.push({ label: provider.name, children: nodeItems })
-    }
-  }
-
-  return children
 }
 
 function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {

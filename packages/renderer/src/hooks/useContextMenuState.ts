@@ -7,6 +7,12 @@ interface CtxMenuState {
   x: number
   y: number
   items: ContextMenuItem[]
+  /**
+   * The target position of the context menu in workspace coordinates
+   * (canvas target only), so follow-up actions (e.g. adding a node) can
+   * place their result at the right-click point.
+   */
+  pos?: { x: number; y: number }
 }
 
 export function useContextMenuState() {
@@ -17,7 +23,12 @@ export function useContextMenuState() {
     items: [],
   })
 
-  function show(x: number, y: number, menus: CoreMenuItem[]) {
+  function show(
+    x: number,
+    y: number,
+    menus: CoreMenuItem[],
+    pos?: { x: number; y: number },
+  ) {
     const visibleMenus = menus.filter((item) => {
       if (item.visible == null) return true
       if (typeof item.visible === 'function') return item.visible()
@@ -29,11 +40,13 @@ export function useContextMenuState() {
     state.x = x
     state.y = y
     state.items = visibleMenus
+    state.pos = pos
   }
 
   function hide() {
     state.visible = false
     state.items = []
+    state.pos = undefined
   }
 
   return { state, show, hide }

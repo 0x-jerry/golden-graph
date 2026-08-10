@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import type { Workspace as IWorkspace } from '@0x-jerry/golden-graph'
 import { KonvaGraphRenderer } from './renderer'
+import type { ContextMenuItem } from './components/ContextMenu.vue'
 import { useContextMenuState, useWorkspace } from './hooks'
 import WorkspaceToolbar from './components/WorkspaceToolbar.vue'
 import ContextMenu from './components/ContextMenu.vue'
+import AddNodeDialog from './components/AddNodeDialog.vue'
 
 export interface KonvaRendererProps {
   setup?: (ws: IWorkspace) => void | Promise<void>
@@ -21,6 +23,8 @@ const containerRef = useTemplateRef<HTMLElement>('container')
 
 const ws = useWorkspace.provide()
 const ctxMenu = useContextMenuState()
+const addNodeVisible = ref(false)
+const addNodePos = ref<{ x: number; y: number } | undefined>()
 
 let renderer: KonvaGraphRenderer | null = null
 
@@ -32,8 +36,11 @@ onMounted(async () => {
   // before `setup` runs — `setup` may call `ws.addGroup()` which requires a
   // renderer, and node/edge additions during setup are then rendered live.
   renderer = new KonvaGraphRenderer(el, ws, {
-    onContextMenu: (_ctx, evt, menus) => {
-      ctxMenu.show(evt.clientX, evt.clientY, menus)
+    onContextMenu: (ctx, evt, menus) => {
+      ctxMenu.show(evt.clientX, evt.clientY, menus, ctx.pos)
+      // Keep the drop position even after the menu closes, so the "Add Node"
+      // dialog doesn't depend on menu click/close ordering.
+      addNodePos.value = ctx.pos
     },
   })
 
@@ -52,6 +59,12 @@ onBeforeUnmount(() => {
   renderer?.dispose()
 })
 
+function onMenuClick(item: ContextMenuItem) {
+  if (item.key === 'add-node') {
+    addNodeVisible.value = true
+  }
+}
+
 defineExpose({
   workspace: ws,
 })
@@ -68,6 +81,13 @@ defineExpose({
       :y="ctxMenu.state.y"
       :items="ctxMenu.state.items"
       @close="ctxMenu.hide"
+      @click="onMenuClick"
+    />
+    <AddNodeDialog
+      v-if="props.showContextMenu"
+      :visible="addNodeVisible"
+      :pos="addNodePos"
+      @close="addNodeVisible = false"
     />
   </div>
 </template>
