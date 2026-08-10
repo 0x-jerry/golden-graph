@@ -88,12 +88,18 @@ export function isSubGraphInputNode(node: Node) {
  */
 export const subGraphNameNodeSchema: INodeSchema = {
   type: SUBGRAPH_NAME_NODE_TYPE,
-  name: 'Graph Name',
+  name: 'Graph Node Info',
   internal: true,
   handles: [
     {
       name: 'Name',
       key: 'Name',
+      accepts: 'string',
+      type: 'text',
+    },
+    {
+      name: 'Description',
+      key: 'Description',
       accepts: 'string',
       type: 'text',
     },

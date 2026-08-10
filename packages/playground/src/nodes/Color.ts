@@ -4,6 +4,7 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 export const colorDefinition: INodeDefinition = {
   schema: {
     name: 'Color Input',
+    description: 'Emits a constant color value',
     nodeType: NodeType.Entry,
     handles: [
       {

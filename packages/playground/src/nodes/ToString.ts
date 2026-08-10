@@ -4,6 +4,7 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 export const toStringDefinition: INodeDefinition = {
   schema: {
     name: 'To String',
+    description: 'Converts the input to a string representation',
     handles: [
       {
         key: 'output',

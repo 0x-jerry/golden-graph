@@ -4,6 +4,7 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 export const mathOpDefinition: INodeDefinition = {
   schema: {
     name: 'Math - Op',
+    description: 'Applies an arithmetic operation (+, -, *, /) to two numbers',
     handles: [
       {
         key: 's',

@@ -4,6 +4,7 @@ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 export const textDefinition: INodeDefinition = {
   schema: {
     name: 'Text Input',
+    description: 'Emits a constant string value',
     nodeType: NodeType.Entry,
     handles: [
       {
