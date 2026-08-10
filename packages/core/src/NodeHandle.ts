@@ -22,6 +22,8 @@ export class NodeHandle {
 
   name = 'Default Handle'
 
+  description = ''
+
   position = HandlePosition.None
 
   _options: ObjectAny = {}
@@ -152,6 +154,7 @@ export class NodeHandle {
   fromConfig(data: INodeHandleConfig): void {
     this.key = data.key ?? ''
     this.name = data.name ?? ''
+    this.description = data.description ?? ''
     this.accepts = ensureArray(data.accepts)
     this.type = data.type ?? ''
     this.position = data.position ?? HandlePosition.None

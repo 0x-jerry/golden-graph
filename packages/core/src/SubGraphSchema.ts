@@ -27,20 +27,31 @@ export const subGraphInputNodeSchema: INodeSchema = {
       key: 'Output',
       accepts: '*',
       position: HandlePosition.Right,
+      description: 'Value passed into the subgraph through this input',
     },
     {
       name: 'Name',
       key: 'Name',
       accepts: 'string',
       type: 'text',
+      description: 'Display name of this input',
     },
     {
       name: 'Type',
       key: 'Type',
       accepts: 'string',
+      type: 'text',
       // Accept-anything by default so a freshly added input handle can be
       // connected to external nodes before its type is narrowed.
       value: NodeHandleType.All,
+      description: 'Data type of this input, used for connection matching',
+    },
+    {
+      name: 'Description',
+      key: 'Description',
+      accepts: 'string',
+      type: 'text',
+      description: 'Description of this input',
     },
   ],
 }
@@ -59,18 +70,29 @@ export const subGraphOutputNodeSchema: INodeSchema = {
       key: 'Value',
       accepts: '*',
       position: HandlePosition.Left,
+      description: 'Value produced by the subgraph through this output',
     },
     {
       name: 'Name',
       key: 'Name',
       accepts: 'string',
       type: 'text',
+      description: 'Display name of this output',
     },
     {
       name: 'Type',
       key: 'Type',
       accepts: 'string',
+      type: 'text',
       value: 'string',
+      description: 'Data type of this output, used for connection matching',
+    },
+    {
+      name: 'Description',
+      key: 'Description',
+      accepts: 'string',
+      type: 'text',
+      description: 'Description of this output',
     },
   ],
 }
@@ -137,6 +159,7 @@ export function subGraphInputToHandleConfig(node: Node): INodeHandleConfig {
     // name, so external edges survive `exitSubGraph`.
     key: String(node.id),
     accepts: node.getData('Type'),
+    description: node.getData('Description'),
     position: HandlePosition.Left,
   }
 
@@ -148,6 +171,7 @@ export function subGraphOutputToHandleConfig(node: Node): INodeHandleConfig {
     name: node.getData('Name'),
     key: String(node.id),
     accepts: node.getData('Type'),
+    description: node.getData('Description'),
     position: HandlePosition.Right,
   }
 

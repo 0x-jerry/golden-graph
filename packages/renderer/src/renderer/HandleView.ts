@@ -16,6 +16,7 @@ import {
 } from './constants'
 import { resetStageCursor, setStageCursor } from './cursor'
 import { getHandleFactory } from './handles'
+import { TOOLTIP_DELAY, hideTooltip, showTooltip } from './tooltip'
 import { createJointShape, resolveJointStyle } from './joint'
 import {
   clearMeasuredRowHeight,
@@ -61,6 +62,10 @@ export class HandleView {
   _highlighted = false
   /** Fired after this handle's row height is re-measured. */
   _onResize?: () => void
+  /** Timer for the description tooltip's hover delay. */
+  _tooltipTimer: ReturnType<typeof setTimeout> | null = null
+  /** Unsubscribe from `coord:changed` while the tooltip is armed. */
+  _closeTooltipOnCoordChange?: () => void
 
   constructor(handle: NodeHandle, onResize?: () => void) {
     this.handle = handle
@@ -133,6 +138,10 @@ export class HandleView {
 
     handleViewMap.set(handle, this)
 
+    if (handle.description) {
+      this._setupTooltip()
+    }
+
     // Measure the block content and re-position using the final row height.
     this._measureRowHeight()
     this.update()
@@ -174,9 +183,54 @@ export class HandleView {
     this._joint?.fill(this._jointFill())
   }
 
+  _setupTooltip(): void {
+    // Anchor on something actually positioned at the handle row (the joint,
+    // or the label for layout-only handles) — the handle group itself lives
+    // at the node's origin.
+    const anchor = () => this._joint ?? this._label
+    // Right-positioned handles grow their tooltip leftward from the joint so
+    // it stays over the handle instead of hanging off the node's right edge.
+    const align =
+      this.handle.position === HandlePosition.Right ? 'end' : 'start'
+
+    this.group.on('mouseenter', () => {
+      this._clearTooltipTimer()
+      this._tooltipTimer = setTimeout(() => {
+        showTooltip(anchor(), this.handle.description, align)
+      }, TOOLTIP_DELAY)
+      // Hide when the coordinate system changes (pan/zoom) — the anchor
+      // cannot be tracked reliably.
+      this._closeTooltipOnCoordChange ??= this.handle.node.workspace.events.on(
+        'coord:changed',
+        () => this._hideTooltip(),
+      )
+    })
+
+    this.group.on('mouseleave', () => this._hideTooltip())
+  }
+
+  _clearTooltipTimer(): void {
+    if (this._tooltipTimer !== null) {
+      clearTimeout(this._tooltipTimer)
+      this._tooltipTimer = null
+    }
+  }
+
+  _hideTooltip(): void {
+    this._clearTooltipTimer()
+    hideTooltip()
+    // The listener only needs to live while a tooltip is armed/visible.
+    this._closeTooltipOnCoordChange?.()
+    this._closeTooltipOnCoordChange = undefined
+  }
+
   destroy(): void {
     handleViewMap.delete(this.handle)
     clearMeasuredRowHeight(this.handle)
+    this._clearTooltipTimer()
+    hideTooltip()
+    this._closeTooltipOnCoordChange?.()
+    this._closeTooltipOnCoordChange = undefined
     const module = this._module
     if (module) {
       contentViewMap.delete(module)

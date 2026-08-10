@@ -33,6 +33,11 @@ export interface INodeHandleConfig {
   name?: string
 
   /**
+   * Description shown in a tooltip when hovering the handle for a moment.
+   */
+  description?: string
+
+  /**
    * Visual position on the node (Left = input, Right = output, None = layout-only).
    */
   position?: HandlePosition

@@ -5,6 +5,7 @@ import { CoordLayer } from './CoordLayer'
 import { InteractionManager } from './interaction/InteractionManager'
 import type { ContextMenuContext, CoreMenuItem } from './types'
 import { disposeHandleEditors } from './handles'
+import { disposeTooltip } from './tooltip'
 import { LAYER_NAME } from './constants'
 import type { IRect } from '../utils/RectBox'
 import { ActiveElementManager } from './ActiveElementManager'
@@ -180,6 +181,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._interaction.dispose()
     this._resizeObserver.disconnect()
     disposeHandleEditors()
+    disposeTooltip()
 
     this._store.destroyAll()
 

@@ -17,6 +17,7 @@ describe('NodeHandle', () => {
     handle.fromConfig({
       key: 'input',
       name: 'Input',
+      description: 'Feed a number here',
       accepts: ['number'],
       position: HandlePosition.Left,
       type: 'number',
@@ -24,9 +25,23 @@ describe('NodeHandle', () => {
     })
     expect(handle.key).toBe('input')
     expect(handle.name).toBe('Input')
+    expect(handle.description).toBe('Feed a number here')
     expect(handle.accepts).toEqual(['number'])
     expect(handle.isLeft).toBe(true)
     expect(handle.type).toBe('number')
+  })
+
+  it('defaults description to empty string when absent', () => {
+    const node = new TestNode()
+    const handle = new NodeHandle()
+    handle.setNode(node)
+    handle.fromConfig({
+      key: 'out',
+      name: 'Output',
+      position: HandlePosition.Right,
+      accepts: ['number'],
+    })
+    expect(handle.description).toBe('')
   })
 
   it('canConnectTo respects position and type', () => {

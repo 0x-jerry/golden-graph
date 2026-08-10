@@ -234,6 +234,7 @@ interface INodeHandleConfig {
   accepts?: string | string[]  // data type(s) for connection matching; '*' = any
   type?: string                // render component: 'text' | 'number' | 'select' | 'image' | 'display'
   name?: string                // handle label
+  description?: string         // shown in a tooltip on hover
   position?: HandlePosition    // Left = input, Right = output, None = layout-only row
   value?: unknown              // initial value
   options?: Record<string, any> // render props (select choices in options.options)
