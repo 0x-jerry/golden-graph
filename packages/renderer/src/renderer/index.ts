@@ -6,5 +6,5 @@ export type {
   ContextMenuTargetType,
   CoreMenuItem,
 } from './types'
-export { collectAddableNodes } from './addNodeOptions'
+export { addNodeFromOption, collectAddableNodes } from './addNodeOptions'
 export type { AddableNodeGroup, AddableNodeOption } from './addNodeOptions'

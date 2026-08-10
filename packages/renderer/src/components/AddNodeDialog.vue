@@ -7,7 +7,7 @@ import {
   watch,
   type ComponentPublicInstance,
 } from 'vue'
-import { collectAddableNodes } from '../renderer'
+import { addNodeFromOption, collectAddableNodes } from '../renderer'
 import type { AddableNodeGroup, AddableNodeOption } from '../renderer'
 import { useWorkspace } from '../hooks'
 import NodePreview from './NodePreview.vue'
@@ -188,7 +188,7 @@ watch(visibleGroups, async (groups) => {
 })
 
 function selectNode(node: AddableNodeOption) {
-  ws.addNode(node.type, props.pos && { pos: props.pos })
+  addNodeFromOption(ws, node, props.pos)
   emit('close')
 }
 
@@ -301,7 +301,12 @@ watch(
           </div>
 
           <div class="gr-add-node-preview">
-            <NodePreview v-if="hovered" :ws="ws" :type="hovered.type" />
+            <NodePreview
+              v-if="hovered"
+              :ws="ws"
+              :type="hovered.type"
+              :sub-graph-id="hovered.subGraphId"
+            />
             <div v-else class="gr-add-node-preview-hint">
               Hover a node to preview
             </div>

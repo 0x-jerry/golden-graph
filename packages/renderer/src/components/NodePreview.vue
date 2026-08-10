@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import Konva from 'konva'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import type { Workspace } from '@0x-jerry/golden-graph'
+import type { Node, Workspace } from '@0x-jerry/golden-graph'
+import { SubGraphNode } from '@0x-jerry/golden-graph'
 import { NodeView, getNodeHeight } from '../renderer/NodeView'
 import { getNodeWidth } from '../renderer/constants'
 
 export interface NodePreviewProps {
   ws: Workspace
   type?: string
+  subGraphId?: number
 }
 
 const props = defineProps<NodePreviewProps>()
@@ -30,14 +32,31 @@ async function render() {
 
   if (!props.type) return
 
-  const factory = props.ws.nodeRegister.get(props.type)
-  if (!factory) return
+  let node: Node | undefined
+
+  if (props.subGraphId != null) {
+    // Sub-graph nodes have no factory; build a temporary one referencing the
+    // real sub-graph. `buildNode()` runs before `setWorkspace()` so its
+    // `node:changed` emit is skipped (no workspace attached yet).
+    const subGraph = props.ws.subGraphs.find((g) => g.id === props.subGraphId)
+    if (!subGraph) return
+
+    const subGraphNode = new SubGraphNode(subGraph)
+    subGraphNode.buildNode()
+    node = subGraphNode
+  } else {
+    const factory = props.ws.nodeRegister.get(props.type)
+    if (factory) {
+      node = new factory()
+    }
+  }
+
+  if (!node) return
 
   const width = el.clientWidth
   const height = el.clientHeight
   if (width <= 0 || height <= 0) return
 
-  const node = new factory()
   node.setWorkspace(props.ws)
 
   stage = new Konva.Stage({

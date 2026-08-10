@@ -1,5 +1,8 @@
 import type { Workspace } from '@0x-jerry/golden-graph'
-import { SUBGRAPH_NAME_NODE_TYPE } from '@0x-jerry/golden-graph'
+import {
+  SUBGRAPH_NAME_NODE_TYPE,
+  isSubGraphNameNode,
+} from '@0x-jerry/golden-graph'
 
 export interface AddableNodeOption {
   /** Full node type, e.g. `Math.Op`. */
@@ -7,6 +10,12 @@ export interface AddableNodeOption {
   /** Display name shown in the node header. */
   name: string
   description?: string
+  /**
+   * Set for options that insert an existing sub-graph node. When set, `type`
+   * is only an identifier (`subgraph:<id>`) — creation must go through the
+   * sub-graph path in `addNodeFromOption`, not `ws.addNode`.
+   */
+  subGraphId?: number
 }
 
 export interface AddableNodeGroup {
@@ -65,5 +74,60 @@ export function collectAddableNodes(ws: Workspace): AddableNodeGroup[] {
     }
   }
 
+  // Existing sub-graphs are insertable as `SubGraphNode`s. They are not
+  // registered as node schemas, so they are collected directly from
+  // `ws.subGraphs`. `ws.subGraphs` holds only the sub-graphs reachable at the
+  // current nesting level (the list is emptied while inside a sub-graph
+  // unless it has nested ones), so the group matches what the user can see.
+  if (ws.subGraphs.length) {
+    groups.push({
+      providerId: SUBGRAPH_GROUP_ID,
+      providerName: 'Sub Graph',
+      nodes: ws.subGraphs.map((subGraph) => {
+        const nameNode = subGraph.workspace.nodes.find(isSubGraphNameNode)
+        const name =
+          nameNode?.getData<string>('Name') || `SubGraph #${subGraph.id}`
+        const description = nameNode?.getData<string>('Description')
+
+        return {
+          type: `subgraph:${subGraph.id}`,
+          name,
+          description,
+          subGraphId: subGraph.id,
+        }
+      }),
+    })
+  }
+
   return groups
 }
+
+/**
+ * Add the node represented by `option` to the workspace. Sub-graph options are
+ * inserted as `SubGraphNode`s sharing the referenced `SubGraph`; all others go
+ * through `ws.addNode`.
+ */
+export function addNodeFromOption(
+  ws: Workspace,
+  option: AddableNodeOption,
+  pos?: { x: number; y: number },
+) {
+  if (option.subGraphId != null) {
+    const node = ws.copySubGraphNode(option.subGraphId)
+
+    // Keep the inserted node's name in sync with the option shown in the
+    // dialog: `buildNode` leaves the default 'SubGraph' name when the
+    // sub-graph's name node is missing, while the option falls back to
+    // `SubGraph #<id>`.
+    node.name = option.name
+
+    if (pos) {
+      node.moveTo(pos.x, pos.y)
+    }
+    return node
+  }
+
+  return ws.addNode(option.type, pos && { pos })
+}
+
+const SUBGRAPH_GROUP_ID = '__subgraph__'

@@ -34,7 +34,6 @@ export const subGraphInputNodeSchema: INodeSchema = {
       accepts: 'string',
       type: 'text',
     },
-    // todo, use a select component
     {
       name: 'Type',
       key: 'Type',
