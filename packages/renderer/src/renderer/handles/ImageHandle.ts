@@ -150,7 +150,10 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
 
 export const imageHandleFactory: NodeHandleFactory = {
   type: 'image',
-  config: { layout: 'block' },
+  config: {
+    layout: 'block',
+    joint: { color: '#f97316', shape: 'diamond' },
+  },
   create: (handle) => new ImageModule(handle),
 
   /** Remove the shared file input from the DOM when the renderer is disposed. */

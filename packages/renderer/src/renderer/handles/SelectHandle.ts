@@ -41,6 +41,7 @@ class SelectModule extends Konva.Group implements NodeHandleModule {
 
 export const selectHandleFactory: NodeHandleFactory = {
   type: 'select',
+  config: { joint: { color: '#f59e0b', shape: 'diamond' } },
   create: (handle) => new SelectModule(handle),
 }
 

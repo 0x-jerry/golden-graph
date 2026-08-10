@@ -47,11 +47,15 @@ class ColorModule extends Konva.Group implements NodeHandleModule {
 
 export const colorHandleFactory: NodeHandleFactory = {
   type: 'color',
+  config: { joint: { color: '#ec4899', shape: 'circle' } },
   create: (handle) => new ColorModule(handle),
 }
 
 function normalizeColor(value: unknown): string {
-  if (typeof value === 'string' && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) {
+  if (
+    typeof value === 'string' &&
+    /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)
+  ) {
     return value
   }
   return '#ffffff'

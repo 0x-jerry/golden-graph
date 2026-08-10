@@ -34,5 +34,6 @@ class TextModule extends Konva.Group implements NodeHandleModule {
 
 export const textHandleFactory: NodeHandleFactory = {
   type: 'text',
+  config: { joint: { color: '#10b981', shape: 'square' } },
   create: (handle) => new TextModule(handle),
 }

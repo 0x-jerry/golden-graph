@@ -14,6 +14,7 @@ import {
   getNodeWidth,
 } from './constants'
 import { getHandleFactory } from './handles'
+import { createJointShape, jointColor, resolveJointStyle } from './joint'
 import {
   clearMeasuredRowHeight,
   getHandleRowHeight,
@@ -50,7 +51,7 @@ export class HandleView {
   readonly group: Konva.Group
   readonly key: string
 
-  _joint?: Konva.Circle
+  _joint?: Konva.Shape
   _label: Konva.Text
   _factory: NodeHandleFactory | null
   _module: NodeHandleModule | null = null
@@ -78,20 +79,20 @@ export class HandleView {
       handle.position === HandlePosition.Left ||
       handle.position === HandlePosition.Right
     ) {
-      const circle = new Konva.Circle({
+      const joint = createJointShape(resolveJointStyle(handle))
+      joint.position({
         x:
           handle.position === HandlePosition.Left
             ? 0
             : getNodeWidth(handle.node),
         y,
-        radius: LAYOUT.JOINT_RADIUS,
-        fill: this._jointFill(),
-        stroke: COLORS.BORDER,
-        strokeWidth: 1,
-        name: ELEMENT_TYPE.JOINT,
       })
-      group.add(circle)
-      this._joint = circle
+      joint.fill(this._jointFill())
+      joint.stroke(COLORS.BORDER)
+      joint.strokeWidth(1)
+      joint.name(ELEMENT_TYPE.JOINT)
+      group.add(joint)
+      this._joint = joint
     }
 
     const label = new Konva.Text({
@@ -114,7 +115,7 @@ export class HandleView {
     group.add(label)
     this._label = label
 
-    if (this._factory) {
+    if (this._factory?.create) {
       const module = this._factory.create(handle, handle.getOptions())
       module.name('content')
       module.y(this._contentY())
@@ -185,7 +186,8 @@ export class HandleView {
     const contentHeight = this._module
       ? this._module.getClientRect({ skipTransform: true }).height
       : 0
-    const minHeight = this._factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+    const minHeight =
+      this._factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
     const content = Math.max(minHeight, contentHeight)
     const rowHeight = hasLabelRow(this.handle)
       ? BLOCK_HANDLE_LABEL_ROW + content
@@ -202,7 +204,10 @@ export class HandleView {
     if (this._highlighted) {
       return COLORS.JOINT_HIGHLIGHT
     }
-    return this.handle.isConnected ? COLORS.ACCENT : COLORS.JOINT_DEFAULT
+    const style = resolveJointStyle(this.handle)
+    return this.handle.isConnected
+      ? jointColor(style, 1)
+      : jointColor(style, 0.35)
   }
 
   _blockRowTop(rowCenterY: number): number {
@@ -216,9 +221,7 @@ export class HandleView {
 
   _contentY(): number {
     if (this._layout === 'block') {
-      const blockTop = this._blockRowTop(
-        handleY(this.handle.node, this.handle),
-      )
+      const blockTop = this._blockRowTop(handleY(this.handle.node, this.handle))
       return hasLabelRow(this.handle)
         ? blockTop + BLOCK_HANDLE_LABEL_ROW
         : blockTop

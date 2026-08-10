@@ -10,6 +10,7 @@ import {
   getNodeWidth,
 } from './constants'
 import { handleY } from './handles/layout'
+import { jointColor, resolveJointStyle } from './joint'
 import { EntityView } from './EntityView'
 
 const CLOSE_SIZE = 12
@@ -24,12 +25,12 @@ export class EdgeView extends EntityView<Edge> {
       [ATTR.ELEMENT_ID]: edge.id,
     })
 
-    const { points, mid } = computeEdgeGeometry(edge)
+    const { points, mid, source } = computeEdgeGeometry(edge)
 
     const line = new Konva.Line({
       points,
       bezier: true,
-      stroke: COLORS.EDGE,
+      stroke: edgeStroke(source),
       strokeWidth: COLORS.EDGE_WIDTH,
       hitStrokeWidth: EDGE_HIT_STROKE,
       fill: undefined,
@@ -37,7 +38,7 @@ export class EdgeView extends EntityView<Edge> {
     })
     group.add(line)
 
-    const closeBtn = createCloseButton()
+    const closeBtn = createCloseButton(line.stroke() as string)
     closeBtn.position(mid)
     group.add(closeBtn)
 
@@ -63,8 +64,9 @@ export class EdgeView extends EntityView<Edge> {
   }
 
   update(): void {
-    const { points, mid } = computeEdgeGeometry(this.entity)
+    const { points, mid, source } = computeEdgeGeometry(this.entity)
     this._line.points(points)
+    this._line.stroke(edgeStroke(source))
     this._closeBtn.position(mid)
   }
 }
@@ -112,7 +114,17 @@ function computeEdgeGeometry(edge: Edge) {
   const points = [p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y]
   const mid = bezierMidpoint(p0, p1, p2, p3)
 
-  return { points, mid }
+  // `startHandle` is the visual (leftmost) departure point, not the data
+  // source: data always flows out of the right (output) handle, regardless of
+  // which endpoint `connect()` was called with.
+  const source = edge.start.isRight ? edge.start : edge.end
+
+  return { points, mid, source }
+}
+
+/** Edge stroke follows the source port's joint color, at the classic alpha. */
+function edgeStroke(handle: NodeHandle): string {
+  return jointColor(resolveJointStyle(handle), 0.5)
 }
 
 function bezierMidpoint(
@@ -124,12 +136,20 @@ function bezierMidpoint(
   const t = 0.5
   const mt = 1 - t
   return {
-    x: mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x,
-    y: mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y,
+    x:
+      mt * mt * mt * p0.x +
+      3 * mt * mt * t * p1.x +
+      3 * mt * t * t * p2.x +
+      t * t * t * p3.x,
+    y:
+      mt * mt * mt * p0.y +
+      3 * mt * mt * t * p1.y +
+      3 * mt * t * t * p2.y +
+      t * t * t * p3.y,
   }
 }
 
-function createCloseButton(): Konva.Group {
+function createCloseButton(stroke: string): Konva.Group {
   const group = new Konva.Group({
     name: 'edge-close',
     visible: false,
@@ -141,7 +161,7 @@ function createCloseButton(): Konva.Group {
     offsetX: CLOSE_SIZE / 2,
     offsetY: CLOSE_SIZE / 2,
     fill: COLORS.BG,
-    stroke: COLORS.EDGE,
+    stroke,
     strokeWidth: 1,
     cornerRadius: 2,
   })
@@ -149,13 +169,13 @@ function createCloseButton(): Konva.Group {
 
   const line1 = new Konva.Line({
     points: [-3, -3, 3, 3],
-    stroke: COLORS.EDGE,
+    stroke,
     strokeWidth: 1.5,
     lineCap: 'round',
   })
   const line2 = new Konva.Line({
     points: [3, -3, -3, 3],
-    stroke: COLORS.EDGE,
+    stroke,
     strokeWidth: 1.5,
     lineCap: 'round',
   })

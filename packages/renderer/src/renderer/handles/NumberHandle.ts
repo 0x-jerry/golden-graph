@@ -36,6 +36,7 @@ class NumberModule extends Konva.Group implements NodeHandleModule {
 
 export const numberHandleFactory: NodeHandleFactory = {
   type: 'number',
+  config: { joint: { color: '#6366f1', shape: 'circle' } },
   create: (handle) => new NumberModule(handle),
 }
 

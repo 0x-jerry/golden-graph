@@ -32,7 +32,10 @@ class DisplayModule extends Konva.Group implements NodeHandleModule {
 
 export const displayHandleFactory: NodeHandleFactory = {
   type: 'display',
-  config: { layout: 'block' },
+  config: {
+    layout: 'block',
+    joint: { color: '#8b5cf6', shape: 'square' },
+  },
   create: (handle) => new DisplayModule(handle),
 }
 

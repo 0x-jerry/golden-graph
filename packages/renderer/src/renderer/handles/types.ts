@@ -12,6 +12,18 @@ import type {
  */
 export type HandleContentLayout = 'inline' | 'block'
 
+/** Geometry used to draw a handle's joint (connection dot). */
+export type HandleJointShape = 'circle' | 'square' | 'diamond' | 'triangle'
+
+/**
+ * Visual style of a handle's joint. Defined per handle `type` via the
+ * factory's `config.joint`, so the joint look is a pure function of the type.
+ */
+export interface IHandleJointStyle {
+  color: string
+  shape: HandleJointShape
+}
+
 /**
  * Render config for a handle factory. Applied to every handle created by it.
  */
@@ -27,6 +39,12 @@ export interface NodeHandleConfig {
    * Defaults to `LAYOUT.HANDLE_ROW_HEIGHT`. Only applies to block handles.
    */
   minHeight?: number
+
+  /**
+   * Joint (connection dot) style for this handle type. When absent the joint
+   * falls back to {@link DEFAULT_JOINT_STYLE}.
+   */
+  joint?: IHandleJointStyle
 }
 
 /**
@@ -56,7 +74,15 @@ export interface NodeHandleFactory {
 
   config?: NodeHandleConfig
 
-  create(handle: NodeHandle, options: INodeHandleConfigOptions): NodeHandleModule
+  /**
+   * Build the content widget for a handle. Optional for types registered purely
+   * to style their joint (no value editor). When absent the handle renders
+   * label + joint only.
+   */
+  create?(
+    handle: NodeHandle,
+    options: INodeHandleConfigOptions,
+  ): NodeHandleModule
 
   /**
    * Release shared resources (e.g. DOM editors) when the renderer is disposed.
