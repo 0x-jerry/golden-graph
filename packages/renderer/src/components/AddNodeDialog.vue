@@ -12,14 +12,18 @@ import type { AddableNodeGroup, AddableNodeOption } from '../renderer'
 import { useWorkspace } from '../hooks'
 import NodePreview from './NodePreview.vue'
 
-const props = defineProps<{
+export interface AddNodeDialogProps {
   visible: boolean
   pos?: { x: number; y: number }
-}>()
+}
 
-const emit = defineEmits<{
-  (e: 'close'): void
-}>()
+export interface AddNodeDialogEmits {
+  close: []
+}
+
+const props = defineProps<AddNodeDialogProps>()
+
+const emit = defineEmits<AddNodeDialogEmits>()
 
 const ws = useWorkspace()!
 
@@ -32,7 +36,9 @@ const activeProviderId = ref<string>('')
 const hovered = ref<AddableNodeOption | null>(null)
 
 const listRef = ref<HTMLDivElement>()
+const inputRef = ref<HTMLInputElement>()
 const sectionRefs = new Map<string, HTMLElement>()
+const nodeEls: HTMLElement[] = []
 
 const normalize = (s: string) => s.trim().toLowerCase()
 
@@ -48,6 +54,8 @@ const visibleGroups = computed(() => {
     .filter((group) => group.nodes.length)
 })
 
+const flatNodes = computed(() => visibleGroups.value.flatMap((g) => g.nodes))
+
 function setSectionRef(
   providerId: string,
   el: Element | ComponentPublicInstance | null,
@@ -56,6 +64,49 @@ function setSectionRef(
     sectionRefs.set(providerId, el as HTMLElement)
   } else {
     sectionRefs.delete(providerId)
+  }
+}
+
+function setNodeRef(
+  index: number,
+  el: Element | ComponentPublicInstance | null,
+) {
+  if (el) {
+    nodeEls[index] = el as HTMLElement
+  } else {
+    delete nodeEls[index]
+  }
+}
+
+function globalNodeIndex(node: AddableNodeOption) {
+  return flatNodes.value.findIndex((n) => n.type === node.type)
+}
+
+function scrollToNode(index: number) {
+  nodeEls[index]?.scrollIntoView({ block: 'nearest' })
+}
+
+/**
+ * Move the selected node through the flat list of visible nodes, wrapping at
+ * the ends, and keep the section sidebar in sync with the new position.
+ */
+function moveSelection(delta: number) {
+  const nodes = flatNodes.value
+  if (!nodes.length) return
+
+  const current = hovered.value
+    ? nodes.findIndex((n) => n.type === hovered.value!.type)
+    : -1
+  const next = current < 0 ? 0 : (current + delta + nodes.length) % nodes.length
+  const node = nodes[next]
+  if (!node) return
+
+  hovered.value = node
+  scrollToNode(next)
+
+  const group = visibleGroups.value.find((g) => g.nodes.includes(node))
+  if (group) {
+    activeProviderId.value = group.providerId
   }
 }
 
@@ -98,6 +149,13 @@ function reset() {
   activeProviderId.value = groups.value[0]?.providerId ?? ''
 }
 
+function selectFirstNode() {
+  hovered.value = flatNodes.value[0] ?? null
+  if (hovered.value) {
+    scrollToNode(0)
+  }
+}
+
 watch(
   () => props.visible,
   async (visible) => {
@@ -105,36 +163,64 @@ watch(
       loadGroups()
       reset()
       await nextTick()
-      if (groups.value[0]) {
-        activeProviderId.value = groups.value[0]!.providerId
-      }
+      selectFirstNode()
       listRef.value?.scrollTo({ top: 0 })
+      inputRef.value?.focus()
     }
   },
 )
 
-watch(visibleGroups, (groups) => {
+watch(visibleGroups, async (groups) => {
   if (!groups.some((g) => g.providerId === activeProviderId.value)) {
     activeProviderId.value = groups[0]?.providerId ?? ''
   }
 
-  // Clear the preview when the hovered node is filtered out by a search.
+  // Keep a preview when the selected node is filtered out by a search —
+  // fall back to the first remaining result instead of clearing it. Wait for
+  // the DOM patch so the scroll targets the freshly rendered first node.
   if (
     hovered.value &&
     !groups.some((g) => g.nodes.some((n) => n.type === hovered.value!.type))
   ) {
-    hovered.value = null
+    await nextTick()
+    selectFirstNode()
   }
 })
 
 function selectNode(node: AddableNodeOption) {
-  ws.addNode(node.type, props.pos ? { pos: props.pos } : undefined)
+  ws.addNode(node.type, props.pos && { pos: props.pos })
   emit('close')
 }
 
+function hoverNode(node: AddableNodeOption) {
+  hovered.value = node
+  const group = visibleGroups.value.find((g) =>
+    g.nodes.some((n) => n.type === node.type),
+  )
+  if (group) {
+    activeProviderId.value = group.providerId
+  }
+}
+
 function onKeydown(e: KeyboardEvent) {
+  // Ignore IME composition keys (e.g. confirming CJK input) — the arrow
+  // keys and Enter belong to the composition flow, not the dialog.
+  if (e.isComposing || e.keyCode === 229) return
+
   if (e.key === 'Escape') {
     emit('close')
+    return
+  }
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    moveSelection(e.key === 'ArrowDown' ? 1 : -1)
+    return
+  }
+
+  if (e.key === 'Enter' && hovered.value) {
+    e.preventDefault()
+    selectNode(hovered.value)
   }
 }
 
@@ -157,17 +243,17 @@ watch(
 
 <template>
   <Teleport to="body">
-    <div v-if="props.visible" class="gr-add-node-dialog">
+    <div v-if="visible" class="gr-add-node-dialog">
       <div class="gr-add-node-backdrop" @click="emit('close')"></div>
 
       <div class="gr-add-node-panel" @click.stop>
         <div class="gr-add-node-search">
           <input
+            ref="inputRef"
             v-model="query"
             class="gr-add-node-search-input"
             type="text"
             placeholder="Search nodes..."
-            autofocus
           />
         </div>
 
@@ -184,12 +270,7 @@ watch(
             </div>
           </div>
 
-          <div
-            ref="listRef"
-            class="gr-add-node-nodes"
-            @scroll="onListScroll"
-            @mouseleave="hovered = null"
-          >
+          <div ref="listRef" class="gr-add-node-nodes" @scroll="onListScroll">
             <template v-if="visibleGroups.length">
               <div
                 v-for="group in visibleGroups"
@@ -204,7 +285,9 @@ watch(
                   v-for="node in group.nodes"
                   :key="node.type"
                   class="gr-add-node-node"
-                  @mouseenter="hovered = node"
+                  :class="{ active: hovered?.type === node.type }"
+                  :ref="(el) => setNodeRef(globalNodeIndex(node), el)"
+                  @mouseenter="hoverNode(node)"
                   @click="selectNode(node)"
                 >
                   <div class="gr-add-node-node-name">{{ node.name }}</div>
@@ -345,8 +428,18 @@ watch(
   cursor: pointer;
 }
 
-.gr-add-node-node:hover {
+.gr-add-node-node:hover,
+.gr-add-node-node.active {
   background: var(--gr-color-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.gr-add-node-node.active {
+  background: var(--gr-color-accent, #6366f1);
+}
+
+.gr-add-node-node.active .gr-add-node-node-name,
+.gr-add-node-node.active .gr-add-node-node-desc {
+  color: #ffffff;
 }
 
 .gr-add-node-node-name {

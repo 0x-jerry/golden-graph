@@ -37,8 +37,8 @@ export interface ContextMenuProps {
 }
 
 export interface ContextMenuEmits {
-  (e: 'close'): void
-  (e: 'click', item: ContextMenuItem): void
+  close: []
+  click: [item: ContextMenuItem]
 }
 
 const props = withDefaults(defineProps<ContextMenuProps>(), {

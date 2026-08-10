@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import Konva from 'konva'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import type { Node, Workspace } from '@0x-jerry/golden-graph'
+import type { Workspace } from '@0x-jerry/golden-graph'
 import { NodeView, getNodeHeight } from '../renderer/NodeView'
 import { getNodeWidth } from '../renderer/constants'
 
-const props = defineProps<{
+export interface NodePreviewProps {
   ws: Workspace
   type?: string
-}>()
+}
+
+const props = defineProps<NodePreviewProps>()
 
 const container = ref<HTMLDivElement>()
 
@@ -35,7 +37,7 @@ async function render() {
   const height = el.clientHeight
   if (width <= 0 || height <= 0) return
 
-  const node: Node = new factory()
+  const node = new factory()
   node.setWorkspace(props.ws)
 
   stage = new Konva.Stage({
