@@ -268,6 +268,10 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     this._subGraphManager.convertGroupToSubGraph(groupId)
   }
 
+  restoreSubGraph(subGraph: SubGraph) {
+    this._subGraphManager.restoreSubGraph(subGraph)
+  }
+
   addSubGraph(subGraph: SubGraph) {
     this._subGraphManager.addSubGraph(subGraph)
   }

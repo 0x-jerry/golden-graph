@@ -80,7 +80,7 @@ export class WorkspacePersistence implements IPersistent<IWorkspace> {
       const g = new SubGraph(this.ws)
       g.fromJSON(subGraph)
 
-      this.ws.addSubGraph(g)
+      this.ws.restoreSubGraph(g)
     }
 
     for (const node of data.nodes) {

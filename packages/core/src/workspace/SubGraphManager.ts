@@ -35,12 +35,17 @@ export class SubGraphManager {
     this.addSubGraph(subGraph)
   }
 
-  addSubGraph(subGraph: SubGraph) {
+  restoreSubGraph(subGraph: SubGraph) {
     if (this.ws.subGraphs.find((g) => g.id === subGraph.id)) {
       throw new Error(`SubGraph [${subGraph.id}] is already added!`)
     }
 
     this.ws._subGraphs.push(subGraph)
+  }
+
+  addSubGraph(subGraph: SubGraph) {
+    this.restoreSubGraph(subGraph)
+
     this.ws.events.emit('subgraph:added', subGraph)
   }
 
