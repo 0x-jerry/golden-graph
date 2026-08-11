@@ -1,8 +1,4 @@
-import {
-  type Arrayable,
-  EventEmitter,
-  nanoid,
-} from '@0x-jerry/utils'
+import { type Arrayable, EventEmitter, nanoid } from '@0x-jerry/utils'
 import {
   type INodeHandleLoc,
   type INodeProvider,
@@ -366,6 +362,24 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
   dispose() {
     this.events.off()
     this._executor.backend?.dispose?.()
+  }
+
+  toFullJSON(): IWorkspace {
+    const activeSubGraphIds = this._workspaceDataStack
+      .map((data) => data.subGraphId)
+      .reverse()
+
+    while (this.isActiveSubGraph) {
+      this.exitSubGraph()
+    }
+
+    const fullData = this.toJSON()
+
+    while (activeSubGraphIds.length) {
+      this.enterSubGraph(activeSubGraphIds.pop()!)
+    }
+
+    return fullData
   }
 
   toJSON(): IWorkspace {

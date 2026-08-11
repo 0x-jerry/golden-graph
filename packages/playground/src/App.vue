@@ -77,11 +77,7 @@ function save() {
     return
   }
 
-  while (ws.isActiveSubGraph) {
-    ws.exitSubGraph()
-  }
-
-  const data = ws.toJSON()
+  const data = ws.toFullJSON()
 
   localStorage.setItem(cacheKey, JSON.stringify(data))
 }
