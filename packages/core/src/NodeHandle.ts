@@ -81,7 +81,6 @@ export class NodeHandle {
   /**
    * Get value of handle.
    * If handle is left, return value of connected handle.
-   * @returns
    */
   getValue(): unknown {
     if (this.isLeft && this.connectedHandle) {
@@ -93,8 +92,6 @@ export class NodeHandle {
 
   /**
    * Set real value of handle.
-   * @param value
-   * @returns
    */
   setValue(value: unknown) {
     if (this._value === value) {
@@ -109,8 +106,6 @@ export class NodeHandle {
   /**
    * Set value directly without emitting event.
    * @internal
-   *
-   * @param value
    */
   setInitialValue(value: unknown) {
     this._value = value
@@ -119,8 +114,6 @@ export class NodeHandle {
   /**
    * Get real value of handle.
    * @internal
-   *
-   * @returns
    */
   getRealValue() {
     return this._value

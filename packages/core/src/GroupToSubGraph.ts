@@ -148,10 +148,8 @@ function migrateContent(
   subGraph: SubGraph,
   groupNodeIds: number[],
 ) {
-  // Remove from main workspace
   ctx.workspace.removeNodeByIds(...groupNodeIds)
 
-  // Move to subgraph
   subGraph.addNodes(...ctx.groupNodes)
   subGraph.addEdges(...ctx.internalEdges)
 }

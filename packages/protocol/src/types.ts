@@ -32,13 +32,7 @@ export interface INode {
 }
 
 export interface INodeHandleLoc {
-  /**
-   * Node ID
-   */
   id: number
-  /**
-   * Handle Key
-   */
   key: string
 }
 

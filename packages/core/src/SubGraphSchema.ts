@@ -129,10 +129,9 @@ export const subGraphNameNodeSchema: INodeSchema = {
 
 /**
  * Core-side provider registering the subgraph interface nodes. Registered
- * automatically by every `Workspace` (like the legacy constructor
- * `registerNodeSchema` calls), so `fromJSON` can always restore interface
- * nodes. Node types derive from `'subgraph'` + `'input'`/`'output'` =
- * `subgraph.input` / `subgraph.output`.
+ * automatically by every `Workspace`, so `fromJSON` can always restore
+ * interface nodes. Node types derive from `'subgraph'` + `'input'`/`'output'`
+ * = `subgraph.input` / `subgraph.output`.
  */
 export const subGraphNodeProvider: INodeProvider<INodeSchema> = {
   id: 'subgraph',

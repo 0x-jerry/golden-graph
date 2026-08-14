@@ -380,7 +380,7 @@ interface Rect {
 }
 
 /**
- * Smallest box containing two boxes (a and b are boxes).
+ * Smallest box containing two boxes.
  */
 function unionRect(a: Rect, b: Rect): Rect {
   const minX = Math.min(a.x, b.x)

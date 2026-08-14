@@ -67,8 +67,8 @@ export class SelectionGesture implements IGesture {
     this._render()
 
     const rect = this._rect
-    // After the fix in _handleSelectionDrag, rect position is in stage-local
-    // coords which equal convertScreenCoord(screenPos), i.e. workspace coords.
+    // The rect is in stage-local coords, which equal workspace coords
+    // (convertScreenCoord).
     const tl = { x: rect.x(), y: rect.y() }
     const br = {
       x: rect.x() + rect.width(),

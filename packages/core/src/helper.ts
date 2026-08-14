@@ -27,8 +27,6 @@ export function isIntersected<T>(
 }
 
 /**
- * Convert an object to readonly, only for type check
- * @param obj
- * @returns
+ * Convert an object to readonly, only for type check.
  */
 export const toReadonly = <T>(obj: T) => obj as Readonly<T>

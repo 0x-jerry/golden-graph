@@ -47,9 +47,9 @@ function hexToRgba(hex: string, alpha: number): string | null {
 }
 
 /**
- * Create the Konva node drawing a joint. One `Konva.Shape` per style. Like the
- * old circle, the shape's local origin is its center (no offset, `_centroid`
- * like `Konva.Circle`), so `x`/`y` position the joint center exactly.
+ * Create the Konva node drawing a joint. One `Konva.Shape` per style. The
+ * shape's local origin is its center (no offset) — `_centroid` is set like
+ * `Konva.Circle`, so `x`/`y` position the joint center exactly.
  */
 export function createJointShape(style: IHandleJointStyle): Konva.Shape {
   const radius = LAYOUT.JOINT_RADIUS

@@ -9,9 +9,6 @@ export interface ContextMenuItem {
   label: string
   icon?: string | Component
   disabled?: boolean
-  /**
-   * Keyboard shortcut
-   */
   shortcut?: string
   visible?: boolean | (() => boolean)
   action?: () => void
@@ -121,7 +118,6 @@ if (!props.parentElement) {
 const activeIndex = ref<number | null>(null)
 const itemRefs = ref<HTMLElement[]>([])
 
-// Handle hover for submenus
 function handleMouseEnter(index: number) {
   if (props.items[index]?.disabled) return
   activeIndex.value = index

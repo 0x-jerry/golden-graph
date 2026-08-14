@@ -7,9 +7,6 @@ import {
   Group,
   type INodeSchema,
 } from '../src'
-// import type { INodeDefinition } from '../../src/backend'
-// import { DirectExecutorBackend } from '../helpers/DirectExecutorBackend'
-// import { getNodesBounding } from '../../src/core/domHelper'
 
 const groupTestNodeSchema: INodeSchema = {
   type: 'test',
@@ -39,40 +36,6 @@ const sourceSchema: INodeSchema = {
   ],
 }
 
-// const processSchema: INodeSchema = {
-//   type: 'Process',
-//   name: 'Process',
-//   handles: [
-//     { key: 'in', position: HandlePosition.Left, accepts: 'number' },
-//     { key: 'out', position: HandlePosition.Right, accepts: 'number' },
-//   ],
-// }
-
-// const sinkSchema: INodeSchema = {
-//   type: 'Sink',
-//   name: 'Sink',
-//   handles: [{ key: 'in', position: HandlePosition.Left, accepts: 'number' }],
-// }
-
-// const executeDefinitions: INodeDefinition[] = [
-//   {
-//     schema: sourceSchema,
-//     // no-op: emits existing value
-//     execute: () => {},
-//   },
-//   {
-//     schema: processSchema,
-//     execute: (ctx) => {
-//       const n = ctx.getData<number>('in') ?? 0
-//       ctx.setData('out', n + 1)
-//     },
-//   },
-//   {
-//     schema: sinkSchema,
-//     execute: () => {},
-//   },
-// ]
-
 describe('Workspace', () => {
   it('register/add/connect/query/remove edges', () => {
     const ws = new Workspace()
@@ -95,36 +58,6 @@ describe('Workspace', () => {
     ws.removeEdgeByIds(edge.id)
     expect(ws.edges.length).toBe(0)
   })
-
-  // it('getNodesBounding throws when node DOM missing', () => {
-  //   const ws = new Workspace()
-  //   // register and add one node without DOM
-  //   ws.registerNodeSchema({ type: 'A', name: 'A', handles: [] })
-  //   const a = ws.addNode('A', { pos: { x: 10, y: 20 } })
-  //   expect(() => getNodesBounding([a])).toThrow()
-  // })
-
-  // it('execute processes graph and propagates values', async () => {
-  //   const ws = new Workspace({
-  //     executorBackend: new DirectExecutorBackend(executeDefinitions),
-  //   })
-  //   await ws.loadNodeProvidersFromBackend()
-
-  //   const s = ws.addNode('Source', { pos: { x: 0, y: 0 } })
-  //   const p = ws.addNode('Process', { pos: { x: 0, y: 0 } })
-  //   const k = ws.addNode('Sink', { pos: { x: 0, y: 0 } })
-
-  //   ws.connect(s.getHandle('out')!, p.getHandle('in')!)
-  //   ws.connect(p.getHandle('out')!, k.getHandle('in')!)
-
-  //   await ws.execute()
-
-  //   expect(p.getData('in')).toBe(1)
-  //   expect(p.getData('out')).toBe(2)
-  //   expect(k.getData('in')).toBe(2)
-  //   expect(ws.executorState.isProcessing).toBe(false)
-  //   expect(ws.executorState.currentNodeId).toBe(-1)
-  // })
 
   it('toJSON/fromJSON roundtrip', () => {
     const ws = new Workspace()

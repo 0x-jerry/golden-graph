@@ -6,9 +6,6 @@ import type { Workspace } from './Workspace'
 export class CoordSystem implements IPersistent<ICoordinate> {
   _workspace?: Workspace
 
-  /**
-   * Coord system _state position
-   */
   _state = {
     x: 0,
     y: 0,
@@ -55,7 +52,7 @@ export class CoordSystem implements IPersistent<ICoordinate> {
   }
 
   /**
-   * Covert coord system to screen system
+   * Convert coord system to screen system
    */
   convertToScreenCoord(pos: IVec2) {
     return {
@@ -65,7 +62,7 @@ export class CoordSystem implements IPersistent<ICoordinate> {
   }
 
   /**
-   * Covert screen system to coord system
+   * Convert screen system to coord system
    */
   convertScreenCoord(pos: IVec2) {
     return {
