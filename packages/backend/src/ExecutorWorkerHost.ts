@@ -1,11 +1,16 @@
 import type {
   ExecuteRequest,
-  ExecutorBackendRequest,
-  ExecutorBackendResponse,
+  ExecutorRpcMethods,
+  ExecutorRpcNotifications,
   INodeProvider,
   INodeSchema,
 } from '@0x-jerry/golden-graph-protocol'
-import { normalizeNodeProvider } from '@0x-jerry/golden-graph-protocol'
+import {
+  ExecutorRpc,
+  JsonRpcServer,
+  isCancelledError,
+  normalizeNodeProvider,
+} from '@0x-jerry/golden-graph-protocol'
 import {
   WorkflowExecutor,
   type INodeDefinition,
@@ -27,16 +32,24 @@ export interface WorkerScopeLike {
 }
 
 /**
- * The backend endpoint living inside a Web Worker.
+ * The backend endpoint living inside a Web Worker — the JSON-RPC 2.0
+ * server paired with `WorkerExecutorBackend` (see
+ * `packages/protocol/docs/protocol.md`).
  *
- * Owns the node definitions (JSON schema + execute function), grouped in
- * node providers, and answers two request types:
+ * Answers two Request methods and one Notification:
  *
- * - `list-node-providers` — replies with the providers so the frontend can
- *   render the nodes (grouped by provider name in the "Add Node" menu),
- * - `execute` — runs the JSON-native `WorkflowExecutor` directly on the
- *   incoming workspace snapshot (no `Workspace` mirror is involved) and
- *   streams progress + handle value writes back.
+ * - `goldenGraph/listNodeProviders` — replies with the providers so the
+ *   frontend can render the nodes (grouped by provider name in the "Add
+ *   Node" menu),
+ * - `goldenGraph/execute` — runs the JSON-native `WorkflowExecutor`
+ *   directly on the incoming workspace snapshot (no `Workspace` mirror is
+ *   involved) and streams `goldenGraph/progress` /
+ *   `goldenGraph/handleUpdates` Notifications back; the run settles with
+ *   the Response (`result: null`, or `error: { code: -32000 }`, or
+ *   `error: { code: -32001, message: 'cancelled' }` when stopped by a
+ *   cancel),
+ * - `goldenGraph/cancel` (Notification) — stops the in-flight run at its
+ *   next check point; the run settles via its own `execute` Response.
  *
  * The executor's diff cache is keyed by node id, so it survives across
  * runs and unchanged nodes are skipped.
@@ -59,20 +72,39 @@ export class ExecutorWorkerHost {
   readonly definitions: INodeDefinition[] = []
   readonly executor: WorkflowExecutor
 
+  _server: JsonRpcServer<ExecutorRpcMethods, ExecutorRpcNotifications>
+
   constructor(
     readonly _scope: WorkerScopeLike = globalThis as unknown as WorkerScopeLike,
   ) {
+    this._server = new JsonRpcServer((message) => {
+      this._scope.postMessage(message)
+    })
+
     this.executor = new WorkflowExecutor({
       onProgress: (nodeId) => {
-        this._post({ type: 'progress', currentNodeId: nodeId })
+        this._server.notify(ExecutorRpc.progress, { currentNodeId: nodeId })
       },
       onHandleUpdates: (updates) => {
-        this._post({ type: 'handle-updates', updates })
+        this._server.notify(ExecutorRpc.handleUpdates, { updates })
       },
     })
 
+    this._server.onRequest(ExecutorRpc.listNodeProviders, () => ({
+      providers: this.schemaProviders,
+    }))
+    this._server.onRequest(ExecutorRpc.execute, async (req) => {
+      await this._handleExecute(req)
+      return null
+    })
+    this._server.onNotification(ExecutorRpc.cancel, () => {
+      // Stop the in-flight run at its next check point; the run settles
+      // through its own `execute` Response with a `-32001` Cancelled error.
+      this.executor.cancel()
+    })
+
     this._scope.addEventListener('message', (event) => {
-      void this._handleMessage(event.data as ExecutorBackendRequest)
+      this._server.handleMessage(event.data)
     })
   }
 
@@ -96,29 +128,19 @@ export class ExecutorWorkerHost {
     this.executor.addDefinitions(definitions)
   }
 
-  async _handleMessage(message: ExecutorBackendRequest) {
-    if (message.type === 'list-node-providers') {
-      this._post({
-        type: 'node-providers',
-        providers: this.schemaProviders,
-      })
-      return
-    }
-
-    await this._handleExecute(message.req)
-  }
-
   async _handleExecute(req: ExecuteRequest) {
     try {
       await this.executor.execute(req.snapshot, req.entryNodeIds, req.debug)
-      this._post({ type: 'finish' })
     } catch (error) {
-      this._post({ type: 'finish', error: errorMessage(error) })
-    }
-  }
+      // Pass a cancelled run through untouched so its `-32001` code
+      // survives the JSON-RPC boundary; everything else is re-wrapped so
+      // only the error message travels.
+      if (isCancelledError(error)) {
+        throw error
+      }
 
-  _post(event: ExecutorBackendResponse) {
-    this._scope.postMessage(event)
+      throw new Error(errorMessage(error))
+    }
   }
 
   /**

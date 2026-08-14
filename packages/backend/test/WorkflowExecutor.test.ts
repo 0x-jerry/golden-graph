@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { sleep } from '@0x-jerry/utils'
 import {
   HandlePosition,
   NodeType,
+  isCancelledError,
   type IEdge,
   type INode,
   type INodeHandleLoc,
   type IWorkspace,
-  type HandleValueUpdate
+  type HandleValueUpdate,
 } from '@0x-jerry/golden-graph-protocol'
 import {
   WorkflowExecutor,
@@ -78,6 +80,18 @@ const definitions: INodeDefinition[] = [
     execute: () => {
       throw new Error('boom')
     },
+  },
+  {
+    schema: {
+      type: 'Slow',
+      name: 'Slow',
+      handles: [
+        { key: 'in', position: HandlePosition.Left, accepts: 'number' },
+        { key: 'out', position: HandlePosition.Right, accepts: 'number' },
+      ],
+    },
+    // Yields to the event loop so a cancellation can arrive mid-execution.
+    execute: () => new Promise((resolve) => setTimeout(resolve, 30)),
   },
 ]
 
@@ -339,5 +353,163 @@ describe('WorkflowExecutor', () => {
     // changed input re-runs the subgraph (nested cache skips unchanged nodes)
     await executor.execute(buildGraph(10, 2), [1], false)
     expect(calls).toEqual(['Source', 'Step(2)', 'Source', 'Step(11)'])
+  })
+
+  it('stops a running workflow with a CancelledError when cancelled', async () => {
+    calls.length = 0
+    const executor = createExecutor()
+
+    const g = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(2, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
+    })
+
+    // debug mode sleeps per changed node, so the run is still in flight
+    // when the cancel arrives (inside the first node's sleep).
+    const run = executor.execute(g, [1], true)
+    executor.cancel()
+
+    const error = await run.then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(isCancelledError(error)).toBe(true)
+
+    // the in-flight node never executed
+    expect(calls).toEqual([])
+  })
+
+  it('is a no-op when no run is in flight and does not affect the next run', async () => {
+    calls.length = 0
+    const executor = createExecutor()
+
+    const g = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(2, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
+    })
+
+    executor.cancel()
+    await executor.execute(g, [1], false)
+
+    expect(calls).toEqual(['Source', 'Step(2)'])
+  })
+
+  it('a stale cancel for a settled run never affects the next run', async () => {
+    calls.length = 0
+    const executor = createExecutor()
+
+    const runA = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(2, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
+    })
+    await executor.execute(runA, [1], false)
+
+    // Simulate a cancel that was in flight on the wire while run A was
+    // settling: it reaches the executor only now, when `_currentRun` is
+    // already cleared (token identity check in `execute()`'s finally).
+    executor.cancel()
+
+    const runB = graph({
+      nodes: [
+        node(3, 'Source', { out: 5 }),
+        node(4, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [edge({ id: 3, key: 'out' }, { id: 4, key: 'in' })],
+    })
+
+    // run B executes fully — no CancelledError, no partial stop
+    await executor.execute(runB, [3], false)
+    expect(calls).toEqual(['Source', 'Step(2)', 'Source', 'Step(6)'])
+  })
+
+  it('drops partial cache of a cancelled run so the next run re-processes', async () => {
+    calls.length = 0
+    const executor = createExecutor()
+
+    const g = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(2, 'Step', { in: undefined, out: undefined }),
+        node(3, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [
+        edge({ id: 1, key: 'out' }, { id: 2, key: 'in' }),
+        edge({ id: 2, key: 'out' }, { id: 3, key: 'in' }),
+      ],
+    })
+
+    const run = executor.execute(g, [1], true)
+    // Source (~100ms) and Step(2) (~200ms) complete; Step(3) is in its
+    // debug sleep when the cancel arrives, so the run stops there.
+    await sleep(250)
+    executor.cancel()
+
+    await expect(run).rejects.toThrow('cancelled')
+    expect(calls).toEqual(['Source', 'Step(2)'])
+
+    // the cancelled run committed nothing to the cache: the next run
+    // re-processes every node.
+    await executor.execute(g, [1], false)
+    expect(calls).toEqual([
+      'Source',
+      'Step(2)',
+      'Source',
+      'Step(2)',
+      'Step(3)',
+    ])
+  })
+
+  it('cancels nested subgraph runs with the same token', async () => {
+    calls.length = 0
+    const executor = createExecutor()
+
+    const g = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(
+          2,
+          'DefaultNode',
+          { '1': undefined, '3': undefined },
+          { subGraphId: 9 },
+        ),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: '1' })],
+      subGraphs: [
+        {
+          id: 9,
+          workspace: graph({
+            nodes: [
+              node(1, 'subgraph.input', { Output: undefined, Name: 'x' }),
+              node(2, 'Slow', { in: undefined, out: undefined }),
+              node(3, 'subgraph.output', { Value: undefined, Name: 'y' }),
+            ],
+            edges: [
+              edge({ id: 1, key: 'Output' }, { id: 2, key: 'in' }),
+              edge({ id: 2, key: 'out' }, { id: 3, key: 'Value' }),
+            ],
+          }),
+        },
+      ],
+    })
+
+    const run = executor.execute(g, [1], false)
+    // give the nested Slow node a chance to start executing, then cancel
+    await sleep(5)
+    executor.cancel()
+
+    const error = await run.then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(isCancelledError(error)).toBe(true)
   })
 })

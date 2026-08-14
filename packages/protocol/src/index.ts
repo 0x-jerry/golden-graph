@@ -1,5 +1,7 @@
 export * from './ExecutorBackend'
+export * from './ExecutorRpc'
 export * from './HandlePosition'
+export * from './jsonrpc'
 export * from './NodeHandle'
 export * from './NodeProvider'
 export * from './NodeSchema'

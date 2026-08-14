@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef } from 'vue'
-import { Workspace } from '@0x-jerry/golden-graph'
+import { computed, nextTick, reactive, useTemplateRef } from 'vue'
+import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
 import { KonvaRenderer } from '@0x-jerry/golden-graph-renderer'
 import { setup as _setup } from './editor'
 
@@ -8,11 +8,28 @@ const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
 
 const cacheKey = 'graph-save-data'
 
+// Workspace/executor state is plain, non-reactive data driven by the
+// event bus — mirror the events into a reactive state object so the
+// toolbar's Run ⇄ Cancel button and Debug flag re-render.
+const uiState = reactive({
+  isProcessing: false,
+  debug: false,
+})
+
 const workspace = computed(() => instance.value?.workspace)
 
 async function setup(ws: Workspace) {
   await _setup(ws)
   ws.setDebug(true)
+
+  ws.events.on('executor:changed', (state) => {
+    uiState.isProcessing = state.isProcessing
+  })
+
+  uiState.debug = ws.state.debug
+  ws.events.on('state:changed', (state) => {
+    uiState.debug = state.debug
+  })
 
   const events = ['handle:updated', 'edge:added', 'edge:removed'] as const
 
@@ -60,6 +77,11 @@ async function setup(ws: Workspace) {
     try {
       await ws.execute()
     } catch (error) {
+      // Cancelling is a deliberate user action, not a failure.
+      if (isCancelledError(error)) {
+        return
+      }
+
       console.error('Workspace execution failed:', error)
     } finally {
       isExecuting = false
@@ -121,8 +143,24 @@ async function run() {
   try {
     await ws.execute()
   } catch (error) {
+    // Cancelling is a deliberate user action, not a failure.
+    if (isCancelledError(error)) {
+      return
+    }
+
     console.error('Workspace execution failed:', error)
   }
+}
+
+function cancel() {
+  const ws = workspace.value
+  if (!ws) {
+    return
+  }
+
+  // Fire-and-forget: the run settles on its own and the button flips back
+  // via `executor:changed`.
+  ws.cancel()
 }
 
 async function loadFromJSON() {
@@ -156,11 +194,11 @@ async function loadFromJSON() {
       <button @click="save">Save</button>
       <button @click="load">Load</button>
       <button @click="loadFromJSON">Load From JSON</button>
-      <button @click="workspace?.setDebug(!workspace?.state.debug)">
-        Debug: {{ workspace?.state.debug }}
+      <button @click="workspace?.setDebug(!uiState.debug)">
+        Debug: {{ uiState.debug }}
       </button>
-      <button :disabled="workspace?.executorState.isProcessing" @click="run">
-        Run
+      <button @click="uiState.isProcessing ? cancel() : run()">
+        {{ uiState.isProcessing ? 'Cancel' : 'Run' }}
       </button>
     </div>
 

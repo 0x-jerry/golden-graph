@@ -41,6 +41,11 @@ export interface ExecuteRequest {
 /**
  * Events streamed from an executor backend to the frontend during a run.
  * All events are plain JSON.
+ *
+ * On the wire these are JSON-RPC 2.0 Notifications (see
+ * {@link ExecutorRpc}): `progress` and `handleUpdates`. There is no
+ * `finish` event — the run result is delivered through the `execute()`
+ * promise (the `goldenGraph/execute` Response).
  */
 export type ExecutorBackendEvent =
   | {
@@ -53,39 +58,6 @@ export type ExecutorBackendEvent =
       type: 'handle-updates'
       updates: HandleValueUpdate[]
     }
-  | {
-      /** The run finished; `error` is set when it failed. */
-      type: 'finish'
-      error?: string
-    }
-
-/**
- * Wire messages sent from the frontend to an executor backend transport.
- * Backends living behind a message channel (worker, WebSocket, ...) use
- * this union as their inbound protocol.
- */
-export type ExecutorBackendRequest =
-  | {
-      /** Run a workflow. */
-      type: 'execute'
-      req: ExecuteRequest
-    }
-  | {
-      /** Ask the backend for all node providers it defines. */
-      type: 'list-node-providers'
-    }
-
-/**
- * Wire messages sent from an executor backend transport to the frontend:
- * run events plus the node provider list response.
- */
-export type ExecutorBackendResponse =
-  | ExecutorBackendEvent
-  | {
-      /** Answer to `list-node-providers`. */
-      type: 'node-providers'
-      providers: INodeProvider<INodeSchema>[]
-    }
 
 /**
  * Pluggable executor backend.
@@ -96,19 +68,29 @@ export type ExecutorBackendResponse =
  * from the fetched provider schemas, builds the graph, and sends snapshots
  * over.
  *
+ * The backend contract is defined in JSON-RPC 2.0 terms (see
+ * `packages/protocol/docs/protocol.md` and {@link ExecutorRpc}): every
+ * implementation answers the `goldenGraph/listNodeProviders` request with
+ * the providers' schemas, receives an `ExecuteRequest` as the params of a
+ * `goldenGraph/execute` request, streams `goldenGraph/progress` /
+ * `goldenGraph/handleUpdates` Notifications, and settles the run with the
+ * `execute` Response (`result: null` on success, an error object with
+ * `code: -32000` on failure). `cancel()` sends the
+ * `goldenGraph/cancel` Notification; the cancelled run then settles with
+ * error `code: -32001` (`CancelledError`).
+ *
  * Implementations:
  *
  * - `WorkerExecutorBackend` (in `@0x-jerry/golden-graph-backend`) —
  *   reference backend running the JSON-native `WorkflowExecutor` inside a
- *   Web Worker.
- * - Any out-of-process backend (any language) can implement the same JSON
- *   protocol over e.g. WebSocket: answer `list-node-providers` with the
- *   node providers' schemas, receive an `ExecuteRequest`, stream
- *   `ExecutorBackendEvent`s back.
+ *   Web Worker; `ExecutorWorkerHost` is the JSON-RPC server endpoint it
+ *   talks to.
+ * - Any out-of-process backend (any language) can implement the same
+ *   JSON-RPC methods over e.g. WebSocket.
  *
  * Contract: `execute()` resolves after the run completed (all events for
  * the run already delivered), and rejects when the run failed. Transports
- * may consume the `finish` event internally to settle that promise.
+ * settle that promise from the `goldenGraph/execute` Response.
  */
 export interface ExecutorBackend {
   /**
@@ -123,5 +105,18 @@ export interface ExecutorBackend {
     req: ExecuteRequest,
     onEvent: (event: ExecutorBackendEvent) => void,
   ): Promise<void>
+
+  /**
+   * Request the in-flight run to stop (sends the `goldenGraph/cancel`
+   * Notification — fire-and-forget, nothing to await). Idempotent and a
+   * no-op when no run is running or the run already settled: the
+   * cancellation targets only the run in flight at call time, so a cancel
+   * that races past the run's end never affects the next one.
+   *
+   * The run itself settles through the `execute()` promise: a cancelled
+   * run rejects with a `CancelledError` (code `-32001`, message
+   * `'cancelled'`).
+   */
+  cancel(): void
   dispose?(): void
 }

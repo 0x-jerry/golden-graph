@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { HandlePosition, NodeType } from '@0x-jerry/golden-graph-protocol'
+import { sleep } from '@0x-jerry/utils'
+import {
+  HandlePosition,
+  JsonRpcErrorCode,
+  NodeType,
+  isCancelledError,
+} from '@0x-jerry/golden-graph-protocol'
 import { Workspace } from '@0x-jerry/golden-graph'
 import type { INodeDefinition } from '../src'
 import { DirectExecutorBackend } from './helpers/DirectExecutorBackend'
@@ -59,6 +65,45 @@ describe('Executor (frontend facade)', () => {
 
     await Promise.all([first, second])
 
+    expect(calls).toEqual(['Source'])
+  })
+
+  it('cancel() stops the run and the execute promise rejects with a CancelledError', async () => {
+    calls.length = 0
+    const ws = createWs()
+    ws.addNode('Source')
+
+    // debug mode paces execution, so the run is still in flight when the
+    // user action arrives (inside the node's debug sleep).
+    ws.setDebug(true)
+
+    const run = ws.execute()
+    await sleep(5)
+    ws.cancel()
+
+    // cancellation is a user action, surfaced as a distinct error for
+    // callers that opt in via isCancelledError()
+    const error = await run.then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(isCancelledError(error)).toBe(true)
+    expect((error as { code?: number })?.code).toBe(JsonRpcErrorCode.Cancelled)
+
+    // the facade still resets its state so the UI unlocks
+    expect(ws.executorState.isProcessing).toBe(false)
+    expect(ws.executorState.currentNodeId).toBe(-1)
+    expect(ws.disabled).toBe(false)
+  })
+
+  it('cancel() is a no-op when no run is in flight', async () => {
+    calls.length = 0
+    const ws = createWs()
+    ws.addNode('Source')
+
+    ws.cancel()
+
+    await ws.execute()
     expect(calls).toEqual(['Source'])
   })
 })

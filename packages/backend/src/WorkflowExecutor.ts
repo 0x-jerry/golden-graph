@@ -1,6 +1,7 @@
 import { sleep } from '@0x-jerry/utils'
 import { isEqual } from 'lodash-es'
 import {
+  CancelledError,
   collectNodeProviders,
   type INodeProvider,
   HandlePosition,
@@ -154,6 +155,14 @@ export class WorkflowExecutor {
   _cacheNew = new Map<number, Record<string, unknown>>()
 
   /**
+   * AbortController of the run currently in flight (if any). `cancel()`
+   * aborts it; check points in the run loop throw a `CancelledError` at
+   * the next node boundary. A fresh controller per run keeps a stale
+   * cancel from ever bleeding into the next run.
+   */
+  _currentRun?: AbortController
+
+  /**
    * Child executors for nested subgraph workspaces, keyed by subgraph id.
    */
   _subExecutors = new Map<number, WorkflowExecutor>()
@@ -197,7 +206,34 @@ export class WorkflowExecutor {
   }
 
   async execute(graph: IWorkspace, entryNodeIds: number[], debug: boolean) {
-    await this._executeIndex(indexGraph(graph), entryNodeIds, debug)
+    const controller = new AbortController()
+    this._currentRun = controller
+
+    try {
+      await this._executeIndex(
+        indexGraph(graph),
+        entryNodeIds,
+        debug,
+        controller.signal,
+      )
+    } finally {
+      // Only clear when the controller still belongs to this run — a
+      // newer run may already have replaced it.
+      if (this._currentRun === controller) {
+        this._currentRun = undefined
+      }
+    }
+  }
+
+  /**
+   * Request the in-flight run to stop. The run throws a `CancelledError`
+   * at its next check point and settles through its own `execute()`
+   * promise. A no-op when no run is running or the run already settled.
+   */
+  cancel(): void {
+    // `abort()` on an already-settled controller is a no-op, so a stale
+    // cancel racing past the run's end is safe.
+    this._currentRun?.abort()
   }
 
   /**
@@ -207,20 +243,26 @@ export class WorkflowExecutor {
     index: IGraphIndex,
     entryNodeIds: number[],
     debug: boolean,
+    signal: AbortSignal,
   ) {
     try {
-      await this._run(index, entryNodeIds, debug)
+      await this._run(index, entryNodeIds, debug, signal)
       this._cache = this._cacheNew
       this._cacheNew = new Map()
     } catch (error) {
-      // Drop partial results of the failed run so the next run diffs
-      // against the last successful cache instead of stale entries.
+      // Drop partial results of the failed/cancelled run so the next run
+      // diffs against the last successful cache instead of stale entries.
       this._cacheNew = new Map()
       throw error
     }
   }
 
-  async _run(index: IGraphIndex, entryNodeIds: number[], debug: boolean) {
+  async _run(
+    index: IGraphIndex,
+    entryNodeIds: number[],
+    debug: boolean,
+    signal: AbortSignal,
+  ) {
     // Use the array as a stack (push/pop are O(1), unlike shift/unshift).
     const stack = [...entryNodeIds].reverse()
     const processed = new Set<number>()
@@ -230,6 +272,10 @@ export class WorkflowExecutor {
     while (stack.length) {
       if (!--i) {
         throw new Error('May encountered infinity loop!')
+      }
+
+      if (signal.aborted) {
+        throw new CancelledError()
       }
 
       const nodeId = stack.pop()!
@@ -256,7 +302,7 @@ export class WorkflowExecutor {
         continue
       }
 
-      await this._process(index, node, debug)
+      await this._process(index, node, debug, signal)
 
       processed.add(nodeId)
 
@@ -268,8 +314,17 @@ export class WorkflowExecutor {
     }
   }
 
-  async _process(index: IGraphIndex, node: INode, debug: boolean) {
+  async _process(
+    index: IGraphIndex,
+    node: INode,
+    debug: boolean,
+    signal: AbortSignal,
+  ) {
     this._events.onProgress(node.id)
+
+    if (signal.aborted) {
+      throw new CancelledError()
+    }
 
     const prevData = this._cache.get(node.id)
     const currentData = this._resolveAllData(index, node)
@@ -280,11 +335,17 @@ export class WorkflowExecutor {
         await sleep(100)
       }
 
+      // A cancel that raced into the debug sleep stops the node here
+      // instead of executing it.
+      if (signal.aborted) {
+        throw new CancelledError()
+      }
+
       const updates: HandleValueUpdate[] = []
       const ctx = this._createContext(index, node, updates)
 
       if (node.subGraphId != null) {
-        await this._processSubGraphNode(index, node, ctx)
+        await this._processSubGraphNode(index, node, ctx, signal)
       } else {
         const def = this._definitions.get(node.type)
 
@@ -315,7 +376,12 @@ export class WorkflowExecutor {
     index: IGraphIndex,
     node: INode,
     ctx: NodeExecutionContext,
+    signal: AbortSignal,
   ) {
+    if (signal.aborted) {
+      throw new CancelledError()
+    }
+
     const subGraphId = node.subGraphId!
     const subGraph = index.subGraphs.get(subGraphId)
 
@@ -349,7 +415,9 @@ export class WorkflowExecutor {
 
     // Nested runs are not paced and their progress/writes are not
     // streamed — only the subgraph node's own outputs reach the frontend.
-    await executor._executeIndex(subIndex, entryNodeIds, false)
+    // The parent's abort signal is shared so a cancelled top-level run
+    // also stops nested subgraph execution.
+    await executor._executeIndex(subIndex, entryNodeIds, false, signal)
 
     // Read the interface output values back onto the node's handles.
     for (const subNode of subGraph.workspace.nodes) {

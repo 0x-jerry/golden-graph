@@ -359,6 +359,16 @@ export class Workspace implements IPersistent<IWorkspace>, IDisposable {
     await this._executor.execute(nodes)
   }
 
+  /**
+   * Stop the in-flight backend run (if any) — a user action. The run's
+   * `execute()` promise settles on its own: a cancelled run rejects with
+   * a `CancelledError` (code `-32001`), recognizable with
+   * `isCancelledError()`.
+   */
+  cancel() {
+    this._executor.cancel()
+  }
+
   setDebug(enabled: boolean) {
     this._workspaceState.setDebug(enabled)
   }

@@ -64,11 +64,28 @@ export class Executor {
       )
     } finally {
       // Errors propagate to the caller as-is — no re-wrapping that would
-      // stringify the original error and lose its name/stack.
+      // stringify the original error and lose its name/stack. A cancelled
+      // run rejects with a `CancelledError` (code `-32001`); callers that
+      // want to treat the user action as non-fatal check it with
+      // `isCancelledError()`.
       this._state.isProcessing = false
       this._state.currentNodeId = -1
       this.ws.events.emit('executor:changed', this._state)
     }
+  }
+
+  /**
+   * Request the in-flight run to stop (a user action). Fire-and-forget:
+   * the run's `execute()` promise settles on its own — a cancelled run
+   * rejects with a `CancelledError` (code `-32001`), recognizable with
+   * `isCancelledError()`. A no-op when no run is in flight.
+   */
+  cancel() {
+    if (!this._state.isProcessing) {
+      return
+    }
+
+    this.backend?.cancel()
   }
 
   _handleBackendEvent(event: ExecutorBackendEvent) {
@@ -82,10 +99,6 @@ export class Executor {
         for (const update of event.updates) {
           this.ws.getNode(update.nodeId)?.setData(update.key, update.value)
         }
-        break
-
-      case 'finish':
-        // The run result is delivered through the backend's promise.
         break
     }
   }

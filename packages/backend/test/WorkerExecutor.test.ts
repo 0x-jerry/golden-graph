@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { sleep } from '@0x-jerry/utils'
 import {
   ExecutorWorkerHost,
   WorkerExecutorBackend,
@@ -8,7 +9,9 @@ import {
 } from '../src'
 import {
   HandlePosition,
+  JsonRpcErrorCode,
   NodeType,
+  isCancelledError,
   type INodeProvider,
 } from '@0x-jerry/golden-graph-protocol'
 import { Workspace } from '@0x-jerry/golden-graph'
@@ -83,7 +86,13 @@ function createLoopback(providers: INodeProvider<INodeDefinition>[] = defaultPro
   const hostListeners: Listener[] = []
   const clientListeners: Listener[] = []
 
-  const deliver = (listeners: Listener[], data: unknown) => {
+  // Every message crossing the channel, recorded for wire-level
+  // assertions (client side = host → client, host side = client → host).
+  const clientReceived: unknown[] = []
+  const hostReceived: unknown[] = []
+
+  const deliver = (listeners: Listener[], data: unknown, record: unknown[]) => {
+    record.push(data)
     queueMicrotask(() => {
       for (const listener of listeners) {
         listener({ data: structuredClone(data) })
@@ -92,14 +101,14 @@ function createLoopback(providers: INodeProvider<INodeDefinition>[] = defaultPro
   }
 
   const scope: WorkerScopeLike = {
-    postMessage: (message) => deliver(clientListeners, message),
+    postMessage: (message) => deliver(clientListeners, message, clientReceived),
     addEventListener: (_type, listener) => {
       hostListeners.push(listener)
     },
   }
 
   const worker: WorkerLike = {
-    postMessage: (message) => deliver(hostListeners, message),
+    postMessage: (message) => deliver(hostListeners, message, hostReceived),
     addEventListener: (_type, listener) => {
       clientListeners.push(listener)
     },
@@ -111,7 +120,7 @@ function createLoopback(providers: INodeProvider<INodeDefinition>[] = defaultPro
   host.addProviders(providers)
   const backend = new WorkerExecutorBackend(worker)
 
-  return { host, backend }
+  return { host, backend, clientReceived, hostReceived }
 }
 
 async function createWs() {
@@ -282,5 +291,166 @@ describe('WorkerExecutorBackend', () => {
     expect(ws.executorState.isProcessing).toBe(false)
     expect(ws.executorState.currentNodeId).toBe(-1)
     expect(ws.disabled).toBe(false)
+  })
+
+  it('speaks JSON-RPC 2.0: version marker, namespaced methods, id echo', async () => {
+    const { backend, hostReceived, clientReceived } = createLoopback()
+
+    await backend.getNodeProviders()
+
+    const request = hostReceived[0]! as {
+      jsonrpc: string
+      id: number
+      method: string
+    }
+    expect(request.jsonrpc).toBe('2.0')
+    expect(request.id).toBeTypeOf('number')
+    expect(request.method).toBe('goldenGraph/listNodeProviders')
+    expect(request).not.toHaveProperty('params')
+
+    const response = clientReceived[0]! as {
+      jsonrpc: string
+      id: number
+      result: { providers: unknown[] }
+    }
+    expect(response.jsonrpc).toBe('2.0')
+    expect(response.id).toBe(request.id)
+    expect(response.result.providers).toBeInstanceOf(Array)
+  })
+
+  it('streams run events as notifications and settles via the execute response', async () => {
+    const { backend, hostReceived, clientReceived } = createLoopback()
+    const ws = new Workspace({ executorBackend: backend })
+    await ws.loadNodeProvidersFromBackend()
+
+    const s = ws.addNode('Source')
+    const p = ws.addNode('Step')
+    ws.connect(s.getHandle('out')!, p.getHandle('in')!)
+
+    await ws.execute()
+
+    // client → host: exactly one execute request carrying the ExecuteRequest
+    const executeRequests = hostReceived.filter(
+      (message) => (message as { method?: string }).method === 'goldenGraph/execute',
+    )
+    expect(executeRequests).toHaveLength(1)
+    const executeRequest = executeRequests[0]! as {
+      id: number
+      params: { snapshot: unknown; entryNodeIds: number[]; debug: boolean }
+    }
+    expect(executeRequest.id).toBeTypeOf('number')
+    expect(executeRequest.params.entryNodeIds).toEqual([s.id])
+    expect(executeRequest.params.debug).toBe(false)
+
+    // host → client: id-less notifications (progress / handleUpdates) and
+    // responses echoing request ids — no legacy `finish` message. The
+    // first response answered `listNodeProviders`; the last answers
+    // `execute`.
+    const responses = clientReceived.filter((message) => 'id' in (message as object))
+    const notifications = clientReceived.filter(
+      (message) => !('id' in (message as object)),
+    )
+
+    expect(responses).toHaveLength(2)
+    const executeResponse = responses[responses.length - 1]! as {
+      jsonrpc: string
+      id: number
+      result: null
+    }
+    expect(executeResponse).toMatchObject({ jsonrpc: '2.0', result: null })
+    expect(executeResponse.id).toBe(executeRequest.id)
+
+    expect(notifications.length).toBeGreaterThan(0)
+    for (const notification of notifications) {
+      expect(notification).toMatchObject({ jsonrpc: '2.0' })
+      expect((notification as { method: string }).method).toMatch(
+        /^goldenGraph\/(progress|handleUpdates)$/,
+      )
+    }
+
+    expect(
+      clientReceived.some(
+        (message) => (message as { method?: string }).method === 'goldenGraph/finish',
+      ),
+    ).toBe(false)
+    expect(
+      clientReceived.some((message) => (message as { type?: string }).type === 'finish'),
+    ).toBe(false)
+  })
+
+  it('reports run failures as a -32000 JSON-RPC error', async () => {
+    const { backend, clientReceived } = createLoopback()
+    const ws = new Workspace({ executorBackend: backend })
+    await ws.loadNodeProvidersFromBackend()
+
+    const s = ws.addNode('Source')
+    const f = ws.addNode('Failing')
+    ws.connect(s.getHandle('out')!, f.getHandle('in')!)
+
+    await expect(ws.execute()).rejects.toThrow('boom')
+
+    const responses = clientReceived.filter((message) => 'id' in (message as object))
+    const errorResponse = responses[responses.length - 1]! as {
+      error: { code: number; message: string }
+    }
+    expect(errorResponse.error.code).toBe(-32000)
+    expect(errorResponse.error.message).toBe('boom')
+  })
+
+  it('cancels an in-flight run over the wire with a -32001 Cancelled error', async () => {
+    calls.length = 0
+    const { backend, hostReceived } = createLoopback()
+    const ws = new Workspace({ executorBackend: backend })
+    await ws.loadNodeProvidersFromBackend()
+
+    const s = ws.addNode('Source')
+    const p = ws.addNode('Step')
+    ws.connect(s.getHandle('out')!, p.getHandle('in')!)
+
+    // debug mode paces execution so the run is still in flight
+    ws.setDebug(true)
+    const run = ws.execute()
+    await sleep(5)
+    backend.cancel()
+
+    const error = await run.then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(isCancelledError(error)).toBe(true)
+    expect((error as { code?: number })?.code).toBe(JsonRpcErrorCode.Cancelled)
+
+    // the cancel travelled as a `goldenGraph/cancel` Notification
+    expect(
+      hostReceived.some(
+        (message) =>
+          (message as { method?: string }).method === 'goldenGraph/cancel',
+      ),
+    ).toBe(true)
+
+    expect(ws.executorState.isProcessing).toBe(false)
+  })
+
+  it('releases the backend for a new run after cancellation', async () => {
+    calls.length = 0
+    const { backend } = createLoopback()
+    const ws = new Workspace({ executorBackend: backend })
+    await ws.loadNodeProvidersFromBackend()
+
+    const s = ws.addNode('Source')
+    const p = ws.addNode('Step')
+    ws.connect(s.getHandle('out')!, p.getHandle('in')!)
+
+    ws.setDebug(true)
+    const run = ws.execute()
+    await sleep(5)
+    backend.cancel()
+    await expect(run).rejects.toThrow('cancelled')
+
+    // a cancelled run does not wedge the backend — the next run executes
+    calls.length = 0
+    ws.setDebug(false)
+    await ws.execute()
+    expect(calls).toEqual(['Source', 'Step(2)'])
   })
 })
