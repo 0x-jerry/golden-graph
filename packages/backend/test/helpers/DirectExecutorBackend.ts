@@ -7,11 +7,12 @@ import type {
   INodeProvider,
   INodeSchema,
 } from '@0x-jerry/golden-graph-protocol'
-import { ExecutorRpc, JsonRpcClient, JsonRpcServer } from '@0x-jerry/golden-graph-protocol'
 import {
-  WorkflowExecutor,
-  type INodeDefinition,
-} from '../../src'
+  ExecutorRpc,
+  JsonRpcClient,
+  JsonRpcServer,
+} from '@0x-jerry/golden-graph-protocol'
+import { WorkflowExecutor, type INodeDefinition } from '../../src'
 
 /**
  * In-process `ExecutorBackend` wrapping the JSON-native
@@ -69,10 +70,9 @@ export class DirectExecutorBackend implements ExecutorBackend {
     this._executor.addDefinitions(definitions)
   }
 
-  getNodeProviders(): Promise<INodeProvider<INodeSchema>[]> {
-    return this._client
-      .call(ExecutorRpc.listNodeProviders)
-      .then((result) => result.providers)
+  async getNodeProviders(): Promise<INodeProvider<INodeSchema>[]> {
+    const result = await this._client.call(ExecutorRpc.listNodeProviders)
+    return result.providers
   }
 
   async execute(
