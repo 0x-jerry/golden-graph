@@ -240,6 +240,11 @@ function handleSubMenuClick(item: ContextMenuItem) {
     &.active {
       background-color: var(--gr-color-accent, #6366f1);
       color: #ffffff;
+
+      .shortcut {
+        color: #ffffff;
+        opacity: 0.85;
+      }
     }
 
     &.disabled {
