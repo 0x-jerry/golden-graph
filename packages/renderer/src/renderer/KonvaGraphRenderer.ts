@@ -3,6 +3,7 @@ import type { IDisposable, IRenderer, Workspace } from '@0x-jerry/golden-graph'
 import { ActiveType, Disposable, isSubGraphNode } from '@0x-jerry/golden-graph'
 import { CoordLayer } from './CoordLayer'
 import { InteractionManager } from './interaction/InteractionManager'
+import { KeyboardShortcutController } from './interaction/KeyboardShortcutController'
 import type { ContextMenuContext, CoreMenuItem } from './types'
 import { disposeHandleEditors } from './handles'
 import { disposeTooltip } from './tooltip'
@@ -121,6 +122,10 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
         target.add(shape)
         target.batchDraw()
       }),
+    )
+
+    this._disposers.add(
+      new KeyboardShortcutController({ stage: this._stage, ws: workspace }),
     )
 
     this._resizeObserver = new ResizeObserver(() => {

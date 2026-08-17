@@ -54,28 +54,12 @@ function nodeMenu(ws: Workspace, nodeId: number): CoreMenuItem[] {
     {
       label: 'Delete',
       shortcut: 'Del',
-      action: () => ws.removeNodeByIds(nodeId),
+      action: () => deleteNodeAction(ws, [nodeId]),
     },
     {
       label: 'Duplicate',
       shortcut: 'Ctrl+D',
-      action: () => {
-        const node = ws.getNode(nodeId)
-        if (!node) return
-
-        // SubGraphNodes reuse the same sub-graph workspace on copy.
-        if (isSubGraphNode(node) && node.subGraphId) {
-          ws.copySubGraphNode(node.subGraphId)
-          return
-        }
-
-        const json = node.toJSON()
-        const clone = ws.addNode(json.type)
-        const newId = clone.id
-        clone.fromJSON(json)
-        clone.id = newId
-        clone.move(30, 30)
-      },
+      action: () => duplicateNodeAction(ws, nodeId),
     },
     {
       label: 'Create Group',
@@ -113,13 +97,51 @@ function groupMenu(ws: Workspace, groupId: number): CoreMenuItem[] {
     {
       label: 'Delete Group',
       shortcut: 'Del',
-      action: () => {
-        const group = ws.groups.find((g) => g.id === groupId)
-        if (!group) return
-
-        ws.removeNodeByIds(...group.nodes)
-        ws.removeGroup(groupId)
-      },
+      action: () => deleteGroupAction(ws, groupId),
     },
   ]
+}
+
+/**
+ * Delete a set of nodes. Backs the node context-menu `Delete` item and the
+ * `Del`/`Backspace` keyboard shortcut.
+ */
+export function deleteNodeAction(ws: Workspace, nodeIds: number[]) {
+  ws.removeNodeByIds(...nodeIds)
+}
+
+/**
+ * Delete a group together with its member nodes. Backs the group
+ * context-menu `Delete Group` item and the `Del`/`Backspace` keyboard
+ * shortcut.
+ */
+export function deleteGroupAction(ws: Workspace, groupId: number) {
+  const group = ws.groups.find((g) => g.id === groupId)
+  if (!group) return
+
+  ws.removeNodeByIds(...group.nodes)
+  ws.removeGroup(groupId)
+}
+
+/**
+ * Duplicate a node (reusing the same sub-graph workspace for SubGraphNodes).
+ * Backs the node context-menu `Duplicate` item and the `Ctrl+D`/`Cmd+D`
+ * keyboard shortcut.
+ */
+export function duplicateNodeAction(ws: Workspace, nodeId: number) {
+  const node = ws.getNode(nodeId)
+  if (!node) return
+
+  // SubGraphNodes reuse the same sub-graph workspace on copy.
+  if (isSubGraphNode(node) && node.subGraphId) {
+    ws.copySubGraphNode(node.subGraphId)
+    return
+  }
+
+  const json = node.toJSON()
+  const clone = ws.addNode(json.type)
+  const newId = clone.id
+  clone.fromJSON(json)
+  clone.id = newId
+  clone.move(30, 30)
 }
