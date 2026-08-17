@@ -17,7 +17,7 @@
       "dependencies": {
         "@0x-jerry/golden-graph": "workspace:*",
         "@0x-jerry/golden-graph-protocol": "workspace:*",
-        "@0x-jerry/utils": "^6.5.0",
+        "@0x-jerry/utils": "^6.6.0",
         "lodash-es": "^4.18.1",
       },
       "devDependencies": {
@@ -34,7 +34,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@0x-jerry/golden-graph-protocol": "workspace:*",
-        "@0x-jerry/utils": "^6.5.0",
+        "@0x-jerry/utils": "^6.6.0",
         "@0x-jerry/vue-kit": "^2.3.1",
         "lodash-es": "^4.18.1",
       },
@@ -72,7 +72,7 @@
       "name": "@0x-jerry/golden-graph-protocol",
       "version": "0.0.0",
       "dependencies": {
-        "@0x-jerry/utils": "^6.5.0",
+        "@0x-jerry/utils": "^6.6.0",
       },
       "devDependencies": {
         "@0x-jerry/x-release": "^3.0.5",
@@ -88,7 +88,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@0x-jerry/golden-graph": "workspace:*",
-        "@0x-jerry/utils": "^6.5.0",
+        "@0x-jerry/utils": "^6.6.0",
         "@0x-jerry/vue-kit": "^2.3.1",
         "@floating-ui/vue": "^2.0.0",
         "@vueuse/core": "^14.3.0",
@@ -126,7 +126,7 @@
 
     "@0x-jerry/load-pkg": ["@0x-jerry/load-pkg@0.1.5", "https://registry.npmmirror.com/@0x-jerry/load-pkg/-/load-pkg-0.1.5.tgz", {}, "sha512-OsG9WZfCDzLaIC5t7HNHAYdpvZEf5efs/+fLEXsbOQr3IdZyMuWA27utAOsrNwTfl1BCgr6+r048ZyMd9YE72Q=="],
 
-    "@0x-jerry/utils": ["@0x-jerry/utils@6.5.0", "https://registry.npmmirror.com/@0x-jerry/utils/-/utils-6.5.0.tgz", { "dependencies": { "fflate": "0.8.3", "nanoid": "5.1.16", "picocolors": "1.1.1" } }, "sha512-ICOwVSIkJZTKZQlk8u1BpRrvx6ps0WwWHNavw344fFkhVCRQjfyY6islNylsFd+Ra4ndkuwWEtPDUCrGAoP7rQ=="],
+    "@0x-jerry/utils": ["@0x-jerry/utils@6.6.0", "https://registry.npmmirror.com/@0x-jerry/utils/-/utils-6.6.0.tgz", { "dependencies": { "fflate": "^0.8.3", "nanoid": "^5.1.7", "picocolors": "^1.1.1" } }, "sha512-UyjMcZ3bNNdkP0VQGKL0KDakzr8TY1RwjLRiGb+uUNLSLKxcfGwD2/BNwB/pRZfLzkVM9LGNFsIHfhvNWC1fKQ=="],
 
     "@0x-jerry/vue-kit": ["@0x-jerry/vue-kit@2.3.1", "https://registry.npmmirror.com/@0x-jerry/vue-kit/-/vue-kit-2.3.1.tgz", { "dependencies": { "@vueuse/core": "12.8.2", "type-fest": "4.41.0", "vue": "3.5.39", "vue-component-type-helpers": "2.2.12" } }, "sha512-FMMSyONu1Arzs5huNZi5IbvGJsEITUuxerOCCiqCKt0Zyxa6xcVuzWhbCPLnhog/DI/r1DAh9MjeKmGPhvBJGg=="],
 
@@ -971,6 +971,8 @@
     "@0x-jerry/golden-graph-renderer/typescript": ["typescript-native-bridge@6.0.3-bridge.9.tsgo.7.0.2", "https://registry.npmmirror.com/typescript-native-bridge/-/typescript-native-bridge-6.0.3-bridge.9.tsgo.7.0.2.tgz", { "optionalDependencies": { "@typescript-native-bridge/darwin-arm64": "6.0.3-bridge.9.tsgo.7.0.2", "@typescript-native-bridge/darwin-x64": "6.0.3-bridge.9.tsgo.7.0.2", "@typescript-native-bridge/linux-arm": "6.0.3-bridge.9.tsgo.7.0.2", "@typescript-native-bridge/linux-arm64": "6.0.3-bridge.9.tsgo.7.0.2", "@typescript-native-bridge/linux-x64": "6.0.3-bridge.9.tsgo.7.0.2", "@typescript-native-bridge/win32-arm64": "6.0.3-bridge.9.tsgo.7.0.2", "@typescript-native-bridge/win32-x64": "6.0.3-bridge.9.tsgo.7.0.2" }, "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-qmQqzj4ocUyKDlz5UCCfRISDH1+RD7inir/LBG+h8p5UCVpzC/r0ya9AJFsTz9ENEMKYywRypQrguEHN3tdDWA=="],
 
     "@0x-jerry/vue-kit/@vueuse/core": ["@vueuse/core@12.8.2", "https://registry.npmmirror.com/@vueuse/core/-/core-12.8.2.tgz", { "dependencies": { "@types/web-bluetooth": "0.0.21", "@vueuse/metadata": "12.8.2", "@vueuse/shared": "12.8.2", "vue": "3.5.39" } }, "sha512-HbvCmZdzAu3VGi/pWYm5Ut+Kd9mn1ZHnn4L5G8kOQTPs/IwIAmJoBrmYk2ckLArgMXZj0AW3n5CAejLUO+PhdQ=="],
+
+    "@0x-jerry/x-release/@0x-jerry/utils": ["@0x-jerry/utils@6.5.0", "https://registry.npmmirror.com/@0x-jerry/utils/-/utils-6.5.0.tgz", { "dependencies": { "fflate": "0.8.3", "nanoid": "5.1.16", "picocolors": "1.1.1" } }, "sha512-ICOwVSIkJZTKZQlk8u1BpRrvx6ps0WwWHNavw344fFkhVCRQjfyY6islNylsFd+Ra4ndkuwWEtPDUCrGAoP7rQ=="],
 
     "@microsoft/api-extractor/semver": ["semver@7.5.4", "https://registry.npmmirror.com/semver/-/semver-7.5.4.tgz", { "dependencies": { "lru-cache": "6.0.0" }, "bin": { "semver": "bin/semver.js" } }, "sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA=="],
 

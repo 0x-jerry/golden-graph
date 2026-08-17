@@ -29,7 +29,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@0x-jerry/utils": "^6.5.0",
+    "@0x-jerry/utils": "^6.6.0",
     "lodash-es": "^4.18.1",
     "@0x-jerry/golden-graph-protocol": "workspace:*",
     "@0x-jerry/golden-graph": "workspace:*"
