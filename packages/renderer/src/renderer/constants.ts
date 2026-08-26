@@ -56,6 +56,7 @@ export const NODE_SHAPE = {
   CONTENT: 'content',
   RESIZE: 'resize',
   TAG: 'tag',
+  CARET: 'caret',
 } as const
 
 export const ELEMENT_TYPE = {
@@ -95,6 +96,20 @@ export const SEL = {
 
 export const NODE_BODY_PADDING = 8
 
+/**
+ * Height of a collapsed node: just the header band — the body (background,
+ * border) is not rendered while collapsed. Independent of `size.y` — a
+ * collapsed node keeps its stored size and restores it on expand.
+ */
+export function getCollapsedNodeHeight() {
+  return LAYOUT.HEADER_HEIGHT
+}
+
+/** Chevron size of the expand/collapse caret in the node header. */
+export const CARET_SIZE = 10
+/** Transparent hit padding around the caret so small clicks still land. */
+export const CARET_HIT_PADDING = 4
+export const CARET_NAME_GAP = 4
 /** Minimum group width/height a user can resize a group down to. */
 export const GROUP_MIN_WIDTH = 100
 export const GROUP_MIN_HEIGHT = 80

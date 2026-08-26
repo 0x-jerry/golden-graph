@@ -40,6 +40,7 @@ export class Node implements IPersistent<INode> {
       x: 0,
       y: 0,
     },
+    collapsed: false,
   }
 
   _workspace?: Workspace
@@ -58,6 +59,15 @@ export class Node implements IPersistent<INode> {
 
   get size() {
     return toReadonly(this._state.size)
+  }
+
+  /**
+   * Whether the node renders collapsed (header only). Independent of `size`:
+   * a collapsed node shows just its header while `size.y` keeps its value, so
+   * expanding restores the previous height. Persisted in JSON.
+   */
+  get collapsed() {
+    return this._state.collapsed
   }
 
   get workspace() {
@@ -201,6 +211,11 @@ export class Node implements IPersistent<INode> {
     this._workspace?.events.emit('node:changed', this)
   }
 
+  setCollapsed(collapsed: boolean) {
+    this._state.collapsed = collapsed
+    this._workspace?.events.emit('node:changed', this)
+  }
+
   toJSON(): INode {
     const json: INode = {
       id: this.id,
@@ -217,6 +232,11 @@ export class Node implements IPersistent<INode> {
       json.size = { ...this._state.size }
     }
 
+    // Only persist collapsed — `false` (expanded) is the default.
+    if (this._state.collapsed) {
+      json.collapsed = true
+    }
+
     return json
   }
 
@@ -230,6 +250,9 @@ export class Node implements IPersistent<INode> {
       this._state.size.x = data.size.x
       this._state.size.y = data.size.y
     }
+
+    // `collapsed` is optional so old JSON without it loads expanded.
+    this._state.collapsed = !!data.collapsed
 
     this.setAllData(data.data || {})
   }

@@ -7,22 +7,31 @@ import {
   NODE_SHAPE,
   NODE_BODY_PADDING,
   RESIZE_HANDLE_SIZE,
+  getCollapsedNodeHeight,
   getNodeWidth,
   ELEMENT_TYPE,
   ATTR,
+  CARET_SIZE,
+  CARET_HIT_PADDING,
+  CARET_NAME_GAP,
 } from './constants'
 import { getHandleRowHeight } from './handles/layout'
 import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
 import { ResizeHandle } from './components/ResizeHandle'
+import { CaretHandle } from './components/CaretHandle'
 
 export class NodeView extends EntityView<Node> {
   _body: Konva.Rect
   _header: Konva.Rect
   _name: Konva.Text
   _resize: ResizeHandle
+  /** Latest active-selection state, re-applied on fold changes (see `update`). */
+  _isActive = false
   /** SubGraph marker tag rendered in the header, absent for normal nodes. */
   _tag?: Konva.Group
+  /** Expand/collapse caret rendered in the header, absent for handle-less nodes. */
+  _caret?: CaretHandle | null
   /**
    * Clipped container holding every handle view, so block content that
    * overflows its row (tall images, wrapping text) is cut at the node
@@ -61,21 +70,37 @@ export class NodeView extends EntityView<Node> {
     })
     g.add(header)
 
+    const hasCaret = node.handles.length > 0
+    const caretArea = hasCaret ? CARET_AREA : 0
+
     const nameText = new Konva.Text({
       text: node.name,
       fontSize: 13,
       fill: COLORS.TEXT_PRIMARY,
-      x: 8,
+      x: CARET_LEFT + caretArea,
       y: 7,
-      width: width - 16,
+      width: width - 16 - caretArea,
       name: NODE_SHAPE.NAME,
     })
     g.add(nameText)
+
+    const caret = hasCaret
+      ? new CaretHandle(() => {
+          node.setCollapsed(!node.collapsed)
+        })
+      : null
+    if (caret) {
+      caret.x(CARET_LEFT + CARET_HIT_PADDING)
+      caret.y(LAYOUT.HEADER_HEIGHT / 2)
+      caret.setCollapsed(node.collapsed)
+      g.add(caret)
+    }
 
     super(node, g)
     this._body = body
     this._header = header
     this._name = nameText
+    this._caret = caret
 
     if (isSubGraphNode(node)) {
       const tag = createSubGraphTag()
@@ -85,7 +110,7 @@ export class NodeView extends EntityView<Node> {
       this._tag = tag
 
       // Leave room on the right so the tag never overlaps the title.
-      nameText.width(width - 16 - SUBGRAPH_TAG_WIDTH - 4)
+      nameText.width(width - 16 - caretArea - SUBGRAPH_TAG_WIDTH - 4)
     }
 
     // Handles live in their own clipped container: block content is contained
@@ -101,6 +126,10 @@ export class NodeView extends EntityView<Node> {
     })
     g.add(handleLayer)
     this._handleLayer = handleLayer
+    // A node may be constructed already collapsed (e.g. restored from JSON):
+    // hide the body and handle layer (and with them every joint) right away.
+    body.visible(!node.collapsed)
+    handleLayer.visible(!node.collapsed)
 
     this._syncHandles()
 
@@ -126,16 +155,28 @@ export class NodeView extends EntityView<Node> {
     const width = getNodeWidth(node)
     this._header.width(width)
 
+    // Reserve the caret's slot for foldable nodes and sync the fold state.
+    const hasCaret = node.handles.length > 0
+    const caretArea = hasCaret ? CARET_AREA : 0
+    this._caret?.visible(hasCaret)
+    this._caret?.setCollapsed(node.collapsed)
+    this._name.x(CARET_LEFT + caretArea)
+
     if (this._tag) {
       // Leave room on the right so the tag never overlaps the title.
-      this._name.width(width - 16 - SUBGRAPH_TAG_WIDTH - 4)
+      this._name.width(width - 16 - caretArea - SUBGRAPH_TAG_WIDTH - 4)
       this._tag.x(width - SUBGRAPH_TAG_WIDTH - 8)
       this._tag.y(Math.round((LAYOUT.HEADER_HEIGHT - SUBGRAPH_TAG_HEIGHT) / 2))
     } else {
-      this._name.width(width - 16)
+      this._name.width(width - 16 - caretArea)
     }
 
     this._syncHandles()
+    // Collapsed nodes are the header band only: body and handle layer (every
+    // joint included) hide, while handle views stay alive to re-show on expand.
+    this._body.visible(!node.collapsed)
+    this._handleLayer.visible(!node.collapsed)
+    this._applyActiveStyles()
 
     const height = getNodeHeight(node)
     this._body.width(width)
@@ -149,10 +190,25 @@ export class NodeView extends EntityView<Node> {
     clip.clipHeight(height)
   }
 
-  /** Reflect active-selection state: accent stroke + resize grip visibility. */
+  /** Store the selection state; the chrome is applied by `_applyActiveStyles`. */
   setActive(isActive: boolean): void {
+    this._isActive = isActive
+    this._applyActiveStyles()
+  }
+
+  /**
+   * Selection chrome depends on the fold state: a collapsed node has no body,
+   * so the accent moves to the header band. Re-applied from `update()` too,
+   * because collapsing/expanding changes which surface carries the accent.
+   */
+  _applyActiveStyles(): void {
+    const isActive = this._isActive
+    const collapsed = this.entity.collapsed
+    // The accent rides the header while collapsed (no body), else the body.
+    this._header.stroke(collapsed && isActive ? COLORS.ACCENT : '')
+    this._header.strokeWidth(1)
     this._body.stroke(isActive ? COLORS.ACCENT : COLORS.BORDER)
-    this._resize.visible(isActive)
+    this._resize.visible(isActive && !collapsed)
   }
 
   /** Highlight a node while the executor is running it. */
@@ -233,6 +289,9 @@ export function getNodeContentHeight(node: Node): number {
  * space.
  */
 export function getNodeHeight(node: Node): number {
+  if (node.collapsed) {
+    return getCollapsedNodeHeight()
+  }
   if (node.size.y > 0) {
     return node.size.y
   }
@@ -256,6 +315,11 @@ export function getHandleIndex(node: Node, handle: NodeHandle): number {
 }
 
 const EXECUTOR_SHADOW_BLUR = 10
+
+/** Header left edge: caret + title start here. */
+const CARET_LEFT = 8
+/** Horizontal slot a caret occupies (chevron + hit padding + gap to title). */
+const CARET_AREA = CARET_SIZE + CARET_HIT_PADDING * 2 + CARET_NAME_GAP
 
 const SUBGRAPH_TAG_TEXT = 'Composite'
 const SUBGRAPH_TAG_WIDTH = 56

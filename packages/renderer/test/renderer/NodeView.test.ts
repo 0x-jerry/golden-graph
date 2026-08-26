@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import Konva from 'konva'
+import { HandlePosition } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import { find } from '../helpers/konva'
 import { NodeView } from '../../src/renderer/NodeView'
@@ -9,6 +10,7 @@ import {
   COLORS,
   LAYOUT,
   NODE_BODY_PADDING,
+  CARET_SIZE,
 } from '../../src/renderer/constants'
 import { SubGraph, SubGraphNode, Workspace } from '@0x-jerry/golden-graph'
 
@@ -96,6 +98,167 @@ describe('NodeView', () => {
     expect(getHandleView(handle)).toBeUndefined()
   })
 })
+
+describe('NodeView collapse', () => {
+  const collapsedHeight = LAYOUT.HEADER_HEIGHT
+
+  it('renders header-only height when collapsed, ignoring manual size', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    node.setCollapsed(true)
+
+    const view = new NodeView(node)
+    const body = find<Konva.Rect>(view.group, '.body')
+    expect(body.height()).toBe(collapsedHeight)
+
+    // A collapsed node keeps its stored size (restored on expand) but never
+    // renders taller than the header band.
+    node.setSize({ x: 0, y: 200 })
+    view.update()
+    expect(body.height()).toBe(collapsedHeight)
+  })
+
+  it('does not render the body while collapsed', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    const body = find<Konva.Rect>(view.group, '.body')
+
+    expect(body.visible()).toBe(true)
+
+    node.setCollapsed(true)
+    view.update()
+    expect(body.visible()).toBe(false)
+
+    node.setCollapsed(false)
+    view.update()
+    expect(body.visible()).toBe(true)
+  })
+
+  it('accents the header instead of the body while collapsed and active', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    const header = find<Konva.Rect>(view.group, '.header')
+    const body = find<Konva.Rect>(view.group, '.body')
+
+    node.setCollapsed(true)
+    view.update()
+    view.setActive(true)
+    expect(body.visible()).toBe(false)
+    expect(header.stroke()).toBe(COLORS.ACCENT)
+
+    // Expanding returns the accent to the body and clears the header.
+    node.setCollapsed(false)
+    view.update()
+    expect(header.stroke()).toBe('')
+    expect(body.stroke()).toBe(COLORS.ACCENT)
+
+    view.setActive(false)
+    expect(body.stroke()).toBe(COLORS.BORDER)
+  })
+
+  it('hides the handle layer (and its joints) while collapsed', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'out', { position: HandlePosition.Right, type: 'text' })
+
+    const view = new NodeView(node)
+    const layer = view.group.find('.handleLayer')[0]! as Konva.Group
+    expect(layer.visible()).toBe(true)
+
+    node.setCollapsed(true)
+    view.update()
+    expect(layer.visible()).toBe(false)
+
+    node.setCollapsed(false)
+    view.update()
+    expect(layer.visible()).toBe(true)
+  })
+
+  it('hides the resize grip while collapsed even when active', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    const resize = find<Konva.Group>(view.group, '.resize')
+
+    view.setActive(true)
+    expect(resize.visible()).toBe(true)
+
+    node.setCollapsed(true)
+    view.update()
+    view.setActive(true)
+    expect(resize.visible()).toBe(false)
+
+    node.setCollapsed(false)
+    view.update()
+    view.setActive(true)
+    expect(resize.visible()).toBe(true)
+  })
+
+  it('renders a caret only for nodes with foldable content', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    expect(view.group.find('.caret').length).toBe(1)
+
+    const empty = makeNode(2, 'M')
+    const emptyView = new NodeView(empty)
+    expect(emptyView.group.find('.caret').length).toBe(0)
+  })
+
+  it('keeps the caret slot clear of the title', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+
+    const caret = view.group.find('.caret')[0]! as Konva.Group
+    const name = find<Konva.Text>(view.group, '.name')
+    // Title starts right of the caret's hit zone.
+    expect(name.x()).toBeGreaterThan(caret.x() + CARET_SIZE / 2)
+  })
+
+  it('toggles collapse on caret click and rotates the chevron', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    const caret = view.group.find('.caret')[0]! as Konva.Group
+    const body = find<Konva.Rect>(view.group, '.body')
+
+    expect(node.collapsed).toBe(false)
+    expect(caret.rotation()).toBe(0)
+
+    caret.fire('click')
+    expect(node.collapsed).toBe(true)
+    view.update()
+    expect(caret.rotation()).toBe(-90)
+    expect(body.height()).toBe(collapsedHeight)
+    expect(layerOf(view).visible()).toBe(false)
+
+    caret.fire('click')
+    expect(node.collapsed).toBe(false)
+    view.update()
+    expect(caret.rotation()).toBe(0)
+    expect(layerOf(view).visible()).toBe(true)
+  })
+
+  it('constructs an already-collapsed node folded', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    node.setCollapsed(true)
+
+    // Bypass `update()`: the constructor must hide the layer itself.
+    const view = new NodeView(node)
+    expect(layerOf(view).visible()).toBe(false)
+    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(collapsedHeight)
+  })
+})
+
+/** Handle layer group of a view (exists on every NodeView). */
+function layerOf(view: NodeView): Konva.Group {
+  const layer = view.group.find('.handleLayer')[0]
+  if (!layer) throw new Error('handleLayer missing')
+  return layer as Konva.Group
+}
 
 describe('Konva shape construction in jsdom', () => {
   it('constructs views without a real browser canvas', () => {

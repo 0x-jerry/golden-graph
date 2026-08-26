@@ -1,9 +1,6 @@
 import type { Node, NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
-import {
-  LAYOUT,
-  NODE_BODY_PADDING,
-} from '../constants'
+import { LAYOUT, NODE_BODY_PADDING } from '../constants'
 import { getHandleFactory } from './index'
 
 /** Measured row heights from live `HandleView`s, keyed by handle. */
@@ -36,9 +33,7 @@ function staticRowHeight(handle: NodeHandle): number {
     return LAYOUT.HANDLE_ROW_HEIGHT
   }
   const minHeight = factory.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
-  return hasLabelRow(handle)
-    ? LAYOUT.HANDLE_ROW_HEIGHT + minHeight
-    : minHeight
+  return hasLabelRow(handle) ? LAYOUT.HANDLE_ROW_HEIGHT + minHeight : minHeight
 }
 
 /**
@@ -80,6 +75,11 @@ interface RowLayout {
  *   node bigger.
  */
 function layoutRows(node: Node): RowLayout[] {
+  if (node.collapsed) {
+    // Collapsed nodes hide every handle row: the header is the whole node,
+    // and hidden handles dock at the header line (see `handleY`).
+    return []
+  }
   const order = getHandleOrder(node)
   const auto = node.size.y <= 0
   let remaining = node.size.y - LAYOUT.HEADER_HEIGHT - NODE_BODY_PADDING
@@ -92,10 +92,7 @@ function layoutRows(node: Node): RowLayout[] {
 
     const row = auto
       ? staticRowHeight(h)
-      : Math.max(
-          staticRowHeight(h),
-          Math.min(desiredRowHeight(h), remaining),
-        )
+      : Math.max(staticRowHeight(h), Math.min(desiredRowHeight(h), remaining))
     const box = !isBlock
       ? row
       : auto
@@ -116,6 +113,11 @@ function layoutRows(node: Node): RowLayout[] {
  * itself yet. Label-less, position-less block handles skip the label row.
  */
 export function getHandleRowHeight(handle: NodeHandle): number {
+  if (handle.node.collapsed) {
+    // Hidden rows occupy no space; their views stay alive (layer hidden) and
+    // read `0` instead of throwing on the missing layout slot.
+    return 0
+  }
   const factory = getHandleFactory(handle.type)
   if (factory?.config?.layout !== 'block') {
     return LAYOUT.HANDLE_ROW_HEIGHT
@@ -142,12 +144,13 @@ export function getBlockContentMaxHeight(
   node: Node,
   handle: NodeHandle,
 ): number {
+  if (node.collapsed) {
+    return 0
+  }
   const rows = layoutRows(node)
   const index = getHandleOrder(node).indexOf(handle)
   if (index < 0) {
-    throw new Error(
-      `Handle '${handle.key}' not found in node '${node.name}'`,
-    )
+    throw new Error(`Handle '${handle.key}' not found in node '${node.name}'`)
   }
   return rows[index]!.box
 }
@@ -160,6 +163,9 @@ export function getBlockContentMaxHeight(
  * {@link layoutRows}).
  */
 export function getNodeStaticMinHeight(node: Node): number {
+  if (node.collapsed) {
+    return LAYOUT.HEADER_HEIGHT
+  }
   let height = LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING
   for (const handle of node.handles) {
     height += staticRowHeight(handle)
@@ -184,6 +190,11 @@ function getHandleOrder(node: Node): NodeHandle[] {
  * content row center.
  */
 export function handleY(node: Node, handle: NodeHandle): number {
+  if (node.collapsed) {
+    // Every hidden handle docks at the header center — the y where edges to
+    // a collapsed node's joints re-attach on its left/right edge.
+    return LAYOUT.HEADER_HEIGHT / 2
+  }
   const order = getHandleOrder(node)
   const rows = layoutRows(node)
   let y = LAYOUT.HEADER_HEIGHT

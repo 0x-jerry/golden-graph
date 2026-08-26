@@ -29,6 +29,13 @@ export interface INode {
    * back to its default layout width / content-driven height.
    */
   size?: IVec2
+
+  /**
+   * Optional collapse flag. Missing/false = expanded. When collapsed the
+   * renderer shows the header only (handle rows and joints are hidden, and
+   * connected edges dock at the header line).
+   */
+  collapsed?: boolean
 }
 
 export interface INodeHandleLoc {

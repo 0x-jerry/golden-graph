@@ -441,6 +441,8 @@ interface INode {
   subGraphId?: number              // set on collapsed subgraph nodes
   pos: { x: number, y: number }
   size?: { x, y }                  // 0/missing = auto
+  collapsed?: boolean              // header-only render; joints hidden, edges
+                                   // dock at the header line (missing/false = expanded)
 }
 
 interface IEdge {

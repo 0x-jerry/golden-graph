@@ -11,7 +11,11 @@ class TNode extends Node {
 describe('Node', () => {
   it('addHandle and get/query handles', () => {
     const n = new TNode()
-    n.addHandle({ key: 'input', accepts: 'number', position: HandlePosition.Left })
+    n.addHandle({
+      key: 'input',
+      accepts: 'number',
+      position: HandlePosition.Left,
+    })
     n.addHandle({
       key: 'output',
       accepts: 'number',
@@ -59,5 +63,33 @@ describe('Node', () => {
     const n = new TNode()
     n.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
     expect(n.size).toEqual({ x: 0, y: 0 })
+  })
+
+  it('collapsed defaults to false', () => {
+    const n = new TNode()
+    expect(n.collapsed).toBe(false)
+  })
+
+  it('setCollapsed toggles the flag and JSON round-trips it', () => {
+    const n = new TNode()
+    n.setCollapsed(true)
+
+    expect(n.collapsed).toBe(true)
+    expect(n.toJSON().collapsed).toBe(true)
+
+    const restored = new TNode()
+    restored.fromJSON(n.toJSON())
+    expect(restored.collapsed).toBe(true)
+  })
+
+  it('toJSON omits collapsed when expanded', () => {
+    const n = new TNode()
+    expect(n.toJSON().collapsed).toBeUndefined()
+  })
+
+  it('fromJSON tolerates missing collapsed (old files) and loads expanded', () => {
+    const n = new TNode()
+    n.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
+    expect(n.collapsed).toBe(false)
   })
 })
