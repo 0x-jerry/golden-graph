@@ -6,7 +6,6 @@ import { NodeView } from '../../src/renderer/NodeView'
 import { getHandleView } from '../../src/renderer/HandleView'
 import { notifyContentResized } from '../../src/renderer/HandleView'
 import {
-  BLOCK_HANDLE_LABEL_ROW,
   COLORS,
   LAYOUT,
   NODE_BODY_PADDING,
@@ -135,12 +134,12 @@ describe('NodeView sub-graph tag', () => {
   })
 })
 
-describe('NodeView dynamic block height', () => {
-  const staticBlockRow = BLOCK_HANDLE_LABEL_ROW + LAYOUT.HANDLE_ROW_HEIGHT
+describe('NodeView block content containment', () => {
+  const staticBlockRow = LAYOUT.HANDLE_ROW_HEIGHT * 2
   const staticNodeHeight =
     LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING + staticBlockRow
 
-  it('grows the node body to fit tall block content', () => {
+  it('keeps auto-height nodes static regardless of content', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'out', { type: 'display' })
     const handle = node.getHandle('out')!
@@ -149,62 +148,58 @@ describe('NodeView dynamic block height', () => {
     const view = new NodeView(node)
     const body = find<Konva.Rect>(view.group, '.body')
 
-    expect(body.height()).toBeGreaterThan(staticNodeHeight)
+    // Always-contain: tall block content is clipped, never grown into.
+    expect(body.height()).toBe(staticNodeHeight)
   })
 
-  it('shrinks back when block content shrinks', () => {
+  it('keeps a manual size even with tall content (content is clipped)', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'out', { type: 'display' })
     const handle = node.getHandle('out')!
     handle.setInitialValue('long text '.repeat(60))
 
     const view = new NodeView(node)
-    const tall = find<Konva.Rect>(view.group, '.body').height()
-
-    handle.setInitialValue('x')
+    node.setSize({ x: 0, y: 200 })
     view.update()
 
     const body = find<Konva.Rect>(view.group, '.body')
-    expect(body.height()).toBeLessThan(tall)
-    expect(node.size.y).toBeLessThan(tall)
+    expect(body.height()).toBe(200)
+    expect(node.size.y).toBe(200)
   })
 
-  it('does not shrink below a manually set size', () => {
+  it('does not grow the node via notifyContentResized', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'out', { type: 'display' })
     const handle = node.getHandle('out')!
     handle.setInitialValue('x')
 
     const view = new NodeView(node)
-    view._syncNodeHeight()
-    const manual = node.size.y + 100
-    expect(manual).toBeGreaterThan(0)
-
-    // simulate a manual resize larger than the content
-    node.setSize({ x: 0, y: manual })
-    view.update()
-    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(manual)
-
-    // content shrinks further → manual size is kept
-    handle.setInitialValue('')
-    view.update()
-    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(manual)
-  })
-
-  it('grows via notifyContentResized when async content changes size', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'out', { type: 'display' })
-    const handle = node.getHandle('out')!
-    handle.setInitialValue('x')
-
-    const view = new NodeView(node)
-    view._syncNodeHeight()
     const before = node.size.y
 
     const content = find<Konva.Group>(view.group, '.content')
     content.add(new Konva.Rect({ name: 'big', width: 100, height: 300 }))
     notifyContentResized(content)
 
-    expect(node.size.y).toBeGreaterThan(before)
+    expect(node.size.y).toBe(before)
+    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(
+      staticNodeHeight,
+    )
+  })
+
+  it('clips handle content to the node boundary', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    const layer = view.group.find('.handleLayer')[0]! as Konva.Group
+
+    // Default auto-width node (LAYOUT.NODE_WIDTH), content-driven height.
+    expect(layer.clipWidth()).toBe(LAYOUT.NODE_WIDTH + LAYOUT.JOINT_RADIUS * 2)
+    expect(layer.clipHeight()).toBe(staticNodeHeight)
+
+    node.setSize({ x: 300, y: 160 })
+    view.update()
+
+    expect(layer.clipWidth()).toBe(300 + LAYOUT.JOINT_RADIUS * 2)
+    expect(layer.clipHeight()).toBe(160)
   })
 })

@@ -8,7 +8,10 @@ import type {
  * How a handle's content widget is placed relative to its label.
  *
  * - `'inline'`: content sits next to the label on the same row (default).
- * - `'block'`: label on its own line, content below it spanning the node width.
+ * - `'block'`: label on its own line, content below it spanning the node
+ *   width. Block content is contained to the node's size — it re-fits into
+ *   the space the node allocates the row and is clipped at the node boundary
+ *   when it overflows, so it can never expand the node.
  */
 export type HandleContentLayout = 'inline' | 'block'
 
@@ -34,9 +37,11 @@ export interface NodeHandleConfig {
   layout?: HandleContentLayout
 
   /**
-   * Minimum height (px) of the block content area. The rendered row grows
-   * beyond this when the measured content is taller (wrapping text, images).
-   * Defaults to `LAYOUT.HANDLE_ROW_HEIGHT`. Only applies to block handles.
+   * Minimum height (px) of the block content area. Block content is contained
+   * into the node's available space and can never expand the node: auto-height
+   * nodes render block rows at this minimum, while manually sized nodes give a
+   * row whatever height the node affords beyond its other rows. Defaults to
+   * `LAYOUT.HANDLE_ROW_HEIGHT`. Only applies to block handles.
    */
   minHeight?: number
 

@@ -8,7 +8,6 @@ import {
   HANDLE_CONTENT_Y_OFFSET,
   HANDLE_NAME_WIDTH,
   HANDLE_NAME_GAP,
-  BLOCK_HANDLE_LABEL_ROW,
   ELEMENT_TYPE,
   ATTR,
   JOINT_CURSOR,
@@ -43,7 +42,9 @@ const contentViewMap = new WeakMap<Konva.Group, HandleView>()
 
 /**
  * Signal that a handle's content group resized asynchronously (e.g. an image
- * finished loading). Re-measures the block row and resizes the owning node.
+ * finished loading). Re-measures the block row and re-lays out the owning
+ * node. Content is contained to the node's size — it can re-fit into the
+ * available box but never expands the node.
  */
 export function notifyContentResized(group: Konva.Group) {
   contentViewMap.get(group)?._onContentResized()
@@ -254,10 +255,15 @@ export class HandleView {
     const minHeight =
       this._factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
     const content = Math.max(minHeight, contentHeight)
-    const rowHeight = hasLabelRow(this.handle)
-      ? BLOCK_HANDLE_LABEL_ROW + content
-      : content
-    setMeasuredRowHeight(this.handle, rowHeight)
+    // Store the desired (uncapped) row height: `getHandleRowHeight` caps it
+    // to the vertical space the node allocates this row, so measured content
+    // can never expand the node.
+    setMeasuredRowHeight(
+      this.handle,
+      hasLabelRow(this.handle)
+        ? LAYOUT.HANDLE_ROW_HEIGHT + content
+        : content,
+    )
   }
 
   _onContentResized(): void {
@@ -277,7 +283,7 @@ export class HandleView {
       return rowCenterY
     }
     return hasLabelRow(this.handle)
-      ? rowCenterY - BLOCK_HANDLE_LABEL_ROW / 2
+      ? rowCenterY - LAYOUT.HANDLE_ROW_HEIGHT / 2
       : rowCenterY - getHandleRowHeight(this.handle) / 2
   }
 
@@ -285,7 +291,7 @@ export class HandleView {
     if (this._layout === 'block') {
       const blockTop = this._blockRowTop(handleY(this.handle.node, this.handle))
       return hasLabelRow(this.handle)
-        ? blockTop + BLOCK_HANDLE_LABEL_ROW
+        ? blockTop + LAYOUT.HANDLE_ROW_HEIGHT
         : blockTop
     }
     return handleY(this.handle.node, this.handle) - HANDLE_CONTENT_Y_OFFSET

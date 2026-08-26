@@ -1,6 +1,7 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
-import { NODE_MIN_WIDTH, getNodeWidth } from '../constants'
+import { LAYOUT, getNodeWidth } from '../constants'
 import { getNodeHeight } from '../NodeView'
+import { getNodeStaticMinHeight } from '../handles/layout'
 import type { GestureContext, IGesture } from './types'
 
 export class NodeResizeGesture implements IGesture {
@@ -30,14 +31,15 @@ export class NodeResizeGesture implements IGesture {
     this._lastPos = { x: screenPos.x, y: screenPos.y }
 
     node.setSize({
-      // Baseline from the effective width so an auto-width node doesn't jump
-      // straight to the minimum when the first drag goes left.
-      x: Math.max(NODE_MIN_WIDTH, getNodeWidth(node) + dx),
-      // Baseline from the effective height: an auto-height node (`size.y` = 0)
-      // renders at its content height, so without this the first ~content
-      // height pixels of downward drag would produce no visible change. The
-      // renderer still clamps the body so it never shrinks below content.
-      y: Math.max(0, getNodeHeight(node) + dy),
+      // A node can't be resized narrower than its default width, nor shorter
+      // than its static content height — content stays readable and block
+      // rows never collapse onto each other. Taller content is still
+      // contained/clipped above the static minimum (see `layoutRows`).
+      x: Math.max(LAYOUT.NODE_WIDTH, getNodeWidth(node) + dx),
+      y: Math.max(
+        getNodeStaticMinHeight(node),
+        getNodeHeight(node) + dy,
+      ),
     })
   }
 

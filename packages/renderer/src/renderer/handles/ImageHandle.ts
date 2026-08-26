@@ -4,6 +4,7 @@ import { HandlePosition } from '@0x-jerry/golden-graph'
 import { LAYOUT, HANDLE_CONTENT_X, getNodeWidth } from '../constants'
 import { resetStageCursor, setStageCursor } from '../cursor'
 import { notifyContentResized } from '../HandleView'
+import { getBlockContentMaxHeight } from './layout'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
 
 let sharedFileInput: HTMLInputElement | null = null
@@ -103,6 +104,15 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
   }
 
   /**
+   * Available content height for the image, derived from the node's size
+   * (see {@link getBlockContentMaxHeight}). The image is contained into this
+   * box, so it respects the node's height instead of expanding it.
+   */
+  handleHeight(): number {
+    return getBlockContentMaxHeight(this._handle.node, this._handle)
+  }
+
+  /**
    * Keep the width-driven children (measurement anchor, placeholder text) in
    * sync with the current node width. Runs on every update so `_layoutContent`
    * measures the handle correctly when the node is resized, even while the
@@ -115,20 +125,27 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
   }
 
   /**
-   * Scale the image down (never up) to fit the handle width and position it so
-   * it renders centered in the node. The anchor rect makes the content group
-   * span the full block width, so `HandleView._layoutContent` aligns its origin
-   * to the same left/right edges as the block-layout label.
+   * Contain the image into the available content box: scale down (never up)
+   * to fit both the handle width and the available content height, keeping
+   * the aspect ratio, and anchor it top-center in the box. The anchor rect
+   * makes the content group span the full block width, so
+   * `HandleView._layoutContent` aligns its origin to the same left/right
+   * edges as the block-layout label.
    */
   fitImage(konvaImage: Konva.Image): void {
     this.syncWidth()
 
     const img = konvaImage.image() as HTMLImageElement
     const w = this.handleWidth()
-    const scale = Math.min(1, w / img.width)
+    const h = this.handleHeight()
+    const scale = Math.max(
+      0,
+      Math.min(1, w / img.width, h / img.height),
+    )
     const imgW = img.width * scale
+    const imgH = img.height * scale
     konvaImage.width(imgW)
-    konvaImage.height(img.height * scale)
+    konvaImage.height(imgH)
     konvaImage.x(this.centeredX(imgW))
     konvaImage.y(0)
   }

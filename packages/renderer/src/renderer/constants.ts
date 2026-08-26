@@ -95,9 +95,6 @@ export const SEL = {
 
 export const NODE_BODY_PADDING = 8
 
-/** Minimum node width a user can resize a node down to. */
-export const NODE_MIN_WIDTH = 120
-
 /** Minimum group width/height a user can resize a group down to. */
 export const GROUP_MIN_WIDTH = 100
 export const GROUP_MIN_HEIGHT = 80
@@ -121,8 +118,6 @@ export const HANDLE_NAME_WIDTH = 60
 export const HANDLE_NAME_GAP = 6
 /** Stage-container cursor while the pointer hovers a handle joint. */
 export const JOINT_CURSOR = 'crosshair'
-/** Height of the label row inside a block-layout handle's row. */
-export const BLOCK_HANDLE_LABEL_ROW = LAYOUT.HANDLE_ROW_HEIGHT
 export const EXECUTOR_SHADOW_BLUR = 10
 export const ZOOM_MIN = 0.1
 export const ZOOM_MAX = 4

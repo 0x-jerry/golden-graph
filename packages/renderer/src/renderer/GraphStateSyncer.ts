@@ -64,8 +64,9 @@ export class GraphStateSyncer {
       this._updateHandleView(otherHandle)
     }
 
-    // Re-sync the owning node: a value change can alter a block handle's
-    // measured height (wrapping text), which must resize the node.
+    // Re-sync the owning node: a value change can re-flow block content
+    // (wrapping text, images) into the node's allocated space. Content is
+    // contained to the node's size and never expands it.
     this._store.updateNode(handle.node)
     this._store.redrawNodes()
   }

@@ -23,10 +23,14 @@ export class NodeView extends EntityView<Node> {
   _resize: ResizeHandle
   /** SubGraph marker tag rendered in the header, absent for normal nodes. */
   _tag?: Konva.Group
+  /**
+   * Clipped container holding every handle view, so block content that
+   * overflows its row (tall images, wrapping text) is cut at the node
+   * boundary instead of painting over neighbors or forcing the node bigger.
+   */
+  _handleLayer: Konva.Group
   /** Rendered handle views keyed by handle key. */
   _handleViews = new Map<string, HandleView>()
-  /** `size.y` last written by `_syncNodeHeight`, or `null` when hands-off. */
-  _autoY: number | null = null
 
   constructor(node: Node) {
     const width = getNodeWidth(node)
@@ -84,10 +88,22 @@ export class NodeView extends EntityView<Node> {
       nameText.width(width - 16 - SUBGRAPH_TAG_WIDTH - 4)
     }
 
+    // Handles live in their own clipped container: block content is contained
+    // to the node's size, so anything that overflows its row (tall images,
+    // wrapping text) is cut at the node boundary. The clip is padded
+    // horizontally by the joint radius so edge joints stay whole.
+    const handleLayer = new Konva.Group({
+      name: 'handleLayer',
+      clipX: -LAYOUT.JOINT_RADIUS,
+      clipY: 0,
+      clipWidth: width + LAYOUT.JOINT_RADIUS * 2,
+      clipHeight: height,
+    })
+    g.add(handleLayer)
+    this._handleLayer = handleLayer
+
     this._syncHandles()
 
-    // Fix the body height now that handle views have measured their rows
-    // (block content can grow past the static minimum).
     const measuredHeight = getNodeHeight(node)
     this._body.height(measuredHeight)
 
@@ -119,8 +135,6 @@ export class NodeView extends EntityView<Node> {
       this._name.width(width - 16)
     }
 
-    // Re-measure handle rows first so the body/grip use the final height
-    // (block content can grow/shrink past the static minimum).
     this._syncHandles()
 
     const height = getNodeHeight(node)
@@ -130,38 +144,9 @@ export class NodeView extends EntityView<Node> {
     this._resize.x(width - RESIZE_HANDLE_SIZE)
     this._resize.y(height - RESIZE_HANDLE_SIZE)
 
-    this._syncNodeHeight()
-  }
-
-  /**
-   * Keep `size.y` in sync with the content-driven height: grow when content
-   * overflows, shrink when it shrinks — but never shrink below a height the
-   * user set manually (`size.y` no longer equals our last write).
-   */
-  _syncNodeHeight(): void {
-    const node = this.entity
-    const content = getNodeContentHeight(node)
-    const current = node.size.y
-
-    if (current !== this._autoY) {
-      // Something else (manual resize) changed `size.y` since our last write.
-      if (content > current) {
-        this._writeAutoHeight(content)
-      } else {
-        this._autoY = null
-      }
-      return
-    }
-
-    if (content !== this._autoY) {
-      this._writeAutoHeight(content)
-    }
-  }
-
-  _writeAutoHeight(y: number): void {
-    const node = this.entity
-    node.setSize({ x: node.size.x, y })
-    this._autoY = y
+    const clip = this._handleLayer
+    clip.clipWidth(width + LAYOUT.JOINT_RADIUS * 2)
+    clip.clipHeight(height)
   }
 
   /** Reflect active-selection state: accent stroke + resize grip visibility. */
@@ -210,9 +195,9 @@ export class NodeView extends EntityView<Node> {
       }
 
       if (!view) {
-        view = new HandleView(handle, () => this._syncNodeHeight())
+        view = new HandleView(handle, () => this.update())
         this._handleViews.set(handle.key, view)
-        this.group.add(view.group)
+        this._handleLayer.add(view.group)
         return
       }
       view.update()
@@ -241,11 +226,17 @@ export function getNodeContentHeight(node: Node): number {
 }
 
 /**
- * Effective node height. Never smaller than the content-driven height
- * (header + handle rows + padding), even when `size.y` is set.
+ * Effective node height. A manually sized node (`size.y > 0`) keeps exactly
+ * its size — block content that doesn't fit is clipped by the node body
+ * instead of expanding it. Auto-height nodes render at their content-driven
+ * height, which is bounded because block rows never exceed their allocated
+ * space.
  */
 export function getNodeHeight(node: Node): number {
-  return Math.max(node.size.y, getNodeContentHeight(node))
+  if (node.size.y > 0) {
+    return node.size.y
+  }
+  return getNodeContentHeight(node)
 }
 
 export function getHandleIndex(node: Node, handle: NodeHandle): number {
