@@ -23,7 +23,9 @@
     "prepublishOnly": "bun run build",
     "check": "vue-tsc --noEmit"
   },
-  "trustedDependencies": ["canvas"],
+  "trustedDependencies": [
+    "canvas"
+  ],
   "devDependencies": {
     "@iconify-json/carbon": "latest",
     "@types/bun": "latest",

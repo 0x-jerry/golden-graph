@@ -15,5 +15,8 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Force Rebuild Canvas
+        run: cd packages/renderer/node_modules/canvas && bun run install
+
       - name: Run tests
         run: bun run test
