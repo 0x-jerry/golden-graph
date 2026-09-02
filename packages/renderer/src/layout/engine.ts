@@ -1,13 +1,10 @@
 import type { Edge, Node, IVec2 } from '@0x-jerry/golden-graph'
+import { graphlib, layout as dagreLayout } from '@dagrejs/dagre'
 import { DEFAULT_DRAW, DEFAULT_OPTIONS, type LayoutOptions, type LayoutResult } from './types'
 
 interface SizedNode {
   node: Node
   size: { width: number; height: number }
-}
-
-interface RankedNode {
-  node: Node
 }
 
 /**
@@ -39,7 +36,8 @@ export function resolveEdgeDirection(edge: Edge): [number, number] | null {
 
 /**
  * Pure layout engine: compute absolute positions for a set of nodes and their
- * edges without mutating anything.
+ * edges without mutating anything. Runs Dagre's layered layout per connected
+ * component, then stacks components top→bottom sharing the same flow axis.
  */
 export function computeNodePositions(
   nodes: readonly Node[],
@@ -62,70 +60,36 @@ export function computeNodePositions(
   const byId = new Map<number, SizedNode>()
   sized.forEach((s) => byId.set(s.node.id, s))
 
-  const outEdges = new Map<number, Map<number, Edge>>()
-  const inEdges = new Map<number, Map<number, Edge>>()
-  edges.forEach((edge) => {
-    const dir = resolveEdgeDirection(edge)
-    if (!dir) return
-
-    const [from, to] = dir
-    if (!byId.has(from) || !byId.has(to)) return
-
-    let om = outEdges.get(from)
-    if (!om) {
-      om = new Map()
-      outEdges.set(from, om)
-    }
-    om.set(to, edge)
-
-    let im = inEdges.get(to)
-    if (!im) {
-      im = new Map()
-      inEdges.set(to, im)
-    }
-    im.set(from, edge)
-  })
-
   const components = findComponents(sized, edges)
 
   // Each batch — a single node or a connected component — flows left→right
-  // internally (ranks as columns, nodes stacked vertically within a rank).
-  // Batches are then stacked top→bottom, so groups read as a column while each
-  // keeps its own left→right flow.
+  // internally. Batches are then stacked top→bottom, so groups read as a
+  // column while each keeps its own left→right flow.
   let cursor = 0
-  let overall: Rect = box(0, 0, 0, 0)
-  let hasOverall = false
+  let overall: Rect | null = null
 
   const record = (id: number, x: number, y: number) => {
     positions.set(id, { x, y })
     const size = byId.get(id)!.size
-    overall = hasOverall
+    overall = overall
       ? unionRect(overall, box(x, y, size.width, size.height))
       : box(x, y, size.width, size.height)
-    hasOverall = true
   }
 
-  const placeComponent = (ids: number[], cursor: number): number => {
-    const ranks = rankNodes(ids, byId, inEdges)
-    orderRanks(ranks, outEdges, inEdges)
-    const placed = placeNodes(ranks, byId, opts)
-
+  components.forEach((ids) => {
+    const placed = dagreLayoutComponent(ids, byId, edges, opts)
     const rect = componentRect(placed, byId)
 
     placed.forEach((item) => {
       record(item.id, item.x - rect.x, cursor + (item.y - rect.y))
     })
 
-    return cursor + rect.height + opts.componentGap
-  }
-
-  components.forEach((ids) => {
-    cursor = placeComponent(ids, cursor)
+    cursor += rect.height + opts.componentGap
   })
 
   return {
     positions,
-    rect: overall,
+    rect: overall ?? box(0, 0, 0, 0),
   }
 }
 
@@ -180,153 +144,53 @@ function findComponents(
 }
 
 /**
- * Assign each node a rank equal to its distance from an in-degree-0 root
- * (longest path from any root). Nodes reached through a back edge collapse
- * onto an already-assigned rank (cycle-safe). Nodes in a pure cycle (no
- * roots) start from an arbitrary member.
+ * Lay out one weakly-connected component with Dagre. Only directionally
+ * resolvable edges constrain the ranks; same-side and self edges are omitted
+ * from Dagre (they cannot give a direction) but their nodes were already
+ * grouped into the same component by {@link findComponents}.
  */
-function rankNodes(
+function dagreLayoutComponent(
   ids: number[],
   byId: Map<number, SizedNode>,
-  inEdges: Map<number, Map<number, Edge>>,
-): RankedNode[][] {
-  const idSet = new Set(ids)
-
-  const rankOf = new Map<number, number>()
-  const path = new Set<number>()
-
-  const visit = (id: number): number => {
-    const cached = rankOf.get(id)
-    if (cached !== undefined) return cached
-    if (path.has(id)) return 0
-
-    path.add(id)
-    let rank = 0
-    inEdges.get(id)?.forEach((_, from) => {
-      if (idSet.has(from)) {
-        rank = Math.max(rank, 1 + visit(from))
-      }
-    })
-    path.delete(id)
-
-    rankOf.set(id, rank)
-    return rank
-  }
-
-  // Roots first, then whatever is left (pure cycles).
-  ids.forEach((id) => {
-    if (!inEdges.has(id) || inEdges.get(id)!.size === 0) {
-      visit(id)
-    }
-  })
-  ids.forEach((id) => {
-    if (rankOf.get(id) === undefined) {
-      visit(id)
-    }
-  })
-
-  const maxRank = Math.max(0, ...ids.map((id) => rankOf.get(id) ?? 0))
-  const ranks: RankedNode[][] = Array.from({ length: maxRank + 1 }, () => [])
-  ids.forEach((id) => {
-    const rank = rankOf.get(id) ?? 0
-    ranks[rank]!.push({ node: byId.get(id)!.node })
-  })
-
-  return ranks
-}
-
-/**
- * Order nodes within each rank to reduce edge crossings using a barycenter
- * heuristic, sweeping forward then backward a few times. Nodes without any
- * cross-rank neighbour are kept in their original relative order.
- */
-function orderRanks(
-  ranks: RankedNode[][],
-  outEdges: Map<number, Map<number, Edge>>,
-  inEdges: Map<number, Map<number, Edge>>,
-) {
-  const passes = 4
-  for (let pass = 0; pass < passes; pass++) {
-    const forward = pass % 2 === 0
-    const scope = forward
-      ? Array.from({ length: ranks.length }, (_, i) => i)
-      : Array.from({ length: ranks.length }, (_, i) => ranks.length - 1 - i)
-
-    for (const r of scope) {
-      const rank = ranks[r]
-      if (!rank || rank.length < 2) continue
-
-      const barycenter = (nodeId: number): number => {
-        const neighbours: number[] = []
-
-        if (forward && r > 0) {
-          ranks[r - 1]!.forEach((rn, i) => {
-            if (inEdges.get(nodeId)?.has(rn.node.id)) neighbours.push(i)
-          })
-        } else if (!forward && r < ranks.length - 1) {
-          ranks[r + 1]!.forEach((rn, i) => {
-            if (outEdges.get(nodeId)?.has(rn.node.id)) neighbours.push(i)
-          })
-        }
-
-        if (!neighbours.length) return -1
-        return neighbours.reduce((a, b) => a + b, 0) / neighbours.length
-      }
-
-      const indexed = rank.map((rn, i) => ({ rn, i, b: barycenter(rn.node.id) }))
-
-      indexed.sort((a, b) => {
-        if (a.b === b.b) return a.i - b.i
-        if (a.b === -1) return 1
-        if (b.b === -1) return -1
-        return a.b - b.b
-      })
-
-      ranks[r] = indexed.map((x) => x.rn)
-    }
-  }
-}
-
-/**
- * Assign coordinates. Ranks become columns: each rank's x is the accumulated
- * max width of the previous rank plus the gap; nodes within a rank are stacked
- * vertically (y) with the cross gap.
- */
-function placeNodes(
-  ranks: RankedNode[][],
-  byId: Map<number, SizedNode>,
+  edges: readonly Edge[],
   opts: { xGap: number; yGap: number },
 ): { id: number; x: number; y: number }[] {
-  const width = (id: number) => byId.get(id)!.size.width
-  const height = (id: number) => byId.get(id)!.size.height
+  const idSet = new Set(ids)
+  const g = new graphlib.Graph()
+  g.setGraph({
+    rankdir: 'LR',
+    nodesep: opts.yGap,
+    ranksep: opts.xGap,
+    marginx: 0,
+    marginy: 0,
+  })
+  g.setDefaultEdgeLabel(() => ({}))
 
-  const rankExtents = ranks.map((rank) =>
-    Math.max(0, ...rank.map((rn) => width(rn.node.id))),
-  )
-  const rankOrigin: number[] = []
-  let main = 0
-  for (let i = 0; i < ranks.length; i++) {
-    rankOrigin.push(main)
-    main += rankExtents[i]! + opts.xGap
-  }
-
-  const out: { id: number; x: number; y: number }[] = []
-
-  ranks.forEach((rank, r) => {
-    let cross = 0
-    rank.forEach((rn, i) => {
-      if (i > 0) {
-        cross += height(ranks[r]![i - 1]!.node.id) + opts.yGap
-      }
-      out.push({
-        id: rn.node.id,
-        x: rankOrigin[r]!,
-        y: cross,
-      })
-    })
+  ids.forEach((id) => {
+    const size = byId.get(id)!.size
+    g.setNode(String(id), { width: size.width, height: size.height })
   })
 
-  return out
+  edges.forEach((edge) => {
+    const dir = resolveEdgeDirection(edge)
+    if (!dir) return
+    const [from, to] = dir
+    if (from === to || !idSet.has(from) || !idSet.has(to)) return
+    g.setEdge(String(from), String(to), {})
+  })
+
+  dagreLayout(g)
+
+  // Dagre positions each node by its center; convert back to top-left corners.
+  return ids.map((id) => {
+    const size = byId.get(id)!.size
+    const n = g.node(String(id))
+    return {
+      id,
+      x: n.x - size.width / 2,
+      y: n.y - size.height / 2,
+    }
+  })
 }
 
 /**
