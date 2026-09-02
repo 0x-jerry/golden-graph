@@ -1,4 +1,5 @@
 import Konva from 'konva'
+import { registerStageCursor } from '../cursor'
 import { CARET_HIT_PADDING, CARET_SIZE, NODE_SHAPE } from '../constants'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'
@@ -40,6 +41,8 @@ export class CaretHandle extends Konva.Group {
       fill: 'transparent',
     })
     this.add(hit)
+
+    registerStageCursor(this, 'pointer')
 
     if (onToggle) {
       // 'click' fires on the group when either child is hit (event bubbling).

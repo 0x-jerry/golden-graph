@@ -1,5 +1,5 @@
 import Konva from 'konva'
-import { resetStageCursor, setStageCursor } from '../../cursor'
+import { registerStageCursor } from '../../cursor'
 import { FormElement } from '../FormElement'
 import {
   DEFAULT_HEIGHT,
@@ -117,12 +117,12 @@ export class ColorPicker extends FormElement {
 
   destroy(): this {
     this.deactivate()
-    resetStageCursor(this)
     return super.destroy()
   }
 
   _createSwatch(): Konva.Circle | Konva.Rect {
     const y = this._ph / 2
+    let swatch: Konva.Circle | Konva.Rect
 
     if (this._shape === 'rect') {
       const rect = new Konva.Rect({
@@ -136,30 +136,21 @@ export class ColorPicker extends FormElement {
         stroke: this._borderColor,
         strokeWidth: 1,
       })
-      this._attachCursor(rect)
-      return rect
+      swatch = rect
+    } else {
+      const circle = new Konva.Circle({
+        name: 'swatch',
+        x: SWATCH_SIZE / 2,
+        y,
+        radius: SWATCH_SIZE / 2,
+        fill: this._val,
+        stroke: this._borderColor,
+        strokeWidth: 1,
+      })
+      swatch = circle
     }
-
-    const circle = new Konva.Circle({
-      name: 'swatch',
-      x: SWATCH_SIZE / 2,
-      y,
-      radius: SWATCH_SIZE / 2,
-      fill: this._val,
-      stroke: this._borderColor,
-      strokeWidth: 1,
-    })
-    this._attachCursor(circle)
-    return circle
-  }
-
-  _attachCursor(node: Konva.Node) {
-    node.on('mouseover pointerover', (evt) => {
-      setStageCursor(evt.target, 'pointer')
-    })
-    node.on('mouseout pointerout', (evt) => {
-      resetStageCursor(evt.target)
-    })
+    registerStageCursor(swatch, 'pointer')
+    return swatch
   }
 
   _toggle = (e: Konva.KonvaEventObject<Event>) => {

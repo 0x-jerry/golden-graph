@@ -14,6 +14,7 @@ import { EntityViewStore } from './EntityViewStore'
 import { GraphStateSyncer } from './GraphStateSyncer'
 import { subscribeGraphEvents } from './GraphEventRouter'
 import { layoutWorkspace } from './layoutWorkspace'
+import { attachStageCursorCenter } from './cursor'
 import { ThemeContext } from '../theme'
 import type { DeepPartial, GraphTheme } from '../theme'
 
@@ -89,6 +90,9 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._stage.add(this._store.groupLayer)
     this._stage.add(this._store.edgeLayer)
     this._stage.add(this._store.nodeLayer)
+
+    // After the layers exist so the center can listen to their redraws.
+    this._disposers.add(attachStageCursorCenter(this._stage))
 
     this._syncer = new GraphStateSyncer(workspace, this._stage, this._store)
 

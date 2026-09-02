@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest'
 import Konva from 'konva'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { addHandle, makeEdge, makeNode } from '../helpers/entities'
+import { makeStage } from '../helpers/stage'
+import { Input } from '../../src/renderer/components/input'
+import { Select } from '../../src/renderer/components/select'
+import { CaretHandle } from '../../src/renderer/components/CaretHandle'
 import { EdgeView } from '../../src/renderer/EdgeView'
 import {
   HandleView,
@@ -20,7 +24,24 @@ import {
   registerHandleFactory,
   getHandleFactory,
 } from '../../src/renderer/handles'
+import {
+  attachStageCursorCenter,
+  registerStageCursor,
+} from '../../src/renderer/cursor'
 import { COLORS, LAYOUT, JOINT_CURSOR } from '../../src/renderer/constants'
+
+function movePointer(stage: Konva.Stage, x: number, y: number) {
+  stage.content.dispatchEvent(
+    new MouseEvent('mousemove', {
+      clientX: x,
+      clientY: y,
+      button: 0,
+      buttons: 0,
+      bubbles: true,
+      cancelable: true,
+    }),
+  )
+}
 
 describe('resolveJointStyle', () => {
   it('maps each built-in handle type to its registered joint style', () => {
@@ -148,6 +169,143 @@ describe('registerHandleFactory', () => {
   })
 })
 
+describe('stage cursor feedback', () => {
+  it('shows an I-beam over an editable handle widget and clears on leave', () => {
+    const input = new Input({ inputWidth: 120, inputHeight: 18, value: 'hi' })
+    const { stage, layer, container } = makeStage(1)
+    layer.add(input)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+    const cursor = () => stage.content.style.cursor
+
+    try {
+      expect(cursor()).toBe('')
+      movePointer(stage, 60, 9)
+      expect(cursor()).toBe('text')
+      movePointer(stage, 500, 400)
+      expect(cursor()).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('shows pointer over the select widget and clears on leave', () => {
+    const select = new Select({
+      selectWidth: 120,
+      selectHeight: 18,
+      options: ['a', 'b'],
+      value: 'a',
+    })
+    const { stage, layer, container } = makeStage(1)
+    layer.add(select)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+    const cursor = () => stage.content.style.cursor
+
+    try {
+      expect(cursor()).toBe('')
+      movePointer(stage, 60, 9)
+      expect(cursor()).toBe('pointer')
+      movePointer(stage, 500, 400)
+      expect(cursor()).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('shows pointer over the node expand/collapse caret and clears on leave', () => {
+    const caret = new CaretHandle()
+    const { stage, layer, container } = makeStage(1)
+    layer.add(caret)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+    const cursor = () => stage.content.style.cursor
+
+    try {
+      expect(cursor()).toBe('')
+      movePointer(stage, 0, 0)
+      expect(cursor()).toBe('pointer')
+      movePointer(stage, 500, 400)
+      expect(cursor()).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('shows pointer over the edge close button and clears on leave', () => {
+    const a = makeNode(20, 'A')
+    const b = makeNode(21, 'B')
+    addHandle(a, 'out', { position: HandlePosition.Right, type: 'number' })
+    addHandle(b, 'in', { position: HandlePosition.Left, type: 'number' })
+    const edge = makeEdge({ node: a, key: 'out' }, { node: b, key: 'in' })!
+
+    const view = new EdgeView(edge)
+    const { stage, layer, container } = makeStage(1)
+    layer.add(view.group)
+    view.closeButton.visible(true)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+    const cursor = () => stage.content.style.cursor
+    const pos = view.closeButton.getAbsolutePosition()
+
+    try {
+      expect(cursor()).toBe('')
+      movePointer(stage, pos.x, pos.y)
+      expect(cursor()).toBe('pointer')
+      movePointer(stage, 500, 400)
+      expect(cursor()).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('re-asserts the hover cursor after node views are re-created', async () => {
+    const ws = createWorkspace()
+    ws.addNode('Number').moveTo(0, 0)
+    const container = document.createElement('div')
+    Object.defineProperty(container, 'clientWidth', { value: 800 })
+    Object.defineProperty(container, 'clientHeight', { value: 600 })
+    const renderer = new KonvaGraphRenderer(container, ws)
+    renderer.stage.draw()
+    const el = renderer.stage.content
+    const cx = 12
+    const cy = 15
+    const cursor = () => renderer.stage.content.style.cursor
+
+    try {
+      el.dispatchEvent(
+        new MouseEvent('mousemove', {
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+          buttons: 0,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+      expect(cursor()).toBe('pointer')
+
+      // Recreate every node view (as collapse/selection re-renders do) while
+      // the pointer is stationary over the caret.
+      renderer._store.renderAll()
+      await new Promise((r) => requestAnimationFrame(r))
+
+      expect(cursor()).toBe('pointer')
+    } finally {
+      renderer.dispose()
+      container.remove()
+    }
+  })
+})
+
 describe('EdgeView stroke', () => {
   it('follows the source (output) port color, not the input or connect order', () => {
     const a = makeNode(6, 'A')
@@ -189,7 +347,7 @@ describe('EdgeView stroke', () => {
 })
 
 describe('joint cursor', () => {
-  it('sets the stage cursor on joint hover and resets on leave/destroy', () => {
+  it('sets the stage cursor over a joint and clears on leave', () => {
     const ws = createWorkspace()
     ws.addNode('Number').moveTo(0, 0)
     const container = document.createElement('div')
@@ -197,20 +355,132 @@ describe('joint cursor', () => {
     Object.defineProperty(container, 'clientHeight', { value: 600 })
 
     const renderer = new KonvaGraphRenderer(container, ws)
-    const handle = ws.nodes[0]!.getHandle('value')!
-    const joint = getHandleView(handle)!._joint!
+    renderer.stage.draw()
+    const joint = getHandleView(ws.nodes[0]!.getHandle('value')!)!._joint!
+    const pos = joint.getAbsolutePosition()
     const cursor = () => renderer.stage.content.style.cursor
 
     try {
       expect(cursor()).toBe('')
 
-      joint.fire('mouseover')
+      movePointer(renderer.stage, pos.x, pos.y)
       expect(cursor()).toBe(JOINT_CURSOR)
 
-      joint.fire('mouseout')
+      movePointer(renderer.stage, 500, 400)
       expect(cursor()).toBe('')
     } finally {
       renderer.dispose()
+    }
+  })
+})
+
+describe('cursor center', () => {
+  it('walks up to the nearest registered ancestor of the hit shape', () => {
+    const { stage, layer, container } = makeStage(1)
+    const group = new Konva.Group({ x: 100, y: 100 })
+    registerStageCursor(group, 'pointer')
+    group.add(new Konva.Rect({ width: 50, height: 50, fill: 'red' }))
+    layer.add(group)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+
+    try {
+      expect(stage.content.style.cursor).toBe('')
+      movePointer(stage, 125, 125)
+      expect(stage.content.style.cursor).toBe('pointer')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('clears the cursor when the pointer leaves the stage content', () => {
+    const { stage, layer, container } = makeStage(1)
+    const rect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 50,
+      fill: 'red',
+    })
+    registerStageCursor(rect, 'pointer')
+    layer.add(rect)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+
+    try {
+      movePointer(stage, 25, 25)
+      expect(stage.content.style.cursor).toBe('pointer')
+
+      stage.content.dispatchEvent(new MouseEvent('pointerleave'))
+      expect(stage.content.style.cursor).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('clears the cursor when the hovered element is hidden', async () => {
+    const { stage, layer, container } = makeStage(1)
+    const rect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 50,
+      fill: 'red',
+    })
+    registerStageCursor(rect, 'pointer')
+    layer.add(rect)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+
+    try {
+      movePointer(stage, 25, 25)
+      expect(stage.content.style.cursor).toBe('pointer')
+
+      // Hiding without pointer movement fires no pointermove; the layer redraw
+      // must drop the now-invisible element from the hit test and clear it.
+      rect.visible(false)
+      layer.draw()
+      await Promise.resolve()
+
+      expect(stage.content.style.cursor).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
+    }
+  })
+
+  it('clears the cursor when the hovered element is destroyed', async () => {
+    const { stage, layer, container } = makeStage(1)
+    const rect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: 50,
+      height: 50,
+      fill: 'red',
+    })
+    registerStageCursor(rect, 'pointer')
+    layer.add(rect)
+    stage.draw()
+    const detach = attachStageCursorCenter(stage)
+
+    try {
+      movePointer(stage, 25, 25)
+      expect(stage.content.style.cursor).toBe('pointer')
+
+      rect.destroy()
+      layer.draw()
+      await Promise.resolve()
+
+      expect(stage.content.style.cursor).toBe('')
+    } finally {
+      detach()
+      stage.destroy()
+      container.remove()
     }
   })
 })

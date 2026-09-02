@@ -2,7 +2,7 @@ import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { LAYOUT, HANDLE_CONTENT_X, getNodeWidth } from '../constants'
-import { resetStageCursor, setStageCursor } from '../cursor'
+import { registerStageCursor } from '../cursor'
 import { notifyContentResized } from '../HandleView'
 import { getBlockContentMaxHeight } from './layout'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
@@ -23,6 +23,7 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
     this._theme = theme
 
     this.renderValue()
+    registerStageCursor(this, 'pointer')
 
     this.on('pointerdown', (evt) => {
       // Left button only — right/middle clicks should not open the picker
@@ -30,8 +31,6 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
       if (evt.evt.button !== 0) return
       pickImage(handle)
     })
-    this.on('mouseover pointerover', setPointerCursor)
-    this.on('mouseout pointerout', resetCursor)
   }
 
   update(): void {
@@ -47,11 +46,6 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
     if (konvaImage) {
       this.fitImage(konvaImage)
     }
-  }
-
-  destroy(): this {
-    resetCursor(this)
-    return super.destroy()
   }
 
   renderValue(): void {
@@ -228,14 +222,6 @@ function getSharedFileInput(): HTMLInputElement {
 function pickImage(handle: NodeHandle) {
   currentHandle = handle
   getSharedFileInput().click()
-}
-
-function setPointerCursor(evt: Konva.KonvaEventObject<Event>) {
-  setStageCursor(evt.target, 'pointer')
-}
-
-function resetCursor(node: Konva.Node | Konva.KonvaEventObject<Event>) {
-  resetStageCursor(node instanceof Konva.Node ? node : node.target)
 }
 
 const VALUE_ATTR = 'imageValue'

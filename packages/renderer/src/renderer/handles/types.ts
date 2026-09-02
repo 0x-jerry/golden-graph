@@ -67,8 +67,7 @@ export interface NodeHandleModule extends Konva.Group {
 
   /**
    * Tear down per-handle resources before the Konva group is destroyed.
-   * Inherited from `Konva.Group`; modules override it to add cleanup
-   * (e.g. releasing a stage cursor).
+   * Inherited from `Konva.Group`;
    */
   destroy(): this
 }

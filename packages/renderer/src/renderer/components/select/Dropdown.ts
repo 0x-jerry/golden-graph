@@ -1,4 +1,5 @@
 import Konva from 'konva'
+import { registerStageCursor } from '../../cursor'
 import { PADDING } from '../shared'
 import type { SelectOption } from './Select'
 import { DEFAULT_THEME } from '../../../theme'
@@ -159,6 +160,10 @@ export class Dropdown extends Konva.Group {
       e.evt.preventDefault()
       this.scrollBy(e.evt.deltaY > 0 ? 1 : -1)
     })
+
+    // Register the panel: the cursor center's ancestor walk finds it from any
+    // hit item rect.
+    registerStageCursor(this, 'pointer')
 
     this._itemsGroup = itemsGroup
 

@@ -12,7 +12,7 @@ import {
   JOINT_CURSOR,
   getNodeWidth,
 } from './constants'
-import { resetStageCursor, setStageCursor } from './cursor'
+import { registerStageCursor } from './cursor'
 import { getHandleFactory } from './handles'
 import { TOOLTIP_DELAY, hideTooltip, showTooltip } from './tooltip'
 import { createJointShape, resolveJointStyle } from './joint'
@@ -107,10 +107,7 @@ export class HandleView {
       joint.stroke(this._theme.colors.border)
       joint.strokeWidth(1)
       joint.name(ELEMENT_TYPE.JOINT)
-      joint.on('mouseover pointerover', () =>
-        setStageCursor(joint, JOINT_CURSOR),
-      )
-      joint.on('mouseout pointerout', () => resetStageCursor(joint))
+      registerStageCursor(joint, JOINT_CURSOR)
       group.add(joint)
       this._joint = joint
     }
@@ -249,11 +246,6 @@ export class HandleView {
     if (module) {
       contentViewMap.delete(module)
       module.destroy()
-    }
-    // Release the cursor if the pointer rests on the joint at teardown — no
-    // `mouseout` fires without pointer movement. Must precede the group destroy.
-    if (this._joint) {
-      resetStageCursor(this._joint)
     }
     this.group.destroy()
   }

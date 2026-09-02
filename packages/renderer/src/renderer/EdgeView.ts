@@ -8,6 +8,7 @@ import {
   ATTR,
   getNodeWidth,
 } from './constants'
+import { registerStageCursor } from './cursor'
 import { handleY } from './handles/layout'
 import { jointColor } from './joint'
 import { EntityView } from './EntityView'
@@ -44,6 +45,7 @@ export class EdgeView extends EntityView<Edge> {
 
     const closeBtn = createCloseButton(line.stroke() as string, theme)
     closeBtn.position(mid)
+    registerStageCursor(closeBtn, 'pointer')
     group.add(closeBtn)
 
     line.on('mouseenter', () => {

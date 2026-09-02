@@ -1,5 +1,6 @@
 import Konva from 'konva'
 import { FormElement } from '../FormElement'
+import { registerStageCursor } from '../../cursor'
 import { DEFAULT_HEIGHT, PADDING, type BaseFormConfig } from '../shared'
 import { Dropdown, ITEM_HEIGHT } from './Dropdown'
 import { DEFAULT_THEME } from '../../../theme'
@@ -134,6 +135,10 @@ export class Select extends FormElement {
     this._bg.on('click tap', toggle)
     this._textNode.on('click tap', toggle)
     this._placeholderNode.on('click tap', toggle)
+
+    // Register the group: the cursor center's ancestor walk finds it from any
+    // hit child (background / label / placeholder).
+    registerStageCursor(this, 'pointer')
   }
 
   getValue(): string {

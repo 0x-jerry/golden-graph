@@ -1,5 +1,6 @@
 import Konva from 'konva'
 import { FormElement } from '../FormElement'
+import { registerStageCursor } from '../../cursor'
 import { DEFAULT_THEME } from '../../../theme'
 import type { GraphTheme } from '../../../theme'
 import {
@@ -231,6 +232,8 @@ export class Input extends FormElement {
     // inactive, so keeping it bound for the element's lifetime is safe and
     // avoids listener accumulation across edit sessions.
     this.on('wheel', this._wheelFn)
+
+    registerStageCursor(this._bg, 'text')
   }
 
   getValue(): string {
