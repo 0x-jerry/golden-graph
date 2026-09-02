@@ -16,6 +16,7 @@ import { subscribeGraphEvents } from './GraphEventRouter'
 import { autoLayout } from '../layout'
 import { getNodeWidth } from './constants'
 import { getNodeHeight } from './NodeView'
+import { handleY } from './handles/layout'
 
 export interface KonvaGraphRendererOptions {
   onContextMenu?: (
@@ -162,6 +163,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
               width: getNodeWidth(node),
               height: getNodeHeight(node),
             }),
+            getHandleY: handleY,
           })
         }),
       )

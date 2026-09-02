@@ -62,11 +62,51 @@ const sinkSchema: TestNodeSchema = {
   ],
 }
 
+const biOutSchema: TestNodeSchema = {
+  type: 'BiOut',
+  name: 'BiOut',
+  handles: [
+    {
+      key: 'outTop',
+      position: HandlePosition.Right,
+      accepts: 'number',
+      name: 'outTop',
+    },
+    {
+      key: 'outBottom',
+      position: HandlePosition.Right,
+      accepts: 'number',
+      name: 'outBottom',
+    },
+  ],
+}
+
+const biInSchema: TestNodeSchema = {
+  type: 'BiIn',
+  name: 'BiIn',
+  handles: [
+    {
+      key: 'inTop',
+      position: HandlePosition.Left,
+      accepts: 'number',
+      name: 'inTop',
+    },
+    {
+      key: 'inBottom',
+      position: HandlePosition.Left,
+      accepts: 'number',
+      name: 'inBottom',
+    },
+  ],
+}
+
 function makeWorkspace() {
   const ws = new Workspace()
   ws.registerNodeSchema(sourceSchema)
   ws.registerNodeSchema(passSchema)
   ws.registerNodeSchema(sinkSchema)
+  ws.registerNodeSchema(biOutSchema)
+  ws.registerNodeSchema(biInSchema)
   return ws
 }
 
@@ -309,6 +349,104 @@ describe('computeNodePositions', () => {
     expect(pIso1.y).toBeGreaterThan(maxYConnected)
     expect(pIso1.x).toBe(pIso2.x)
     expect(pIso2.y).toBeGreaterThan(pIso1.y)
+  })
+})
+
+describe('computeNodePositions handle alignment', () => {
+  // Stub handle rows: 10px below the header plus 30px per handle index, so
+  // passSchema's `out` (index 1) sits 40px down and every `in` (index 0) 10px.
+  const getHandleY = (
+    node: { handles: ReadonlyArray<{ key: string }> },
+    handle: { key: string },
+  ) => node.handles.findIndex((h) => h.key === handle.key) * 30 + 10
+
+  it('aligns the connected handle joints vertically', () => {
+    const ws = makeWorkspace()
+    const pass = ws.addNode(passSchema.type)
+    const sink = ws.addNode(sinkSchema.type)
+    ws.connect(pass.getHandle('out')!, sink.getHandle('in')!)
+
+    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+      measure,
+      getHandleY,
+    })
+
+    const pPass = positions.get(pass.id)!
+    const pSink = positions.get(sink.id)!
+    // out row at 40, in row at 10 → the sink is shifted down 30.
+    expect(pSink.y - pPass.y).toBeCloseTo(30)
+    expect(pPass.y + 40).toBeCloseTo(pSink.y + 10)
+  })
+
+  it('separates fan-out consumers that would collapse onto the same row', () => {
+    const ws = makeWorkspace()
+    const src = ws.addNode(sourceSchema.type)
+    const c1 = ws.addNode(sinkSchema.type)
+    const c2 = ws.addNode(sinkSchema.type)
+    ws.connect(src.getHandle('out')!, c1.getHandle('in')!)
+    ws.connect(src.getHandle('out')!, c2.getHandle('in')!)
+
+    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+      measure,
+      getHandleY,
+      yGap: 40,
+    })
+
+    const ps = positions.get(src.id)!
+    const p1 = positions.get(c1.id)!
+    const p2 = positions.get(c2.id)!
+    // Both consumers prefer the source's out row; the top one keeps it…
+    const top = Math.min(p1.y, p2.y)
+    const bottom = Math.max(p1.y, p2.y)
+    expect(ps.y + 10).toBeCloseTo(top + 10)
+    // …and the second is pushed below it without overlapping.
+    expect(bottom).toBeGreaterThanOrEqual(top + 50 + 40 - 0.001)
+  })
+
+  it('orders fan-out consumers by the source handle row', () => {
+    const ws = makeWorkspace()
+    const src = ws.addNode(biOutSchema.type)
+    const topCon = ws.addNode(sinkSchema.type)
+    const bottomCon = ws.addNode(sinkSchema.type)
+    ws.connect(src.getHandle('outTop')!, topCon.getHandle('in')!)
+    ws.connect(src.getHandle('outBottom')!, bottomCon.getHandle('in')!)
+
+    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+      measure,
+      getHandleY,
+      yGap: 40,
+    })
+
+    // outTop (row 10) is above outBottom (row 40), so the consumer attached
+    // to the top handle must sit above the bottom-handle consumer.
+    expect(positions.get(topCon.id)!.y).toBeLessThan(
+      positions.get(bottomCon.id)!.y,
+    )
+    // And top consumer's in joint still aligns with the top out joint.
+    const ps = positions.get(src.id)!
+    const pTop = positions.get(topCon.id)!
+    expect(ps.y + 10).toBeCloseTo(pTop.y + 10)
+  })
+
+  it('orders fan-in producers by the sink input handle row', () => {
+    const ws = makeWorkspace()
+    const topSrc = ws.addNode(sourceSchema.type)
+    const bottomSrc = ws.addNode(sourceSchema.type)
+    const sink = ws.addNode(biInSchema.type)
+    ws.connect(topSrc.getHandle('out')!, sink.getHandle('inTop')!)
+    ws.connect(bottomSrc.getHandle('out')!, sink.getHandle('inBottom')!)
+
+    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+      measure,
+      getHandleY,
+      yGap: 40,
+    })
+
+    // inTop (row 10) is above inBottom (row 40), so the producer feeding the
+    // top input must sit above the one feeding the bottom input.
+    expect(positions.get(topSrc.id)!.y).toBeLessThan(
+      positions.get(bottomSrc.id)!.y,
+    )
   })
 })
 

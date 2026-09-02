@@ -5,6 +5,7 @@ import type { CoreMenuItem, ContextMenuContext } from './types'
 import { ContextMenuTargetType } from './types'
 import { getNodeWidth } from './constants'
 import { getNodeHeight } from './NodeView'
+import { handleY } from './handles/layout'
 
 export function buildDefaultContextMenu(
   ctx: ContextMenuContext,
@@ -34,6 +35,7 @@ function canvasMenu(ws: Workspace): CoreMenuItem[] {
             width: getNodeWidth(node),
             height: getNodeHeight(node),
           }),
+          getHandleY: handleY,
         })
       },
     },

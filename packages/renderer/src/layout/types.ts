@@ -1,4 +1,4 @@
-import type { Node, IVec2 } from '@0x-jerry/golden-graph'
+import type { Node, NodeHandle, IVec2 } from '@0x-jerry/golden-graph'
 import type { IRect } from '../utils/RectBox'
 
 /**
@@ -33,6 +33,14 @@ export interface LayoutOptions {
    * the default draw constants.
    */
   measure?: (node: Node) => LayoutSize
+
+  /**
+   * Local Y of a handle's connection row within its node, from the handle
+   * order (header at 0, top row first). When provided, connected handle
+   * joints are aligned vertically after layout so edges run horizontally
+   * between them instead of slanting between node centers.
+   */
+  getHandleY?: (node: Node, handle: NodeHandle) => number
 }
 
 /**
@@ -62,7 +70,7 @@ export const DEFAULT_DRAW = {
 } as const
 
 export const DEFAULT_OPTIONS: Required<
-  Omit<LayoutOptions, 'measure'>
+  Omit<LayoutOptions, 'measure' | 'getHandleY'>
 > = {
   xGap: 60,
   yGap: 40,
