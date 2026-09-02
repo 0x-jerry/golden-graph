@@ -9,8 +9,11 @@ import {
 } from '@0x-jerry/golden-graph'
 import {
   autoLayout,
+  boundingRect,
   computeNodePositions,
+  estimateSize,
   resolveEdgeDirection,
+  resolveLayoutOptions,
 } from '../../src/layout'
 import type { LayoutOptions } from '../../src/layout'
 
@@ -584,5 +587,32 @@ describe('autoLayout', () => {
     expect(outputs.length).toBeGreaterThan(0)
     expect(passX).toBeGreaterThan(maxInputX)
     expect(minOutputX).toBeGreaterThan(passX)
+  })
+})
+
+describe('shared helpers', () => {
+  it('boundingRect unions boxes and returns the zero rect when empty', () => {
+    expect(boundingRect([])).toEqual({ x: 0, y: 0, width: 0, height: 0 })
+    expect(
+      boundingRect([
+        { x: 10, y: 20, width: 30, height: 40 },
+        { x: 5, y: 50, width: 15, height: 10 },
+      ]),
+    ).toEqual({ x: 5, y: 20, width: 35, height: 40 })
+  })
+
+  it('estimateSize scales height with handle rows', () => {
+    const node = makeWorkspace().addNode(sourceSchema.type)
+    expect(estimateSize(node).width).toBeGreaterThan(0)
+    expect(estimateSize(node).height).toBeGreaterThan(0)
+  })
+
+  it('resolveLayoutOptions fills defaults', () => {
+    expect(resolveLayoutOptions()).toEqual({
+      xGap: 60,
+      yGap: 40,
+      componentGap: 80,
+    })
+    expect(resolveLayoutOptions({ xGap: 10 }).xGap).toBe(10)
   })
 })

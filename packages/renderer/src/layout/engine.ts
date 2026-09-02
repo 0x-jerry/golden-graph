@@ -1,10 +1,31 @@
 import type { Edge, Node, NodeHandle, IVec2 } from '@0x-jerry/golden-graph'
 import { graphlib, layout as dagreLayout } from '@dagrejs/dagre'
-import { DEFAULT_DRAW, DEFAULT_OPTIONS, type LayoutOptions, type LayoutResult } from './types'
+import type { IRect } from '../utils/RectBox'
+import {
+  boundingRect,
+  estimateSize,
+  resolveLayoutOptions,
+} from './utils'
+import {
+  type LayoutOptions,
+  type LayoutResult,
+  type LayoutSize,
+  type ResolvedLayoutOptions,
+} from './types'
 
 interface SizedNode {
   node: Node
-  size: { width: number; height: number }
+  size: LayoutSize
+}
+
+/**
+ * Everything a layout helper needs that doesn't vary within one
+ * `computeNodePositions` call, threaded through instead of repeated params.
+ */
+interface LayoutContext {
+  byId: Map<number, SizedNode>
+  edges: readonly Edge[]
+  opts: ResolvedLayoutOptions
 }
 
 /**
@@ -44,8 +65,8 @@ export function computeNodePositions(
   edges: readonly Edge[],
   options: LayoutOptions = {},
 ): LayoutResult {
-  const opts = { ...DEFAULT_OPTIONS, ...options }
-  const measure = opts.measure ?? estimateSize
+  const opts = resolveLayoutOptions(options)
+  const measure = options.measure ?? estimateSize
   const sized = nodes.map((node) => ({ node, size: measure(node) }))
 
   const positions = new Map<number, IVec2>()
@@ -60,13 +81,14 @@ export function computeNodePositions(
   const byId = new Map<number, SizedNode>()
   sized.forEach((s) => byId.set(s.node.id, s))
 
+  const ctx: LayoutContext = { byId, edges, opts }
   const components = findComponents(sized, edges)
 
   // Each batch — a single node or a connected component — flows left→right
   // internally. Batches are then stacked top→bottom, so groups read as a
   // column while each keeps its own left→right flow.
   let cursor = 0
-  let overall: Rect | null = null
+  let overall: IRect | null = null
 
   const record = (id: number, x: number, y: number) => {
     positions.set(id, { x, y })
@@ -77,7 +99,7 @@ export function computeNodePositions(
   }
 
   components.forEach((ids) => {
-    const placed = dagreLayoutComponent(ids, byId, edges, opts)
+    const placed = dagreLayoutComponent(ids, ctx)
     const rect = componentRect(placed, byId)
 
     placed.forEach((item) => {
@@ -150,14 +172,9 @@ function findComponents(
  */
 function dagreLayoutComponent(
   ids: number[],
-  byId: Map<number, SizedNode>,
-  edges: readonly Edge[],
-  opts: {
-    xGap: number
-    yGap: number
-    getHandleY?: (node: Node, handle: NodeHandle) => number
-  },
+  ctx: LayoutContext,
 ): { id: number; x: number; y: number }[] {
+  const { byId, opts } = ctx
   const idSet = new Set(ids)
   const g = new graphlib.Graph()
   g.setGraph({
@@ -174,13 +191,11 @@ function dagreLayoutComponent(
     g.setNode(String(id), { width: size.width, height: size.height })
   })
 
-  directedEdges(idSet, edges).forEach(({ from, to }) => {
+  directedEdges(idSet, ctx).forEach(({ from, to }) => {
     g.setEdge(String(from), String(to), {})
   })
 
-  const constraints = opts.getHandleY
-    ? buildOrderConstraints(idSet, byId, edges, opts.getHandleY)
-    : []
+  const constraints = opts.getHandleY ? buildOrderConstraints(idSet, ctx) : []
   dagreLayout(g, { constraints })
 
   // Dagre positions each node by its center; convert back to top-left corners.
@@ -195,7 +210,7 @@ function dagreLayoutComponent(
   })
 
   if (opts.getHandleY) {
-    alignHandleRows(placed, byId, edges, opts.getHandleY, opts.yGap)
+    alignHandleRows(placed, ctx)
   }
 
   return placed
@@ -218,12 +233,9 @@ interface DirectedEdge {
  * attaches to. Same-side and self edges are dropped (they cannot give a
  * direction); their nodes are still grouped by {@link findComponents}.
  */
-function directedEdges(
-  ids: Set<number>,
-  edges: readonly Edge[],
-): DirectedEdge[] {
+function directedEdges(ids: Set<number>, ctx: LayoutContext): DirectedEdge[] {
   const out: DirectedEdge[] = []
-  edges.forEach((edge) => {
+  ctx.edges.forEach((edge) => {
     const dir = resolveEdgeDirection(edge)
     if (!dir) return
     const [from, to] = dir
@@ -247,10 +259,10 @@ function directedEdges(
  */
 function buildOrderConstraints(
   idSet: Set<number>,
-  byId: Map<number, SizedNode>,
-  edges: readonly Edge[],
-  getHandleY: (node: Node, handle: NodeHandle) => number,
+  ctx: LayoutContext,
 ): { left: string; right: string }[] {
+  const { byId, opts } = ctx
+  const getHandleY = opts.getHandleY!
   const outgoing = new Map<number, { other: number; y: number }[]>()
   const incoming = new Map<number, { other: number; y: number }[]>()
 
@@ -268,7 +280,7 @@ function buildOrderConstraints(
     list.push({ other, y })
   }
 
-  directedEdges(idSet, edges).forEach(({ from, to, hFrom, hTo }) => {
+  directedEdges(idSet, ctx).forEach(({ from, to, hFrom, hTo }) => {
     const yFrom = getHandleY(byId.get(from)!.node, hFrom)
     const yTo = getHandleY(byId.get(to)!.node, hTo)
     push(outgoing, from, to, yFrom)
@@ -309,11 +321,11 @@ function buildOrderConstraints(
  */
 function alignHandleRows(
   placed: { id: number; x: number; y: number }[],
-  byId: Map<number, SizedNode>,
-  edges: readonly Edge[],
-  getHandleY: (node: Node, handle: NodeHandle) => number,
-  yGap: number,
+  ctx: LayoutContext,
 ) {
+  const { byId, opts } = ctx
+  const yGap = opts.yGap
+  const getHandleY = opts.getHandleY!
   const idSet = new Set(placed.map((p) => p.id))
   const yOf = new Map<number, number>()
   placed.forEach((p) => yOf.set(p.id, p.y))
@@ -328,7 +340,7 @@ function alignHandleRows(
     list.push({ other, delta })
   }
 
-  directedEdges(idSet, edges).forEach(({ from, to, hFrom, hTo }) => {
+  directedEdges(idSet, ctx).forEach(({ from, to, hFrom, hTo }) => {
     const delta =
       getHandleY(byId.get(from)!.node, hFrom) -
       getHandleY(byId.get(to)!.node, hTo)
@@ -396,63 +408,29 @@ function alignHandleRows(
   })
 }
 
-/**
- * Default size estimator for when no `measure` is provided.
- */
-function estimateSize(node: Node): { width: number; height: number } {
-  const handleRows = Math.max(node.handles.length, 1)
-  return {
-    width: DEFAULT_DRAW.nodeWidth,
-    height:
-      DEFAULT_DRAW.headerHeight +
-      handleRows * DEFAULT_DRAW.handleRowHeight +
-      DEFAULT_DRAW.bodyPadding,
-  }
-}
-
-function box(x: number, y: number, width: number, height: number) {
-  return { x, y, width, height }
-}
-
-/**
- * Bounding box of a placed component, including each node's full footprint
- * (origin + measured extent) rather than just its origin point. Used to
- * advance the cursor so consecutive components never overlap.
- */
 function componentRect(
   placed: { id: number; x: number; y: number }[],
   byId: Map<number, SizedNode>,
-) {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-
-  for (const item of placed) {
-    const size = byId.get(item.id)!.size
-    minX = Math.min(minX, item.x)
-    minY = Math.min(minY, item.y)
-    maxX = Math.max(maxX, item.x + size.width)
-    maxY = Math.max(maxY, item.y + size.height)
-  }
-
-  return box(minX, minY, maxX - minX, maxY - minY)
-}
-
-interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
+): IRect {
+  return boundingRect(
+    placed.map((item) => {
+      const size = byId.get(item.id)!.size
+      return box(item.x, item.y, size.width, size.height)
+    }),
+  )
 }
 
 /**
  * Smallest box containing two boxes.
  */
-function unionRect(a: Rect, b: Rect): Rect {
+function unionRect(a: IRect, b: IRect): IRect {
   const minX = Math.min(a.x, b.x)
   const minY = Math.min(a.y, b.y)
   const maxX = Math.max(a.x + a.width, b.x + b.width)
   const maxY = Math.max(a.y + a.height, b.y + b.height)
   return box(minX, minY, maxX - minX, maxY - minY)
+}
+
+function box(x: number, y: number, width: number, height: number): IRect {
+  return { x, y, width, height }
 }

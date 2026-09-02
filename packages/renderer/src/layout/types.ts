@@ -76,3 +76,14 @@ export const DEFAULT_OPTIONS: Required<
   yGap: 40,
   componentGap: 80,
 }
+
+/**
+ * Layout gaps after defaults are applied, plus the optional handle-row
+ * resolver. `measure` is intentionally excluded — it is consumed separately.
+ */
+export type ResolvedLayoutOptions = {
+  xGap: number
+  yGap: number
+  componentGap: number
+  getHandleY?: LayoutOptions['getHandleY']
+}

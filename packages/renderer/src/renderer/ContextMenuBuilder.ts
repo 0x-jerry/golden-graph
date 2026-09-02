@@ -1,11 +1,8 @@
 import type { Workspace } from '@0x-jerry/golden-graph'
 import { isSubGraphNode } from '@0x-jerry/golden-graph'
-import { autoLayout } from '../layout'
+import { layoutWorkspace } from './layoutWorkspace'
 import type { CoreMenuItem, ContextMenuContext } from './types'
 import { ContextMenuTargetType } from './types'
-import { getNodeWidth } from './constants'
-import { getNodeHeight } from './NodeView'
-import { handleY } from './handles/layout'
 
 export function buildDefaultContextMenu(
   ctx: ContextMenuContext,
@@ -30,13 +27,7 @@ function canvasMenu(ws: Workspace): CoreMenuItem[] {
     {
       label: 'Auto Layout',
       action: () => {
-        autoLayout(ws, {
-          measure: (node) => ({
-            width: getNodeWidth(node),
-            height: getNodeHeight(node),
-          }),
-          getHandleY: handleY,
-        })
+        layoutWorkspace(ws)
       },
     },
   ]

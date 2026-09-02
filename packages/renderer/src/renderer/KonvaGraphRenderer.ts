@@ -13,10 +13,7 @@ import { ActiveElementManager } from './ActiveElementManager'
 import { EntityViewStore } from './EntityViewStore'
 import { GraphStateSyncer } from './GraphStateSyncer'
 import { subscribeGraphEvents } from './GraphEventRouter'
-import { autoLayout } from '../layout'
-import { getNodeWidth } from './constants'
-import { getNodeHeight } from './NodeView'
-import { handleY } from './handles/layout'
+import { layoutWorkspace } from './layoutWorkspace'
 
 export interface KonvaGraphRendererOptions {
   onContextMenu?: (
@@ -158,13 +155,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     if (this._autoLayoutSubGraph) {
       this._disposers.add(
         this._ws.events.on('subgraph:added', (subGraph) => {
-          autoLayout(subGraph.workspace, {
-            measure: (node) => ({
-              width: getNodeWidth(node),
-              height: getNodeHeight(node),
-            }),
-            getHandleY: handleY,
-          })
+          layoutWorkspace(subGraph.workspace)
         }),
       )
     }
