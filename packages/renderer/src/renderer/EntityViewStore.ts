@@ -6,6 +6,8 @@ import { GroupView } from './GroupView'
 import { NodeView } from './NodeView'
 import type { IRect } from '../utils/RectBox'
 import { LAYER_NAME, getNodeWidth } from './constants'
+import { ThemeContext } from '../theme'
+import type { GraphTheme } from '../theme'
 import { getNodeHeight } from './NodeView'
 
 /**
@@ -38,6 +40,7 @@ export class EntityViewMap<V extends EntityView<unknown>> extends Map<number, V>
  */
 export class EntityViewStore {
   _ws: Workspace
+  _theme: ThemeContext
   nodeLayer: Konva.Layer
   edgeLayer: Konva.Layer
   groupLayer: Konva.Layer
@@ -46,11 +49,19 @@ export class EntityViewStore {
   _edgeViews = new EntityViewMap<EdgeView>()
   _groupViews = new EntityViewMap<GroupView>()
 
-  constructor(ws: Workspace) {
+  constructor(ws: Workspace, theme?: ThemeContext) {
     this._ws = ws
+    this._theme = theme ?? new ThemeContext()
     this.groupLayer = new Konva.Layer({ name: LAYER_NAME.GROUPS })
     this.edgeLayer = new Konva.Layer({ name: LAYER_NAME.EDGES })
     this.nodeLayer = new Konva.Layer({ name: LAYER_NAME.NODES })
+  }
+
+  /** Re-apply theme to every live view (hot-swap). */
+  applyTheme(theme: GraphTheme): void {
+    for (const v of this._nodeViews.values()) v.applyTheme?.(theme)
+    for (const v of this._edgeViews.values()) v.applyTheme?.(theme)
+    for (const v of this._groupViews.values()) v.applyTheme?.(theme)
   }
 
   getNodesBounding(nodeIds: number[]): IRect {
@@ -83,7 +94,7 @@ export class EntityViewStore {
   // --- Node ---
 
   addNode(node: Node) {
-    this._nodeViews.add(this.nodeLayer, node.id, new NodeView(node))
+    this._nodeViews.add(this.nodeLayer, node.id, new NodeView(node, this._theme.value))
   }
 
   removeNode(node: Node) {
@@ -98,7 +109,7 @@ export class EntityViewStore {
 
   addEdgeLine(edge: Edge) {
     try {
-      const view = new EdgeView(edge)
+      const view = new EdgeView(edge, this._theme.value)
       this._edgeViews.add(this.edgeLayer, edge.id, view)
 
       view.closeButton.on('click', () => {
@@ -134,7 +145,7 @@ export class EntityViewStore {
   // --- Group ---
 
   addGroup(group: Group) {
-    this._groupViews.add(this.groupLayer, group.id, new GroupView(group))
+    this._groupViews.add(this.groupLayer, group.id, new GroupView(group, this._theme.value))
   }
 
   removeGroup(group: Group) {

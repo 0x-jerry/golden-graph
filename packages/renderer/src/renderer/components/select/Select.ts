@@ -1,8 +1,9 @@
 import Konva from 'konva'
-import { COLORS } from '../../constants'
 import { FormElement } from '../FormElement'
 import { DEFAULT_HEIGHT, PADDING, type BaseFormConfig } from '../shared'
 import { Dropdown, ITEM_HEIGHT } from './Dropdown'
+import { DEFAULT_THEME } from '../../../theme'
+import type { GraphTheme } from '../../../theme'
 
 const ARROW_SIZE = 6
 const ARROW_PADDING = 6
@@ -43,14 +44,14 @@ export class Select extends FormElement {
   _sw: number
   _sh: number
 
-  constructor(config: SelectConfig) {
+  constructor(config: SelectConfig, theme?: GraphTheme) {
+    const t = theme ?? DEFAULT_THEME
     const {
       selectWidth,
       selectHeight = DEFAULT_HEIGHT,
       options,
       value = '',
       placeholder = '',
-      fill = COLORS.BG,
       strokeWidth = 1,
       cornerRadius = 2,
       maxVisibleItems = DEFAULT_MAX_VISIBLE,
@@ -58,7 +59,7 @@ export class Select extends FormElement {
       ...rest
     } = config
 
-    super(rest)
+    super(rest, t)
 
     this._sw = selectWidth
     this._sh = selectHeight
@@ -74,7 +75,7 @@ export class Select extends FormElement {
     this._bg = new Konva.Rect({
       width: selectWidth,
       height: selectHeight,
-      fill,
+      fill: this._fill,
       stroke: this._borderColor,
       strokeWidth,
       cornerRadius,
@@ -85,7 +86,7 @@ export class Select extends FormElement {
       text: matched?.label ?? '',
       fontSize: this._fs,
       fontFamily: this._ff,
-      fill: COLORS.TEXT_PRIMARY,
+      fill: t.colors.textPrimary,
       x: PADDING,
       y: textY,
       width: textW,
@@ -97,7 +98,7 @@ export class Select extends FormElement {
       text: placeholder,
       fontSize: this._fs,
       fontFamily: this._ff,
-      fill: COLORS.TEXT_MUTED,
+      fill: t.colors.textMuted,
       x: PADDING,
       y: textY,
       width: textW,
@@ -110,7 +111,7 @@ export class Select extends FormElement {
     const ay = selectHeight / 2 - 2
     this._arrow = new Konva.Line({
       points: [ax, ay, ax + ARROW_SIZE / 2, ay + 4, ax + ARROW_SIZE, ay],
-      stroke: COLORS.TEXT_MUTED,
+      stroke: t.colors.textMuted,
       strokeWidth: 1.5,
       lineCap: 'round',
       lineJoin: 'round',
@@ -186,7 +187,7 @@ export class Select extends FormElement {
   _openDropdown() {
     if (this._active) return
     this._activate()
-    this._bg.stroke(COLORS.ACCENT)
+    this._bg.stroke(this._theme.colors.accent)
 
     const focusedIndex = this._opts.findIndex((o) => o.value === this._val)
     let scrollTop = 0
@@ -207,13 +208,16 @@ export class Select extends FormElement {
   _mountDropdown(scrollTop: number, focusedIndex: number) {
     this._unmountDropdown()
 
-    const dropdown = new Dropdown({
-      width: this._sw,
-      fontSize: this._fs,
-      fontFamily: this._ff,
-      maxVisible: this._maxVisible,
-      onSelect: (index) => this._selectIndex(index),
-    })
+    const dropdown = new Dropdown(
+      {
+        width: this._sw,
+        fontSize: this._fs,
+        fontFamily: this._ff,
+        maxVisible: this._maxVisible,
+        onSelect: (index) => this._selectIndex(index),
+      },
+      this._theme,
+    )
     dropdown.open({
       options: this._opts,
       scrollTop,
@@ -348,5 +352,25 @@ export class Select extends FormElement {
 
   protected _deactivate(): void {
     this._close()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    super.applyTheme(theme)
+
+    this._bg.fill(this._fillExplicit ? this._fill : theme.colors.bg)
+    this._bg.stroke(this._active ? theme.colors.accent : this._borderColor)
+    this._textNode.fill(theme.colors.textPrimary)
+    this._textNode.fontFamily(theme.fonts.family)
+    this._placeholderNode.fill(theme.colors.textMuted)
+    this._placeholderNode.fontFamily(theme.fonts.family)
+    this._arrow.stroke(theme.colors.textMuted)
+    this._dropdown?.applyTheme?.(theme)
+
+    // Re-center the label/placeholder for the new font size.
+    const textY = (this._sh - this._fs) / 2
+    this._textNode.y(textY)
+    this._textNode.fontSize(this._fs)
+    this._placeholderNode.y(textY)
+    this._placeholderNode.fontSize(this._fs)
   }
 }

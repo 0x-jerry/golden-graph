@@ -42,6 +42,7 @@ Dependency direction: `core` → `protocol`, `backend` → `core`+`protocol`, `r
   - `handles/types.ts` + `handles/index.ts` (handle factory registry)
   - `components/FormElement.ts`, `components/input/` (keyboard/IME in `Input.ts`), `cursor.ts` (Konva v10 ignores shape cursor — set on stage container)
   - Layer order, coord transform, edge geometry: read the code.
+- **Theme** → `packages/renderer/src/theme/` (`types.ts`, `default.ts`, `ThemeContext.ts`, `css.ts`). A single `GraphTheme` (colors/fonts/metrics) is the source of truth: threaded into every Konva view/component (read as `theme.colors.*`, not the global `COLORS`), and applied to the root as `--gr-*` CSS vars via `applyThemeToElement` for the Vue chrome. `KonvaGraphRenderer` owns a `ThemeContext` and hot-swaps via `setTheme()` → each view's `applyTheme()`. Geometry-affecting constants (`LAYOUT`) stay compile-time; only visual metrics are themeable. `COLORS`/`LAYOUT` remain exported as defaults for backward compat.
 - **provide/inject** → `hooks/useWorkspace.ts` (`defineContext`): `useWorkspace()` injects, `.provide()` creates+provides; `KonvaRenderer.vue` provides.
 - **Ids stable across snapshots** (`extra.incrementID`) — backend diff cache depends on it. See `core/src/helper.ts`.
 - **Tests** → `packages/backend/test/` builders (`node`/`edge`/`graph`/`createExecutor`), `DirectExecutorBackend` helper, `WorkerExecutor.test.ts`.

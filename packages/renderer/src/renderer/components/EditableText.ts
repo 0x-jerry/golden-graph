@@ -1,7 +1,8 @@
 import Konva from 'konva'
-import { COLORS } from '../constants'
 import { Input } from './input'
-import { DEFAULT_FONT_FAMILY, PADDING, measureTextWidth } from './shared'
+import { PADDING, measureTextWidth } from './shared'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 export interface EditableTextConfig {
   /** Static display text. */
@@ -36,25 +37,27 @@ export class EditableText extends Konva.Group {
   _inputFill: string
   _onChange?: (value: string) => void
   _onStopEdit?: () => void
+  _theme: GraphTheme
 
-  constructor(config: EditableTextConfig) {
+  constructor(config: EditableTextConfig, theme: GraphTheme = DEFAULT_THEME) {
     const {
       text,
-      fontSize = 13,
-      fontFamily = DEFAULT_FONT_FAMILY,
-      fill = COLORS.TEXT_PRIMARY,
+      fontSize = theme.fonts.size + 1,
+      fontFamily = theme.fonts.family,
+      fill = theme.colors.textPrimary,
       x = 0,
       y = 0,
       name,
       inputWidth,
       inputHeight = 18,
-      inputFill = COLORS.BG,
+      inputFill = theme.colors.bg,
       onChange,
       onStopEdit,
     } = config
 
     super({ x, y })
 
+    this._theme = theme
     this._fs = fontSize
     this._ff = fontFamily
     this._inputWidth = inputWidth
@@ -96,20 +99,23 @@ export class EditableText extends Konva.Group {
               2 * PADDING,
           ))
 
-    const input = new Input({
-      // Offset so the input's own text (inset by PADDING, vertically
-      // centered) lands exactly where the static text is drawn.
-      x: -PADDING,
-      y: -(this._inputHeight - this._fs) / 2,
-      inputWidth,
-      inputHeight: this._inputHeight,
-      value: this._textNode.text(),
-      fontSize: this._fs,
-      fontFamily: this._ff,
-      fill: this._inputFill,
-      onChange: (value) => this._onChange?.(value),
-      onStopEdit: () => this._stopEdit(),
-    })
+    const input = new Input(
+      {
+        // Offset so the input's own text (inset by PADDING, vertically
+        // centered) lands exactly where the static text is drawn.
+        x: -PADDING,
+        y: -(this._inputHeight - this._fs) / 2,
+        inputWidth,
+        inputHeight: this._inputHeight,
+        value: this._textNode.text(),
+        fontSize: this._fs,
+        fontFamily: this._ff,
+        fill: this._inputFill,
+        onChange: (value) => this._onChange?.(value),
+        onStopEdit: () => this._stopEdit(),
+      },
+      this._theme,
+    )
 
     this._input = input
     this._textNode.visible(false)
@@ -131,5 +137,20 @@ export class EditableText extends Konva.Group {
   destroy(): this {
     this._stopEdit()
     return super.destroy()
+  }
+
+  /** Update the inline editor's background for future edit sessions. */
+  setInputFill(fill: string): void {
+    this._inputFill = fill
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._fs = theme.fonts.size + 1
+    this._ff = theme.fonts.family
+    this._textNode.fontSize(this._fs)
+    this._textNode.fill(theme.colors.textPrimary)
+    this._textNode.fontFamily(theme.fonts.family)
+    this._input?.applyTheme?.(theme)
   }
 }

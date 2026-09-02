@@ -1,12 +1,49 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, useTemplateRef } from 'vue'
+import { computed, nextTick, reactive, ref, useTemplateRef } from 'vue'
 import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
 import { KonvaRenderer } from '@0x-jerry/golden-graph-renderer'
+import type { DeepPartial, GraphTheme } from '@0x-jerry/golden-graph-renderer'
 import { setup as _setup } from './editor'
 
 const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
 
 const cacheKey = 'graph-save-data'
+
+/** Dark palette overrides; everything else falls back to the light default. */
+const DARK_THEME: DeepPartial<GraphTheme> = {
+  colors: {
+    bg: '#1f2328',
+    border: '#3a3f45',
+    headerBg: '#2a2f36',
+    textPrimary: '#e8eaed',
+    textLabel: '#aab3bd',
+    textMuted: '#8b949e',
+    accent: '#818cf8',
+    accentSoft: 'rgba(129, 140, 248, 0.25)',
+    subgraphTagBg: 'rgba(99, 102, 241, 0.18)',
+    subgraphTagText: '#a5b4fc',
+    edge: 'rgba(244, 114, 182, 0.6)',
+    jointDefault: '#6b7280',
+    jointHighlight: '#818cf8',
+    groupBg: 'rgba(129, 140, 248, 0.12)',
+    groupBorder: 'rgba(99, 102, 241, 0.45)',
+    groupHeaderBg: 'rgba(99, 102, 241, 0.14)',
+    gridColor: '#343a41',
+    selectionBorder: '#818cf8',
+    selectionFill: 'rgba(129, 140, 248, 0.2)',
+    surface: '#252a30',
+    bgToolbar: 'rgba(31, 35, 40, 0.92)',
+    bgHover: 'rgba(255, 255, 255, 0.08)',
+    bgInput: '#2f353c',
+    bgPreview: '#23282e',
+  },
+}
+
+// Light is the renderer's default theme; passing `undefined` keeps it.
+const themeName = ref<'light' | 'dark'>('light')
+const theme = computed<DeepPartial<GraphTheme> | undefined>(() =>
+  themeName.value === 'dark' ? DARK_THEME : undefined,
+)
 
 // Workspace/executor state is plain, non-reactive data driven by the
 // event bus — mirror the events into a reactive state object so the
@@ -200,10 +237,14 @@ async function loadFromJSON() {
       <button @click="uiState.isProcessing ? cancel() : run()">
         {{ uiState.isProcessing ? 'Cancel' : 'Run' }}
       </button>
+      <select v-model="themeName" title="Theme">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
     </div>
 
     <div class="graph-render-content">
-      <KonvaRenderer ref="renderer" :setup="setup" />
+      <KonvaRenderer ref="renderer" :setup="setup" :theme="theme" />
     </div>
   </div>
 </template>

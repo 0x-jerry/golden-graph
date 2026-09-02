@@ -6,16 +6,21 @@ import { resetStageCursor, setStageCursor } from '../cursor'
 import { notifyContentResized } from '../HandleView'
 import { getBlockContentMaxHeight } from './layout'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 let sharedFileInput: HTMLInputElement | null = null
 let currentHandle: NodeHandle | null = null
 
 class ImageModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
+  /** Active theme for the placeholder label, re-applied via `applyTheme`. */
+  _theme: GraphTheme
 
-  constructor(handle: NodeHandle) {
+  constructor(handle: NodeHandle, theme: GraphTheme = DEFAULT_THEME) {
     super()
     this._handle = handle
+    this._theme = theme
 
     this.renderValue()
 
@@ -85,8 +90,9 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
       const placeholder = new Konva.Text({
         name: 'placeholder',
         text: 'Click to choose image',
-        fontSize: 11,
-        fill: '#9aa0aa',
+        fontSize: this._theme.fonts.size - 1,
+        fontFamily: this._theme.fonts.family,
+        fill: this._theme.colors.textMuted,
         align: 'center',
         verticalAlign: 'middle',
         width: this.handleWidth(),
@@ -96,6 +102,15 @@ class ImageModule extends Konva.Group implements NodeHandleModule {
     }
 
     this.getLayer()?.batchDraw()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    const placeholder = this.findOne<Konva.Text>('.placeholder')
+    if (!placeholder) return
+    placeholder.fill(theme.colors.textMuted)
+    placeholder.fontFamily(theme.fonts.family)
+    placeholder.fontSize(theme.fonts.size - 1)
   }
 
   /** Available width for the image content, mirroring block handles. */
@@ -171,7 +186,8 @@ export const imageHandleFactory: NodeHandleFactory = {
     layout: 'block',
     joint: { color: '#f97316', shape: 'diamond' },
   },
-  create: (handle) => new ImageModule(handle),
+  create: (handle, _options, theme) =>
+    new ImageModule(handle, theme ?? DEFAULT_THEME),
 
   /** Remove the shared file input from the DOM when the renderer is disposed. */
   dispose() {

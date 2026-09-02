@@ -23,6 +23,8 @@ import { NodeResizeGesture } from './NodeResizeGesture'
 import { SelectionGesture } from './SelectionGesture'
 import type { GestureContext, IGesture, OverlayLayer } from './types'
 import { syncGroupMembership } from '../groupMembership'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 export type InteractionManagerEvents = {
   'node-select': [id: number]
@@ -49,6 +51,7 @@ export interface InteractionManagerOptions {
    * `0` disables proximity so only exact pointer hits connect.
    */
   proximityRadius?: number
+  theme?: GraphTheme
 }
 
 export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
@@ -77,13 +80,17 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
         this.emit('overlay-render', { shape, layer }),
     }
 
-    this._connect = new ConnectGesture(ctx, opts.proximityRadius)
+    this._connect = new ConnectGesture(
+      ctx,
+      opts.proximityRadius,
+      opts.theme ?? DEFAULT_THEME,
+    )
     this._nodeDrag = new NodeDragGesture(ctx)
     this._nodeResize = new NodeResizeGesture(ctx)
     this._groupDrag = new GroupDragGesture(ctx)
     this._groupResize = new GroupResizeGesture(ctx)
     this._canvasPan = new CanvasPanGesture(ctx)
-    this._selection = new SelectionGesture(ctx)
+    this._selection = new SelectionGesture(ctx, opts.theme ?? DEFAULT_THEME)
     this._contextMenu = new ContextMenuController({
       stage: this._stage,
       ws: this._ws,
@@ -234,5 +241,10 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
     this._stage.off('dblclick', this._onDblClick)
     this._connect.dispose()
     this.off()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._connect.applyTheme(theme)
+    this._selection.applyTheme(theme)
   }
 }

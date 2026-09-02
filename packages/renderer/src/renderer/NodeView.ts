@@ -2,7 +2,6 @@ import Konva from 'konva'
 import type { Node, NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition, isSubGraphNode } from '@0x-jerry/golden-graph'
 import {
-  COLORS,
   LAYOUT,
   NODE_SHAPE,
   NODE_BODY_PADDING,
@@ -20,6 +19,11 @@ import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CaretHandle } from './components/CaretHandle'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
+
+/** A Konva.Group that may carry a theme re-application hook. */
+type ThemedGroup = Konva.Group & { applyTheme?: (theme: GraphTheme) => void }
 
 export class NodeView extends EntityView<Node> {
   _body: Konva.Rect
@@ -29,7 +33,7 @@ export class NodeView extends EntityView<Node> {
   /** Latest active-selection state, re-applied on fold changes (see `update`). */
   _isActive = false
   /** SubGraph marker tag rendered in the header, absent for normal nodes. */
-  _tag?: Konva.Group
+  _tag?: ThemedGroup
   /** Expand/collapse caret rendered in the header, absent for handle-less nodes. */
   _caret?: CaretHandle | null
   /**
@@ -40,8 +44,10 @@ export class NodeView extends EntityView<Node> {
   _handleLayer: Konva.Group
   /** Rendered handle views keyed by handle key. */
   _handleViews = new Map<string, HandleView>()
+  /** Active theme, re-applied on hot-swap via `applyTheme`. */
+  _theme: GraphTheme
 
-  constructor(node: Node) {
+  constructor(node: Node, theme: GraphTheme = DEFAULT_THEME) {
     const width = getNodeWidth(node)
     const height = getNodeHeight(node)
 
@@ -55,9 +61,10 @@ export class NodeView extends EntityView<Node> {
     const body = new Konva.Rect({
       width,
       height,
-      fill: COLORS.BG,
-      stroke: COLORS.BORDER,
+      fill: theme.colors.bg,
+      stroke: theme.colors.border,
       strokeWidth: 1,
+      cornerRadius: theme.metrics.nodeCornerRadius,
       name: NODE_SHAPE.BODY,
     })
     g.add(body)
@@ -65,7 +72,7 @@ export class NodeView extends EntityView<Node> {
     const header = new Konva.Rect({
       width,
       height: LAYOUT.HEADER_HEIGHT,
-      fill: COLORS.HEADER_BG,
+      fill: theme.colors.headerBg,
       name: NODE_SHAPE.HEADER,
     })
     g.add(header)
@@ -75,8 +82,9 @@ export class NodeView extends EntityView<Node> {
 
     const nameText = new Konva.Text({
       text: node.name,
-      fontSize: 13,
-      fill: COLORS.TEXT_PRIMARY,
+      fontSize: theme.fonts.size + 1,
+      fontFamily: theme.fonts.family,
+      fill: theme.colors.textPrimary,
       x: CARET_LEFT + caretArea,
       y: 7,
       width: width - 16 - caretArea,
@@ -85,7 +93,7 @@ export class NodeView extends EntityView<Node> {
     g.add(nameText)
 
     const caret = hasCaret
-      ? new CaretHandle(() => {
+      ? new CaretHandle(theme, () => {
           node.setCollapsed(!node.collapsed)
         })
       : null
@@ -97,13 +105,14 @@ export class NodeView extends EntityView<Node> {
     }
 
     super(node, g)
+    this._theme = theme
     this._body = body
     this._header = header
     this._name = nameText
     this._caret = caret
 
     if (isSubGraphNode(node)) {
-      const tag = createSubGraphTag()
+      const tag = createSubGraphTag(theme)
       tag.x(width - SUBGRAPH_TAG_WIDTH - 8)
       tag.y(Math.round((LAYOUT.HEADER_HEIGHT - SUBGRAPH_TAG_HEIGHT) / 2))
       g.add(tag)
@@ -136,7 +145,7 @@ export class NodeView extends EntityView<Node> {
     const measuredHeight = getNodeHeight(node)
     this._body.height(measuredHeight)
 
-    const resize = new ResizeHandle()
+    const resize = new ResizeHandle(theme)
     resize.x(width - RESIZE_HANDLE_SIZE)
     resize.y(measuredHeight - RESIZE_HANDLE_SIZE)
     g.add(resize)
@@ -205,17 +214,19 @@ export class NodeView extends EntityView<Node> {
     const isActive = this._isActive
     const collapsed = this.entity.collapsed
     // The accent rides the header while collapsed (no body), else the body.
-    this._header.stroke(collapsed && isActive ? COLORS.ACCENT : '')
+    this._header.stroke(collapsed && isActive ? this._theme.colors.accent : '')
     this._header.strokeWidth(1)
-    this._body.stroke(isActive ? COLORS.ACCENT : COLORS.BORDER)
+    this._body.stroke(
+      isActive ? this._theme.colors.accent : this._theme.colors.border,
+    )
     this._resize.visible(isActive && !collapsed)
   }
 
   /** Highlight a node while the executor is running it. */
   setExecuteHighlight(isProcessing: boolean, isCurrent: boolean): void {
     if (isProcessing && isCurrent) {
-      this._body.shadowColor(COLORS.ACCENT_SOFT)
-      this._body.shadowBlur(EXECUTOR_SHADOW_BLUR)
+      this._body.shadowColor(this._theme.colors.accentSoft)
+      this._body.shadowBlur(this._theme.metrics.executorShadowBlur)
       this._body.shadowOffset({ x: 0, y: 0 })
       this._body.shadowEnabled(true)
     } else {
@@ -251,7 +262,7 @@ export class NodeView extends EntityView<Node> {
       }
 
       if (!view) {
-        view = new HandleView(handle, () => this.update())
+        view = new HandleView(handle, () => this.update(), this._theme)
         this._handleViews.set(handle.key, view)
         this._handleLayer.add(view.group)
         return
@@ -266,6 +277,22 @@ export class NodeView extends EntityView<Node> {
     }
     this._handleViews.clear()
     super.destroy()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._body.fill(theme.colors.bg)
+    this._body.stroke(theme.colors.border)
+    this._body.cornerRadius(theme.metrics.nodeCornerRadius)
+    this._header.fill(theme.colors.headerBg)
+    this._name.fontFamily(theme.fonts.family)
+    this._name.fontSize(theme.fonts.size + 1)
+    this._name.fill(theme.colors.textPrimary)
+    this._tag?.applyTheme?.(theme)
+    this._caret?.applyTheme?.(theme)
+    this._resize.applyTheme?.(theme)
+    for (const view of this._handleViews.values()) view.applyTheme?.(theme)
+    this._applyActiveStyles()
   }
 }
 
@@ -314,8 +341,6 @@ export function getHandleIndex(node: Node, handle: NodeHandle): number {
   return -1
 }
 
-const EXECUTOR_SHADOW_BLUR = 10
-
 /** Header left edge: caret + title start here. */
 const CARET_LEFT = 8
 /** Horizontal slot a caret occupies (chevron + hit padding + gap to title). */
@@ -326,20 +351,21 @@ const SUBGRAPH_TAG_WIDTH = 56
 const SUBGRAPH_TAG_HEIGHT = 16
 
 /** Marker tag drawn on the right of a SubGraphNode's header title. */
-function createSubGraphTag(): Konva.Group {
-  const tag = new Konva.Group({ name: NODE_SHAPE.TAG })
+function createSubGraphTag(theme: GraphTheme): ThemedGroup {
+  const tag = new Konva.Group({ name: NODE_SHAPE.TAG }) as ThemedGroup
 
   const bg = new Konva.Rect({
     width: SUBGRAPH_TAG_WIDTH,
     height: SUBGRAPH_TAG_HEIGHT,
     cornerRadius: 3,
-    fill: COLORS.SUBGRAPH_TAG_BG,
+    fill: theme.colors.subgraphTagBg,
   })
 
   const text = new Konva.Text({
     text: SUBGRAPH_TAG_TEXT,
-    fontSize: 10,
-    fill: COLORS.SUBGRAPH_TAG_TEXT,
+    fontSize: theme.fonts.size - 2,
+    fontFamily: theme.fonts.family,
+    fill: theme.colors.subgraphTagText,
     width: SUBGRAPH_TAG_WIDTH,
     height: SUBGRAPH_TAG_HEIGHT,
     align: 'center',
@@ -347,6 +373,13 @@ function createSubGraphTag(): Konva.Group {
   })
 
   tag.add(bg, text)
+
+  tag.applyTheme = (t: GraphTheme) => {
+    bg.fill(t.colors.subgraphTagBg)
+    text.fill(t.colors.subgraphTagText)
+    text.fontFamily(t.fonts.family)
+    text.fontSize(t.fonts.size - 2)
+  }
 
   return tag
 }

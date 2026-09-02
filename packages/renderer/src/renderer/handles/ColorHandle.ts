@@ -3,6 +3,8 @@ import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { ColorPicker, PRESET_COLORS } from '../components/color'
 import { availableWidth } from './utils'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 export interface NodeHandleOptions {
   shape?: 'circle' | 'rect'
@@ -13,23 +15,26 @@ class ColorModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
   _picker: ColorPicker
 
-  constructor(handle: NodeHandle) {
+  constructor(handle: NodeHandle, theme: GraphTheme) {
     super()
     this._handle = handle
 
     const options = handle.getOptions<NodeHandleOptions>()
 
-    this._picker = new ColorPicker({
-      pickerWidth: availableWidth(handle),
-      value: normalizeColor(handle.getValue()),
-      shape: options.shape ?? 'circle',
-      colors: options.colors ?? PRESET_COLORS,
-      // Preview picks live, but only commit the value to the handle once the
-      // picker is dismissed.
-      onCommit: (color) => {
-        handle.setValue(color)
+    this._picker = new ColorPicker(
+      {
+        pickerWidth: availableWidth(handle),
+        value: normalizeColor(handle.getValue()),
+        shape: options.shape ?? 'circle',
+        colors: options.colors ?? PRESET_COLORS,
+        // Preview picks live, but only commit the value to the handle once the
+        // picker is dismissed.
+        onCommit: (color) => {
+          handle.setValue(color)
+        },
       },
-    })
+      theme,
+    )
     this.add(this._picker)
   }
 
@@ -43,12 +48,17 @@ class ColorModule extends Konva.Group implements NodeHandleModule {
     }
     this._picker.setWidth(availableWidth(this._handle))
   }
+
+  applyTheme(theme: GraphTheme): void {
+    this._picker.applyTheme(theme)
+  }
 }
 
 export const colorHandleFactory: NodeHandleFactory = {
   type: 'color',
   config: { joint: { color: '#ec4899', shape: 'circle' } },
-  create: (handle) => new ColorModule(handle),
+  create: (handle, _options, theme) =>
+      new ColorModule(handle, theme ?? DEFAULT_THEME),
 }
 
 function normalizeColor(value: unknown): string {

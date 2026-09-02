@@ -1,5 +1,6 @@
 import Konva from 'konva'
-import { COLORS } from '../../constants'
+import { DEFAULT_THEME } from '../../../theme'
+import type { GraphTheme } from '../../../theme'
 
 export const COLOR_FIELD_HEIGHT = 120
 export const COLOR_HUE_WIDTH = 12
@@ -116,11 +117,13 @@ export class CustomColorPicker extends Konva.Group {
   _hueBar: Konva.Rect
   _hueMarker: Konva.Rect
   _dragging: 'sv' | 'hue' | null = null
+  _theme: GraphTheme
 
-  constructor(config: CustomColorPickerConfig) {
+  constructor(config: CustomColorPickerConfig, theme: GraphTheme = DEFAULT_THEME) {
     super()
     this._onPick = config.onPick
     this._width = config.width
+    this._theme = theme
 
     const { h, s, v } = hexToHsv(config.value)
     this._hue = h
@@ -161,7 +164,7 @@ export class CustomColorPicker extends Konva.Group {
       height: COLOR_FIELD_HEIGHT,
       fill: 'transparent',
       cornerRadius: 2,
-      stroke: COLORS.BORDER,
+      stroke: theme.colors.border,
       strokeWidth: 1,
     })
     this._svField.on('pointerdown', this._onSVDown)
@@ -182,7 +185,7 @@ export class CustomColorPicker extends Konva.Group {
       width: COLOR_HUE_WIDTH,
       height: COLOR_FIELD_HEIGHT,
       cornerRadius: 2,
-      stroke: COLORS.BORDER,
+      stroke: theme.colors.border,
       strokeWidth: 1,
       fillLinearGradientStartPoint: { x: 0, y: 0 },
       fillLinearGradientEndPoint: { x: 0, y: COLOR_FIELD_HEIGHT },
@@ -298,5 +301,12 @@ export class CustomColorPicker extends Konva.Group {
   destroy(): this {
     this._onDragEnd()
     return super.destroy()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._svField.stroke(theme.colors.border)
+    this._hueBar.stroke(theme.colors.border)
+    this.getLayer()?.batchDraw()
   }
 }

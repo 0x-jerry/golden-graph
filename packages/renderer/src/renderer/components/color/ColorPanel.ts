@@ -1,11 +1,12 @@
 import Konva from 'konva'
-import { COLORS } from '../../constants'
 import {
   COLOR_FIELD_HEIGHT,
   COLOR_HUE_GAP,
   COLOR_HUE_WIDTH,
   CustomColorPicker,
 } from './CustomColorPicker'
+import { DEFAULT_THEME } from '../../../theme'
+import type { GraphTheme } from '../../../theme'
 
 const SWATCH_SIZE = 18
 const GAP = 6
@@ -59,11 +60,14 @@ export class ColorPanel extends Konva.Group {
   _custom: CustomColorPicker
   _swatches: Konva.Rect[] = []
   _value: string
+  _bg: Konva.Rect
+  _theme: GraphTheme
 
-  constructor(config: ColorPanelConfig) {
+  constructor(config: ColorPanelConfig, theme: GraphTheme = DEFAULT_THEME) {
     super()
     this._onPick = config.onPick
     this._value = config.value
+    this._theme = theme
 
     this.on('pointerdown', (e) => {
       e.cancelBubble = true
@@ -78,8 +82,8 @@ export class ColorPanel extends Konva.Group {
     const bg = new Konva.Rect({
       width,
       height,
-      fill: COLORS.BG,
-      stroke: COLORS.BORDER,
+      fill: theme.colors.bg,
+      stroke: theme.colors.border,
       strokeWidth: 1,
       cornerRadius: 2,
       shadowColor: '#000000',
@@ -88,13 +92,17 @@ export class ColorPanel extends Konva.Group {
       shadowOffset: { x: 0, y: 2 },
     })
     this.add(bg)
+    this._bg = bg
 
     const fieldWidth = width - PAD * 2 - COLOR_HUE_WIDTH - COLOR_HUE_GAP
-    this._custom = new CustomColorPicker({
-      width: fieldWidth,
-      value: config.value,
-      onPick: (color) => this._setValue(color),
-    })
+    this._custom = new CustomColorPicker(
+      {
+        width: fieldWidth,
+        value: config.value,
+        onPick: (color) => this._setValue(color),
+      },
+      theme,
+    )
     this._custom.position({ x: PAD, y: PAD })
     this.add(this._custom)
 
@@ -110,7 +118,7 @@ export class ColorPanel extends Konva.Group {
         width: SWATCH_SIZE,
         height: SWATCH_SIZE,
         fill: color,
-        stroke: COLORS.BORDER,
+        stroke: theme.colors.border,
         strokeWidth: 1,
         cornerRadius: 3,
       })
@@ -136,10 +144,20 @@ export class ColorPanel extends Konva.Group {
   _updateHighlights() {
     for (const swatch of this._swatches) {
       const active = swatch.fill() === this._value
-      swatch.stroke(active ? COLORS.ACCENT : COLORS.BORDER)
+      swatch.stroke(
+        active ? this._theme.colors.accent : this._theme.colors.border,
+      )
       swatch.strokeWidth(active ? 2 : 1)
     }
     this.getLayer()?.batchDraw()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._bg.fill(theme.colors.bg)
+    this._bg.stroke(theme.colors.border)
+    this._custom.applyTheme(theme)
+    this._updateHighlights()
   }
 
   open(init: ColorPanelInit) {

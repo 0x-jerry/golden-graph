@@ -2,24 +2,30 @@ import Konva from 'konva'
 import { clamp } from '@0x-jerry/utils'
 import type { NodeHandle, IVec2 } from '@0x-jerry/golden-graph'
 import {
-  COLORS,
   BEZIER_MIN_OFFSET,
   BEZIER_MAX_OFFSET,
   DASH_PATTERN,
 } from './constants'
 import { getJointPos } from './EdgeView'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
 
 export class ConnectionLine extends Konva.Line {
-  constructor() {
+  constructor(theme: GraphTheme = DEFAULT_THEME) {
     super({
       points: [0, 0, 0, 0, 0, 0, 0, 0],
       bezier: true,
-      stroke: COLORS.EDGE,
-      strokeWidth: COLORS.EDGE_WIDTH,
+      stroke: theme.colors.edge,
+      strokeWidth: theme.metrics.edgeWidth,
       fill: undefined,
       listening: false,
       dash: DASH_PATTERN,
     })
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this.stroke(theme.colors.edge)
+    this.strokeWidth(theme.metrics.edgeWidth)
   }
 
   /**

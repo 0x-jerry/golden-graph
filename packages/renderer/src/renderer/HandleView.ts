@@ -2,7 +2,6 @@ import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import {
-  COLORS,
   LAYOUT,
   HANDLE_CONTENT_X,
   HANDLE_CONTENT_Y_OFFSET,
@@ -17,6 +16,8 @@ import { resetStageCursor, setStageCursor } from './cursor'
 import { getHandleFactory } from './handles'
 import { TOOLTIP_DELAY, hideTooltip, showTooltip } from './tooltip'
 import { createJointShape, resolveJointStyle } from './joint'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
 import {
   clearMeasuredRowHeight,
   getHandleRowHeight,
@@ -65,11 +66,18 @@ export class HandleView {
   _onResize?: () => void
   /** Timer for the description tooltip's hover delay. */
   _tooltipTimer: ReturnType<typeof setTimeout> | null = null
+  /** Active theme, re-applied on hot-swap via `applyTheme`. */
+  _theme: GraphTheme
   /** Unsubscribe from `coord:changed` while the tooltip is armed. */
   _closeTooltipOnCoordChange?: () => void
 
-  constructor(handle: NodeHandle, onResize?: () => void) {
+  constructor(
+    handle: NodeHandle,
+    onResize?: () => void,
+    theme: GraphTheme = DEFAULT_THEME,
+  ) {
     this.handle = handle
+    this._theme = theme
     this.key = handle.key
     this._onResize = onResize
     this._factory = getHandleFactory(handle.type) ?? null
@@ -96,7 +104,7 @@ export class HandleView {
         y,
       })
       joint.fill(this._jointFill())
-      joint.stroke(COLORS.BORDER)
+      joint.stroke(this._theme.colors.border)
       joint.strokeWidth(1)
       joint.name(ELEMENT_TYPE.JOINT)
       joint.on('mouseover pointerover', () =>
@@ -110,8 +118,9 @@ export class HandleView {
     const label = new Konva.Text({
       name: 'label',
       text: handle.name,
-      fontSize: 12,
-      fill: COLORS.TEXT_LABEL,
+      fontSize: theme.fonts.size,
+      fontFamily: this._theme.fonts.family,
+      fill: this._theme.colors.textLabel,
       // Fixed-width name column: keeps handle contents aligned across rows.
       // Handles without a name reserve no space (auto width = 0).
       width: handle.name ? HANDLE_NAME_WIDTH : undefined,
@@ -128,7 +137,11 @@ export class HandleView {
     this._label = label
 
     if (this._factory?.create) {
-      const module = this._factory.create(handle, handle.getOptions())
+      const module = this._factory.create(
+        handle,
+        handle.getOptions(),
+        theme,
+      )
       module.name('content')
       module.y(this._contentY())
       this._layoutContent(module)
@@ -273,9 +286,28 @@ export class HandleView {
 
   _jointFill(): string {
     if (this._highlighted) {
-      return COLORS.JOINT_HIGHLIGHT
+      return this._theme.colors.jointHighlight
     }
-    return resolveJointStyle(this.handle).color
+    return (
+      getHandleFactory(this.handle.type)?.config?.joint?.color ??
+      this._theme.colors.jointDefault
+    )
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    const joint = this._joint
+    if (joint) {
+      joint.fill(this._jointFill())
+      joint.stroke(theme.colors.border)
+    }
+    this._label.fill(theme.colors.textLabel)
+    this._label.fontFamily(theme.fonts.family)
+    this._label.fontSize(theme.fonts.size)
+    // Re-center: the label's y is the row center, so offset half its own
+    // (possibly re-measured) height after the size change.
+    this._label.offsetY(this._label.height() / 2)
+    this._module?.applyTheme?.(theme)
   }
 
   _blockRowTop(rowCenterY: number): number {

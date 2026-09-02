@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import type { Workspace as IWorkspace } from '@0x-jerry/golden-graph'
 import { KonvaGraphRenderer } from './renderer'
 import type { ContextMenuItem } from './components/ContextMenu.vue'
@@ -7,11 +7,19 @@ import { useContextMenuState, useWorkspace } from './hooks'
 import WorkspaceToolbar from './components/WorkspaceToolbar.vue'
 import ContextMenu from './components/ContextMenu.vue'
 import AddNodeDialog from './components/AddNodeDialog.vue'
+import { applyThemeToElement } from './theme'
+import type { DeepPartial, GraphTheme } from './theme'
 
 export interface KonvaRendererProps {
   setup?: (ws: IWorkspace) => void | Promise<void>
   showToolbar?: boolean
   showContextMenu?: boolean
+  /**
+   * Partial theme merged over the defaults, replacing any previously applied
+   * overrides. Passing a new object hot-swaps the canvas colors/fonts and the
+   * `--gr-*` chrome live; omit it (or pass `{}`) for the default light theme.
+   */
+  theme?: DeepPartial<GraphTheme>
 }
 
 const props = withDefaults(defineProps<KonvaRendererProps>(), {
@@ -20,6 +28,13 @@ const props = withDefaults(defineProps<KonvaRendererProps>(), {
 })
 
 const containerRef = useTemplateRef<HTMLElement>('container')
+const wrapRef = useTemplateRef<HTMLElement>('wrap')
+
+function syncChrome() {
+  if (wrapRef.value && renderer) {
+    applyThemeToElement(wrapRef.value, renderer.theme)
+  }
+}
 
 const ws = useWorkspace.provide()
 const ctxMenu = useContextMenuState()
@@ -36,6 +51,7 @@ onMounted(async () => {
   // before `setup` runs — `setup` may call `ws.addGroup()` which requires a
   // renderer, and node/edge additions during setup are then rendered live.
   renderer = new KonvaGraphRenderer(el, ws, {
+    theme: props.theme,
     onContextMenu: (ctx, evt, menus) => {
       ctxMenu.show(evt.clientX, evt.clientY, menus, ctx.pos)
       // Keep the drop position even after the menu closes, so the "Add Node"
@@ -43,6 +59,7 @@ onMounted(async () => {
       addNodePos.value = ctx.pos
     },
   })
+  syncChrome()
 
   try {
     await props.setup?.(ws)
@@ -59,6 +76,15 @@ onBeforeUnmount(() => {
   renderer?.dispose()
 })
 
+watch(
+  () => props.theme,
+  (t) => {
+    if (!renderer) return
+    renderer.setTheme(t ?? {})
+    syncChrome()
+  },
+)
+
 function onMenuClick(item: ContextMenuItem) {
   if (item.key === 'add-node') {
     addNodeVisible.value = true
@@ -71,7 +97,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="r-konva-renderer-wrap">
+  <div ref="wrap" class="r-konva-renderer-wrap">
     <div ref="container" class="r-konva-renderer" tabindex="0"></div>
     <WorkspaceToolbar v-if="props.showToolbar" />
     <ContextMenu
@@ -102,6 +128,9 @@ defineExpose({
 .r-konva-renderer {
   width: 100%;
   height: 100%;
+  /* Canvas is transparent — the theme's bg token shows through as the
+     graph backdrop (the grid dots are drawn on it). */
+  background: var(--gr-color-canvas-bg, #ffffff);
   /* The container is focusable (tabindex=0) so canvas keyboard shortcuts
      fire only while the graph has focus. No ring on mouse clicks; a subtle
      one on keyboard focus (:focus-visible) keeps Tab navigation visible. */

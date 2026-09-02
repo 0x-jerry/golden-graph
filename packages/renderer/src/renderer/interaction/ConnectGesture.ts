@@ -5,9 +5,11 @@ import { setJointHighlight } from '../HandleView'
 import { ELEMENT_TYPE, LAYER_NAME, PROXIMITY_RADIUS } from '../constants'
 import { getJointInfo } from './hitTest'
 import type { GestureContext, IGesture } from './types'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 export class ConnectGesture implements IGesture {
-  _connectionLine = new ConnectionLine()
+  _connectionLine: ConnectionLine
   _connectHandle: NodeHandle | null = null
   _connectTargetHandle: NodeHandle | null = null
   _ctx: GestureContext
@@ -19,9 +21,18 @@ export class ConnectGesture implements IGesture {
   /** Candidate joints (all positioned handles on other nodes), built at start. */
   _candidates: NodeHandle[] = []
 
-  constructor(_ctx: GestureContext, proximityRadius = PROXIMITY_RADIUS) {
+  constructor(
+    _ctx: GestureContext,
+    proximityRadius = PROXIMITY_RADIUS,
+    theme: GraphTheme = DEFAULT_THEME,
+  ) {
     this._ctx = _ctx
     this._proximityRadius = proximityRadius
+    this._connectionLine = new ConnectionLine(theme)
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._connectionLine.applyTheme(theme)
   }
 
   start(handleKey: string, nodeId: number) {

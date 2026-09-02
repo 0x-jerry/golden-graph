@@ -1,12 +1,9 @@
 import Konva from 'konva'
-import { COLORS } from '../constants'
 import { setActiveElement } from './active'
-import {
-  DEFAULT_FONT_SIZE,
-  DEFAULT_FONT_FAMILY,
-  type BaseFormConfig,
-} from './shared'
+import type { BaseFormConfig } from './shared'
 import type { IActiveElement } from '../ActiveElementManager'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 export abstract class FormElement
   extends Konva.Group
@@ -15,23 +12,46 @@ export abstract class FormElement
   _fs: number
   _ff: string
   _borderColor: string
+  /** Whether the caller pinned an explicit border color (else theme border). */
+  _borderExplicit: boolean
+  /** Whether the caller pinned an explicit background (else theme bg). */
+  _fillExplicit: boolean
+  /** Caller-pinned background, kept across hot-swaps when explicit. */
+  _fill: string
+  /** Active theme; subclasses re-apply themed chrome in `applyTheme`. */
+  _theme: GraphTheme
 
   protected _active = false
 
   _keydownFn = this._onKeyDown.bind(this)
 
-  constructor(config: BaseFormConfig) {
+  constructor(config: BaseFormConfig, theme: GraphTheme = DEFAULT_THEME) {
     const {
-      fontSize = DEFAULT_FONT_SIZE,
-      fontFamily = DEFAULT_FONT_FAMILY,
-      stroke = COLORS.BORDER,
+      fontSize = theme.fonts.size,
+      fontFamily = theme.fonts.family,
+      stroke,
+      fill,
       ...rest
     } = config
     super(rest)
 
+    this._theme = theme
     this._fs = fontSize
     this._ff = fontFamily
-    this._borderColor = stroke
+    this._borderExplicit = stroke !== undefined
+    this._borderColor = stroke ?? theme.colors.border
+    this._fillExplicit = fill !== undefined
+    this._fill = fill ?? theme.colors.bg
+  }
+
+  /** Re-apply theme-derived fonts + default border/background. */
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._fs = theme.fonts.size
+    this._ff = theme.fonts.family
+    if (!this._borderExplicit) {
+      this._borderColor = theme.colors.border
+    }
   }
 
   protected _bindEvents(): void {

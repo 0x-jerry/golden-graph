@@ -1,24 +1,29 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
-import { COLORS, LAYOUT, getNodeWidth } from '../constants'
+import { LAYOUT, getNodeWidth } from '../constants'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 class DisplayModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
+  _text: Konva.Text
 
-  constructor(handle: NodeHandle) {
+  constructor(handle: NodeHandle, theme: GraphTheme) {
     super()
     this._handle = handle
 
     const text = new Konva.Text({
       name: 'value',
       text: String(handle.getValue() ?? ''),
-      fontSize: 12,
-      fill: COLORS.TEXT_MUTED,
+      fontSize: theme.fonts.size,
+      fontFamily: theme.fonts.family,
+      fill: theme.colors.textMuted,
       width: displayWidth(handle),
       wrap: 'word',
     })
     this.add(text)
+    this._text = text
   }
 
   update(): void {
@@ -28,6 +33,12 @@ class DisplayModule extends Konva.Group implements NodeHandleModule {
       text.width(displayWidth(this._handle))
     }
   }
+
+  applyTheme(theme: GraphTheme): void {
+    this._text.fill(theme.colors.textMuted)
+    this._text.fontFamily(theme.fonts.family)
+    this._text.fontSize(theme.fonts.size)
+  }
 }
 
 export const displayHandleFactory: NodeHandleFactory = {
@@ -36,7 +47,8 @@ export const displayHandleFactory: NodeHandleFactory = {
     layout: 'block',
     joint: { color: '#8b5cf6', shape: 'square' },
   },
-  create: (handle) => new DisplayModule(handle),
+  create: (handle, _options, theme) =>
+      new DisplayModule(handle, theme ?? DEFAULT_THEME),
 }
 
 function displayWidth(handle: NodeHandle): number {

@@ -1,6 +1,8 @@
 import Konva from 'konva'
-import { COLORS, NODE_SHAPE, RESIZE_HANDLE_SIZE } from '../constants'
+import { NODE_SHAPE, RESIZE_HANDLE_SIZE } from '../constants'
 import { resetStageCursor, setStageCursor } from '../cursor'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 /**
  * Corner resize grip (triangle) with an enlarged hit area for easy grabbing.
@@ -10,8 +12,9 @@ import { resetStageCursor, setStageCursor } from '../cursor'
  */
 export class ResizeHandle extends Konva.Group {
   _hit: Konva.Rect
+  _triangle: Konva.Line
 
-  constructor() {
+  constructor(theme: GraphTheme = DEFAULT_THEME) {
     const size = RESIZE_HANDLE_SIZE
 
     super({
@@ -43,12 +46,18 @@ export class ResizeHandle extends Konva.Group {
     const triangle = new Konva.Line({
       points: [0, size, size, size, size, 0],
       closed: true,
-      fill: COLORS.ACCENT,
-      stroke: COLORS.BG,
+      fill: theme.colors.accent,
+      stroke: theme.colors.bg,
       strokeWidth: 1,
       listening: false,
     })
     this.add(triangle)
+    this._triangle = triangle
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._triangle.fill(theme.colors.accent)
+    this._triangle.stroke(theme.colors.bg)
   }
 
   _setResizeCursor = () => {

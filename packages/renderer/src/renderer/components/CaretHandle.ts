@@ -1,5 +1,7 @@
 import Konva from 'konva'
-import { CARET_HIT_PADDING, CARET_SIZE, COLORS, NODE_SHAPE } from '../constants'
+import { CARET_HIT_PADDING, CARET_SIZE, NODE_SHAPE } from '../constants'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 /**
  * Expand/collapse caret (chevron) in the node header. Points down while the
@@ -12,17 +14,20 @@ import { CARET_HIT_PADDING, CARET_SIZE, COLORS, NODE_SHAPE } from '../constants'
  * drag from it.
  */
 export class CaretHandle extends Konva.Group {
-  constructor(onToggle?: () => void) {
+  _chevron: Konva.Line
+
+  constructor(theme: GraphTheme = DEFAULT_THEME, onToggle?: () => void) {
     super({ name: NODE_SHAPE.CARET })
 
     const chevron = new Konva.Line({
       points: [-4, -3, 0, 1, 4, -3],
-      stroke: COLORS.TEXT_MUTED,
+      stroke: theme.colors.textMuted,
       strokeWidth: 1.5,
       lineCap: 'round',
       lineJoin: 'round',
     })
     this.add(chevron)
+    this._chevron = chevron
 
     // Invisible hit zone around the chevron so small clicks still land. With
     // a fill set, Konva hit-tests the rect; the chevron's own stroke is thin.
@@ -45,5 +50,9 @@ export class CaretHandle extends Konva.Group {
   /** Reflect the fold state: down ▾ while expanded, right ▸ while collapsed. */
   setCollapsed(collapsed: boolean): void {
     this.rotation(collapsed ? -90 : 0)
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._chevron.stroke(theme.colors.textMuted)
   }
 }

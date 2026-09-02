@@ -1,7 +1,8 @@
 import Konva from 'konva'
-import { COLORS } from '../../constants'
 import { PADDING } from '../shared'
 import type { SelectOption } from './Select'
+import { DEFAULT_THEME } from '../../../theme'
+import type { GraphTheme } from '../../../theme'
 
 export const ITEM_HEIGHT = 24
 
@@ -33,14 +34,18 @@ export class Dropdown extends Konva.Group {
   _ff: string
   _maxVisible: number
   _onSelect: (index: number) => void
+  _theme: GraphTheme
+  _panelBg: Konva.Rect | null = null
+  _texts: Konva.Text[] = []
 
-  constructor(config: DropdownConfig) {
+  constructor(config: DropdownConfig, theme: GraphTheme = DEFAULT_THEME) {
     super()
     this._width = config.width
     this._fs = config.fontSize
     this._ff = config.fontFamily
     this._maxVisible = config.maxVisible
     this._onSelect = config.onSelect
+    this._theme = theme
 
     // The popup is lifted out of the node subtree and drawn at the top of the
     // node layer, so it no longer belongs to a node. Swallow pointerdown to
@@ -75,8 +80,8 @@ export class Dropdown extends Konva.Group {
     const panelBg = new Konva.Rect({
       width: this._width,
       height: panelHeight,
-      fill: COLORS.BG,
-      stroke: COLORS.BORDER,
+      fill: this._theme.colors.bg,
+      stroke: this._theme.colors.border,
       strokeWidth: 1,
       cornerRadius: 2,
       shadowColor: '#000000',
@@ -85,6 +90,7 @@ export class Dropdown extends Konva.Group {
       shadowOffset: { x: 0, y: 2 },
     })
     this.add(panelBg)
+    this._panelBg = panelBg
 
     const scrollClip = new Konva.Group({
       clipX: 0,
@@ -103,26 +109,28 @@ export class Dropdown extends Konva.Group {
       x: 1,
       width: this._width - 2,
       height: ITEM_HEIGHT,
-      fill: COLORS.SELECTION_FILL,
+      fill: this._theme.colors.selectionFill,
       visible: false,
       listening: false,
     })
     itemsGroup.add(highlight)
     this._highlight = highlight
 
+    this._texts = []
     this._opts.forEach((opt, i) => {
       const ty = i * ITEM_HEIGHT + (ITEM_HEIGHT - this._fs) / 2
       const text = new Konva.Text({
         text: opt.label,
         fontSize: this._fs,
         fontFamily: this._ff,
-        fill: COLORS.TEXT_PRIMARY,
+        fill: this._theme.colors.textPrimary,
         x: PADDING,
         y: ty,
         width: this._width - PADDING * 2,
         listening: false,
       })
       itemsGroup.add(text)
+      this._texts.push(text)
 
       const hit = new Konva.Rect({
         x: 1,
@@ -192,5 +200,23 @@ export class Dropdown extends Konva.Group {
     if (this._itemsGroup) {
       this._itemsGroup.y(-this._scrollTop * ITEM_HEIGHT)
     }
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._fs = theme.fonts.size
+    this._ff = theme.fonts.family
+    this._panelBg?.fill(theme.colors.bg)
+    this._panelBg?.stroke(theme.colors.border)
+    this._highlight?.fill(theme.colors.selectionFill)
+    for (let i = 0; i < this._texts.length; i++) {
+      const text = this._texts[i]
+      if (!text) continue
+      text.fill(theme.colors.textPrimary)
+      text.fontFamily(theme.fonts.family)
+      text.fontSize(theme.fonts.size)
+      text.y(i * ITEM_HEIGHT + (ITEM_HEIGHT - theme.fonts.size) / 2)
+    }
+    this.getLayer()?.batchDraw()
   }
 }

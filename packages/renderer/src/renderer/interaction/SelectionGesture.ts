@@ -2,12 +2,13 @@ import Konva from 'konva'
 import type { IVec2 } from '@0x-jerry/golden-graph'
 import { ActiveType } from '@0x-jerry/golden-graph'
 import {
-  COLORS,
   LAYER_NAME,
   getNodeWidth,
 } from '../constants'
 import { getNodeHeight } from '../NodeView'
 import type { GestureContext, IGesture } from './types'
+import { DEFAULT_THEME } from '../../theme'
+import type { GraphTheme } from '../../theme'
 
 export class SelectionGesture implements IGesture {
   _started = false
@@ -15,9 +16,18 @@ export class SelectionGesture implements IGesture {
   _y1 = 0
   _rect: Konva.Rect | null = null
   _ctx: GestureContext
+  /** Active theme used to tint the selection rect. */
+  _theme: GraphTheme
 
-  constructor(_ctx: GestureContext) {
+  constructor(_ctx: GestureContext, theme: GraphTheme = DEFAULT_THEME) {
     this._ctx = _ctx
+    this._theme = theme
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._rect?.fill(theme.colors.selectionFill)
+    this._rect?.stroke(theme.colors.selectionBorder)
   }
 
   start() {
@@ -30,8 +40,8 @@ export class SelectionGesture implements IGesture {
 
     if (!this._rect) {
       this._rect = new Konva.Rect({
-        fill: COLORS.SELECTION_FILL,
-        stroke: COLORS.SELECTION_BORDER,
+        fill: this._theme.colors.selectionFill,
+        stroke: this._theme.colors.selectionBorder,
         strokeWidth: 1,
         listening: false,
         visible: false,

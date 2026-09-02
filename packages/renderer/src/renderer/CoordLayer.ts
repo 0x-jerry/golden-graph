@@ -1,6 +1,8 @@
 import Konva from 'konva'
 import type { CoordSystem } from '@0x-jerry/golden-graph'
-import { COLORS, LAYER_NAME } from './constants'
+import { LAYER_NAME } from './constants'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
 
 const GRID_SIZE = 40
 const GRID_RANGE = 10_000
@@ -10,8 +12,16 @@ const GRID_RANGE = 10_000
  * transform, so it is rendered once and only redrawn on a full render.
  */
 export class CoordLayer extends Konva.Layer {
-  constructor(_coord: CoordSystem) {
+  _theme: GraphTheme
+
+  constructor(_coord: CoordSystem, theme: GraphTheme = DEFAULT_THEME) {
     super({ name: LAYER_NAME.GRID })
+    this._theme = theme
+    this.render()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
     this.render()
   }
 
@@ -20,7 +30,7 @@ export class CoordLayer extends Konva.Layer {
 
     const tile = new OffscreenCanvas(GRID_SIZE, GRID_SIZE)
     const ctx = tile.getContext('2d')!
-    ctx.fillStyle = COLORS.GRID_COLOR
+    ctx.fillStyle = this._theme.colors.gridColor
     ctx.beginPath()
     ctx.arc(GRID_SIZE / 2, GRID_SIZE / 2, 1.5, 0, Math.PI * 2)
     ctx.fill()

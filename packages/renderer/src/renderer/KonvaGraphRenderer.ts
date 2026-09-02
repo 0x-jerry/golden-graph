@@ -14,6 +14,8 @@ import { EntityViewStore } from './EntityViewStore'
 import { GraphStateSyncer } from './GraphStateSyncer'
 import { subscribeGraphEvents } from './GraphEventRouter'
 import { layoutWorkspace } from './layoutWorkspace'
+import { ThemeContext } from '../theme'
+import type { DeepPartial, GraphTheme } from '../theme'
 
 export interface KonvaGraphRendererOptions {
   onContextMenu?: (
@@ -31,6 +33,8 @@ export interface KonvaGraphRendererOptions {
    * `0` disables proximity so only exact pointer hits connect.
    */
   proximityRadius?: number
+  /** Partial theme merged over the defaults. Hot-swappable via `setTheme`. */
+  theme?: DeepPartial<GraphTheme>
 }
 
 export class KonvaGraphRenderer implements IRenderer, IDisposable {
@@ -47,9 +51,16 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _disposed = false
   _activeElementManager: ActiveElementManager
   _autoLayoutSubGraph: boolean
+  /** Per-renderer theme; hot-swapping re-applies to every live view. */
+  _theme: ThemeContext
 
   get stage(): Konva.Stage {
     return this._stage
+  }
+
+  /** Current merged theme (defaults + consumer overrides). */
+  get theme(): GraphTheme {
+    return this._theme.value
   }
 
   constructor(
@@ -59,6 +70,7 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   ) {
     this._autoLayoutSubGraph = options?.autoLayoutSubGraph ?? true
     this._ws = workspace
+    this._theme = new ThemeContext(options?.theme)
 
     this._stage = new Konva.Stage({
       container: container as HTMLDivElement,
@@ -70,8 +82,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._stage.setAttr(ActiveElementManager.key, this._activeElementManager)
     this._activeElementManager.init()
 
-    this._gridLayer = new CoordLayer(workspace.coord)
-    this._store = new EntityViewStore(workspace)
+    this._gridLayer = new CoordLayer(workspace.coord, this._theme.value)
+    this._store = new EntityViewStore(workspace, this._theme)
 
     this._stage.add(this._gridLayer)
     this._stage.add(this._store.groupLayer)
@@ -90,7 +102,12 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
       stage: this._stage,
       ws: workspace,
       proximityRadius: options?.proximityRadius,
+      theme: this._theme.value,
     })
+
+    this._disposers.add(
+      this._theme.onThemeChange(() => this._applyTheme()),
+    )
 
     this._disposers.add(
       this._interaction.on('node-select', (id) => {
@@ -167,6 +184,26 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._store.renderAll()
     this._syncer.syncCoord()
     this._syncer.syncState()
+  }
+
+  /**
+   * Hot-swap the theme and re-apply to every live surface. The patch REPLACES
+   * the previous overrides — pass the complete set each time (it's merged over
+   * the defaults; `{}` resets to the default theme).
+   */
+  setTheme(theme: DeepPartial<GraphTheme>): void {
+    this._theme.setTheme(theme)
+  }
+
+  _applyTheme() {
+    const theme = this._theme.value
+    this._gridLayer.applyTheme(theme)
+    this._store.applyTheme(theme)
+    this._interaction.applyTheme(theme)
+    this._gridLayer.batchDraw()
+    this._store.redrawNodes()
+    this._store.redrawEdges()
+    this._store.redrawGroups()
   }
 
   // --- Lifecycle ---

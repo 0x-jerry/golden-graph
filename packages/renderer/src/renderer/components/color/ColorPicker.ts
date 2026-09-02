@@ -1,5 +1,4 @@
 import Konva from 'konva'
-import { COLORS } from '../../constants'
 import { resetStageCursor, setStageCursor } from '../../cursor'
 import { FormElement } from '../FormElement'
 import {
@@ -11,6 +10,8 @@ import {
   PRESET_COLORS,
   colorPanelHeight,
 } from './ColorPanel'
+import { DEFAULT_THEME } from '../../../theme'
+import type { GraphTheme } from '../../../theme'
 
 const SWATCH_SIZE = 14
 const TEXT_GAP = 6
@@ -42,7 +43,8 @@ export class ColorPicker extends FormElement {
   /** Whether a color was actually picked since the panel opened. */
   _picked = false
 
-  constructor(config: ColorPickerConfig) {
+  constructor(config: ColorPickerConfig, theme?: GraphTheme) {
+    const t = theme ?? DEFAULT_THEME
     const {
       pickerWidth,
       pickerHeight = DEFAULT_HEIGHT,
@@ -53,7 +55,7 @@ export class ColorPicker extends FormElement {
       onCommit,
       ...rest
     } = config
-    super(rest)
+    super(rest, t)
 
     this._pw = pickerWidth
     this._ph = pickerHeight
@@ -72,7 +74,7 @@ export class ColorPicker extends FormElement {
       text: value.toUpperCase(),
       fontSize: this._fs,
       fontFamily: this._ff,
-      fill: COLORS.TEXT_PRIMARY,
+      fill: t.colors.textPrimary,
       width: Math.max(0, pickerWidth - SWATCH_SIZE - TEXT_GAP),
       listening: false,
     })
@@ -172,7 +174,7 @@ export class ColorPicker extends FormElement {
   _openPanel() {
     if (this._active) return
     this._activate()
-    this._swatch.stroke(COLORS.ACCENT)
+    this._swatch.stroke(this._theme.colors.accent)
     this._picked = false
 
     this._mountPanel()
@@ -182,13 +184,16 @@ export class ColorPicker extends FormElement {
   _mountPanel() {
     this._unmountPanel()
 
-    const panel = new ColorPanel({
-      colors: this._colors,
-      value: this._val,
-      fontSize: this._fs,
-      fontFamily: this._ff,
-      onPick: (color) => this.setValue(color),
-    })
+    const panel = new ColorPanel(
+      {
+        colors: this._colors,
+        value: this._val,
+        fontSize: this._fs,
+        fontFamily: this._ff,
+        onPick: (color) => this.setValue(color),
+      },
+      this._theme,
+    )
     panel.open({
       above: this._shouldOpenAbove(),
       hostHeight: this._ph,
@@ -251,5 +256,21 @@ export class ColorPicker extends FormElement {
       // instead of reopening the panel.
       this.deactivate()
     }
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    super.applyTheme(theme)
+
+    this._text.fill(theme.colors.textPrimary)
+    this._text.fontFamily(theme.fonts.family)
+    this._swatch.stroke(
+      this._active ? theme.colors.accent : this._borderColor,
+    )
+    this._panel?.applyTheme?.(theme)
+
+    // Re-center the value text for the new font size.
+    this._text.y((this._ph - this._fs) / 2)
+    this._text.fontSize(this._fs)
+    this.getLayer()?.batchDraw()
   }
 }

@@ -2,7 +2,6 @@ import Konva from 'konva'
 import type { Group } from '@0x-jerry/golden-graph'
 import type { Input } from './components/input'
 import {
-  COLORS,
   LAYOUT,
   NODE_SHAPE,
   RESIZE_HANDLE_SIZE,
@@ -12,10 +11,11 @@ import {
 import { EntityView } from './EntityView'
 import { EditableText } from './components/EditableText'
 import { ResizeHandle } from './components/ResizeHandle'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
 
 const NAME_X = 8
 const NAME_Y = 16
-const NAME_FONT_SIZE = 13
 const NAME_INPUT_HEIGHT = 18
 
 export class GroupView extends EntityView<Group> {
@@ -23,8 +23,12 @@ export class GroupView extends EntityView<Group> {
   _header: Konva.Rect
   _name: EditableText
   _resize: ResizeHandle
+  /** Active theme, re-applied on hot-swap via `applyTheme`. */
+  _theme: GraphTheme
+  /** Latest active-selection state, re-applied on theme change. */
+  _isActive = false
 
-  constructor(group: Group) {
+  constructor(group: Group, theme: GraphTheme = DEFAULT_THEME) {
     const g = new Konva.Group({
       x: group.pos.x,
       y: group.pos.y,
@@ -35,9 +39,10 @@ export class GroupView extends EntityView<Group> {
     const body = new Konva.Rect({
       width: group.size.x,
       height: group.size.y,
-      fill: COLORS.GROUP_BG,
-      stroke: COLORS.GROUP_BORDER,
+      fill: theme.colors.groupBg,
+      stroke: theme.colors.groupBorder,
       strokeWidth: 1,
+      cornerRadius: theme.metrics.groupCornerRadius,
       name: NODE_SHAPE.BODY,
     })
     g.add(body)
@@ -45,7 +50,7 @@ export class GroupView extends EntityView<Group> {
     const header = new Konva.Rect({
       width: group.size.x,
       height: LAYOUT.GROUP_HEADER_HEIGHT,
-      fill: COLORS.GROUP_HEADER_BG,
+      fill: theme.colors.groupHeaderBg,
       name: NODE_SHAPE.HEADER,
     })
     g.add(header)
@@ -54,26 +59,27 @@ export class GroupView extends EntityView<Group> {
       x: NAME_X,
       y: NAME_Y,
       text: group.name,
-      fontSize: NAME_FONT_SIZE,
-      fill: COLORS.TEXT_PRIMARY,
+      fontFamily: theme.fonts.family,
+      fill: theme.colors.textPrimary,
       name: NODE_SHAPE.NAME,
       inputWidth: () => Math.max(120, group.size.x - 16),
       inputHeight: NAME_INPUT_HEIGHT,
-      inputFill: COLORS.GROUP_HEADER_BG,
+      inputFill: theme.colors.groupHeaderBg,
       onChange: (value) => {
         group.setName(value.trim() || 'Untitled')
       },
-    })
+    }, theme)
     g.add(nameText)
 
     super(group, g)
+    this._theme = theme
     this._body = body
     this._header = header
     this._name = nameText
 
     header.on('dblclick', () => this.startRename())
 
-    const resize = new ResizeHandle()
+    const resize = new ResizeHandle(theme)
     resize.x(group.size.x - RESIZE_HANDLE_SIZE)
     resize.y(group.size.y - RESIZE_HANDLE_SIZE)
     g.add(resize)
@@ -98,8 +104,25 @@ export class GroupView extends EntityView<Group> {
 
   /** Reflect active group selection state: body border + resize grip. */
   setActive(isActive: boolean): void {
-    this._body.stroke(isActive ? COLORS.ACCENT : COLORS.GROUP_BORDER)
+    this._isActive = isActive
+    this._body.stroke(
+      isActive ? this._theme.colors.accent : this._theme.colors.groupBorder,
+    )
     this._resize.visible(isActive)
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    this._theme = theme
+    this._body.fill(theme.colors.groupBg)
+    this._body.stroke(theme.colors.groupBorder)
+    this._body.cornerRadius(theme.metrics.groupCornerRadius)
+    this._header.fill(theme.colors.groupHeaderBg)
+    // Keep the inline title editor's background in sync with the group
+    // header for future edit sessions.
+    this._name.setInputFill(theme.colors.groupHeaderBg)
+    this._name.applyTheme?.(theme)
+    this._resize.applyTheme?.(theme)
+    this.setActive(this._isActive)
   }
 
   /** Open the inline title editor over the group header. */

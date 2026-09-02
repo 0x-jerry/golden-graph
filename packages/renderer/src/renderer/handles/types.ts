@@ -3,6 +3,7 @@ import type {
   NodeHandle,
   INodeHandleConfigOptions,
 } from '@0x-jerry/golden-graph'
+import type { GraphTheme } from '../../theme'
 
 /**
  * How a handle's content widget is placed relative to its label.
@@ -61,6 +62,9 @@ export interface NodeHandleModule extends Konva.Group {
   /** Re-render the widget for the current handle value/size. */
   update?(): void
 
+  /** Re-apply theme-derived colors/fonts on a hot-swap. */
+  applyTheme?(theme: GraphTheme): void
+
   /**
    * Tear down per-handle resources before the Konva group is destroyed.
    * Inherited from `Konva.Group`; modules override it to add cleanup
@@ -83,10 +87,15 @@ export interface NodeHandleFactory {
    * Build the content widget for a handle. Optional for types registered purely
    * to style their joint (no value editor). When absent the handle renders
    * label + joint only.
+   *
+   * The `theme` argument is optional for backward compatibility with external
+   * factories that predate theming; the created module can still re-theme via
+   * {@link NodeHandleModule#applyTheme}.
    */
   create?(
     handle: NodeHandle,
     options: INodeHandleConfigOptions,
+    theme?: GraphTheme,
   ): NodeHandleModule
 
   /**

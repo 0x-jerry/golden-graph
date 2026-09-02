@@ -1,6 +1,7 @@
 import Konva from 'konva'
-import { COLORS } from '../../constants'
 import { FormElement } from '../FormElement'
+import { DEFAULT_THEME } from '../../../theme'
+import type { GraphTheme } from '../../../theme'
 import {
   DEFAULT_HEIGHT,
   PADDING,
@@ -82,13 +83,13 @@ export class Input extends FormElement {
     }
   }
 
-  constructor(config: InputConfig) {
+  constructor(config: InputConfig, theme?: GraphTheme) {
+    const t = theme ?? DEFAULT_THEME
     const {
       inputWidth,
       inputHeight = DEFAULT_HEIGHT,
       value = '',
       placeholder = '',
-      fill = COLORS.BG,
       strokeWidth = 1,
       cornerRadius = 2,
       onChange,
@@ -97,7 +98,7 @@ export class Input extends FormElement {
       ...rest
     } = config
 
-    super(rest)
+    super(rest, t)
 
     this._iw = inputWidth
     this._ih = inputHeight
@@ -132,7 +133,7 @@ export class Input extends FormElement {
     this._bg = new Konva.Rect({
       width: inputWidth,
       height: inputHeight,
-      fill,
+      fill: this._fill,
       stroke: this._borderColor,
       strokeWidth,
       cornerRadius,
@@ -148,7 +149,7 @@ export class Input extends FormElement {
       y: textY,
       width: 0,
       height: this._fs,
-      fill: COLORS.SELECTION_FILL,
+      fill: t.colors.selectionFill,
       visible: false,
       listening: false,
     })
@@ -158,7 +159,7 @@ export class Input extends FormElement {
       text: this._model.value,
       fontSize: this._fs,
       fontFamily: this._ff,
-      fill: COLORS.TEXT_PRIMARY,
+      fill: t.colors.textPrimary,
       x: PADDING,
       y: textY,
       listening: false,
@@ -169,7 +170,7 @@ export class Input extends FormElement {
       text: placeholder,
       fontSize: this._fs,
       fontFamily: this._ff,
-      fill: COLORS.TEXT_MUTED,
+      fill: t.colors.textMuted,
       x: PADDING,
       y: textY,
       visible: this._model.value.length === 0,
@@ -180,7 +181,7 @@ export class Input extends FormElement {
     this._composingNode = new Konva.Text({
       fontSize: this._fs,
       fontFamily: this._ff,
-      fill: COLORS.TEXT_MUTED,
+      fill: t.colors.textMuted,
       y: textY,
       visible: false,
       listening: false,
@@ -192,7 +193,7 @@ export class Input extends FormElement {
       y: textY,
       width: CURSOR_WIDTH,
       height: this._fs,
-      fill: COLORS.TEXT_PRIMARY,
+      fill: t.colors.textPrimary,
       visible: false,
       listening: false,
     })
@@ -378,7 +379,7 @@ export class Input extends FormElement {
     this._model.commit()
     this._model.setCursor(pos ?? this._model.value.length)
 
-    this._bg.stroke(COLORS.ACCENT)
+    this._bg.stroke(this._theme.colors.accent)
 
     const stage = this.getStage()
     if (stage) {
@@ -436,5 +437,41 @@ export class Input extends FormElement {
     this._stopEdit(false)
     this._hidden.detach()
     return super.destroy()
+  }
+
+  applyTheme(theme: GraphTheme): void {
+    super.applyTheme(theme)
+
+    this._bg.fill(this._fillExplicit ? this._fill : theme.colors.bg)
+    this._bg.stroke(this._active ? theme.colors.accent : this._borderColor)
+    this._selRect.fill(theme.colors.selectionFill)
+    for (const node of [
+      this._textNode,
+      this._placeholderNode,
+      this._composingNode,
+    ]) {
+      node.fontFamily(theme.fonts.family)
+    }
+    this._textNode.fill(theme.colors.textPrimary)
+    this._cursorLine.fill(theme.colors.textPrimary)
+    this._placeholderNode.fill(theme.colors.textMuted)
+    this._composingNode.fill(theme.colors.textMuted)
+
+    // Re-center the text/caret/selection geometry for the new font size.
+    const textY = (this._ih - this._fs) / 2
+    for (const node of [
+      this._textNode,
+      this._placeholderNode,
+      this._composingNode,
+      this._selRect,
+      this._cursorLine,
+    ]) {
+      node.y(textY)
+    }
+    this._textNode.fontSize(this._fs)
+    this._placeholderNode.fontSize(this._fs)
+    this._composingNode.fontSize(this._fs)
+    this._selRect.height(this._fs)
+    this._cursorLine.height(this._fs)
   }
 }
