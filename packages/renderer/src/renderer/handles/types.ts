@@ -3,7 +3,7 @@ import type {
   NodeHandle,
   INodeHandleConfigOptions,
 } from '@0x-jerry/golden-graph'
-import type { GraphTheme } from '../../theme'
+import type { GraphTheme, JointShape } from '../../theme'
 
 /**
  * How a handle's content widget is placed relative to its label.
@@ -16,8 +16,10 @@ import type { GraphTheme } from '../../theme'
  */
 export type HandleContentLayout = 'inline' | 'block'
 
-/** Geometry used to draw a handle's joint (connection dot). */
-export type HandleJointShape = 'circle' | 'square' | 'diamond' | 'triangle'
+/**
+ * Geometry used to draw a handle's joint (connection dot).
+ */
+export type HandleJointShape = JointShape
 
 /**
  * Visual style of a handle's joint. Defined per handle `type` via the
@@ -48,7 +50,7 @@ export interface NodeHandleConfig {
 
   /**
    * Joint (connection dot) style for this handle type. When absent the joint
-   * falls back to {@link DEFAULT_JOINT_STYLE}.
+   * falls back to the theme's `jointDefault` / `jointShape`.
    */
   joint?: IHandleJointStyle
 }

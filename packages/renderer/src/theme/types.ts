@@ -1,12 +1,22 @@
 /**
- * Semantic color tokens. The Konva-side set mirrors the historic `COLORS`
- * constant; the trailing `surface/bg*` tokens are consumed only by the CSS
- * chrome (toolbar, context menu, dialogs) via `--gr-*` custom properties.
+ * Semantic color tokens. The Konva-side set drives every canvas view; the
+ * trailing `surface/bg*` tokens are consumed only by the CSS chrome (toolbar,
+ * context menu, dialogs) via `--gr-*` custom properties.
  */
 export interface ThemeColors {
   bg: string
   border: string
   headerBg: string
+  /** Node title color — differs from `textPrimary` when the header is a filled bar. */
+  headerText: string
+  /** Separator under the header band; `''` hides it. */
+  headerDivider: string
+  /** Separator between handle rows; `''` hides it. */
+  rowDivider: string
+  /** Static node shadow color; `'transparent'` disables the shadow. */
+  nodeShadow: string
+  /** Inner fill of a hollow joint; unused while `jointRingWidth` is 0. */
+  jointRing: string
   textPrimary: string
   textLabel: string
   textMuted: string
@@ -42,6 +52,12 @@ export interface ThemeFonts {
   size: number
 }
 
+/** Node body outline. */
+export type NodeCornerRadius = number | number[]
+
+/** Geometry of a handle's joint (connection dot). */
+export type JointShape = 'circle' | 'square' | 'diamond' | 'triangle'
+
 /**
  * Visual-only layout metrics. Geometry-affecting constants (node/handle
  * widths & heights, joint radius, paddings) stay in `constants.ts` — they feed
@@ -49,9 +65,22 @@ export interface ThemeFonts {
  */
 export interface ThemeMetrics {
   edgeWidth: number
+  /** Blur radius of the glow drawn on the node currently being executed. */
   executorShadowBlur: number
-  nodeCornerRadius: number
+  nodeCornerRadius: NodeCornerRadius
   groupCornerRadius: number
+  /** Inset of the header band from the node bounds; 0 = full-bleed band. */
+  headerInset: number
+  headerCornerRadius: number
+  nodeShadowBlur: number
+  nodeShadowOffsetX: number
+  nodeShadowOffsetY: number
+  /** Joint shape used when a handle type registers no joint config. */
+  jointShape: JointShape
+  /** Stroke width of a hollow joint; 0 = filled joint. */
+  jointRingWidth: number
+  /** Edge dash pattern; empty = solid. */
+  edgeDash: number[]
 }
 
 export interface GraphTheme {
@@ -61,5 +90,9 @@ export interface GraphTheme {
 }
 
 export type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
+  [K in keyof T]?: T[K] extends readonly unknown[]
+    ? T[K]
+    : T[K] extends object
+      ? DeepPartial<T[K]>
+      : T[K]
 }

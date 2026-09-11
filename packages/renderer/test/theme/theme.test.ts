@@ -2,10 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { DEFAULT_THEME, ThemeContext, applyThemeToElement } from '../../src/theme'
 
 describe('DEFAULT_THEME', () => {
-  it('keeps the default palette identical to COLORS', () => {
-    expect(DEFAULT_THEME.colors.accent).toBe('#6366f1')
-    expect(DEFAULT_THEME.colors.bg).toBe('#ffffff')
-    expect(DEFAULT_THEME.colors.border).toBe('#d9d9de')
+  // A deliberate look pin, not an invariant: restyling the default is
+  // expected, but it must be a conscious edit rather than a silent drift.
+  it('ships the paper-print look', () => {
+    expect(DEFAULT_THEME.colors.bg).toBe('#fdfcf7')
+    expect(DEFAULT_THEME.colors.border).toBe('#1f2328')
+    expect(DEFAULT_THEME.metrics.nodeShadowBlur).toBe(0)
+    expect(DEFAULT_THEME.metrics.nodeShadowOffsetY).toBe(3)
+    expect(DEFAULT_THEME.metrics.jointShape).toBe('diamond')
   })
 })
 

@@ -37,6 +37,7 @@ export class EdgeView extends EntityView<Edge> {
       bezier: true,
       stroke: edgeStroke(source, theme),
       strokeWidth: theme.metrics.edgeWidth,
+      dash: theme.metrics.edgeDash,
       hitStrokeWidth: EDGE_HIT_STROKE,
       fill: undefined,
       name: 'edge-line',
@@ -83,6 +84,7 @@ export class EdgeView extends EntityView<Edge> {
     const stroke = edgeStroke(source, theme)
     this._line.stroke(stroke)
     this._line.strokeWidth(theme.metrics.edgeWidth)
+    this._line.dash(theme.metrics.edgeDash)
     applyCloseButtonTheme(this._closeBtn, stroke, theme)
   }
 }

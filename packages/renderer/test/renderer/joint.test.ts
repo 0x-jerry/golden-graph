@@ -15,7 +15,6 @@ import {
 import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
 import { createWorkspace } from '../helpers/workspace'
 import {
-  DEFAULT_JOINT_STYLE,
   createJointShape,
   jointColor,
   resolveJointStyle,
@@ -28,7 +27,8 @@ import {
   attachStageCursorCenter,
   registerStageCursor,
 } from '../../src/renderer/cursor'
-import { COLORS, LAYOUT, JOINT_CURSOR } from '../../src/renderer/constants'
+import { LAYOUT, JOINT_CURSOR } from '../../src/renderer/constants'
+import { DEFAULT_THEME } from '../../src/theme'
 
 function movePointer(stage: Konva.Stage, x: number, y: number) {
   stage.content.dispatchEvent(
@@ -63,7 +63,10 @@ describe('resolveJointStyle', () => {
   it('falls back to the default style for unknown/empty types', () => {
     const node = makeNode(1, 'A')
     const handle = addHandle(node, 'h', { type: '' })
-    expect(resolveJointStyle(handle)).toBe(DEFAULT_JOINT_STYLE)
+    expect(resolveJointStyle(handle)).toEqual({
+      color: DEFAULT_THEME.colors.jointDefault,
+      shape: DEFAULT_THEME.metrics.jointShape,
+    })
   })
 })
 
@@ -95,7 +98,7 @@ describe('HandleView joint rendering', () => {
     const view = new HandleView(handle)
     expect(view._joint).toBeInstanceOf(Konva.Shape)
     // Unconnected joints keep their full type color.
-    expect(view._joint!.fill()).toBe(DEFAULT_JOINT_STYLE.color)
+    expect(view._joint!.fill()).toBe(DEFAULT_THEME.colors.jointDefault)
     view.destroy()
   })
 
@@ -116,7 +119,7 @@ describe('HandleView joint rendering', () => {
     expect(view._joint!.fill()).toBe(resolveJointStyle(handle).color)
 
     setJointHighlight(handle, true)
-    expect(view._joint!.fill()).toBe(COLORS.JOINT_HIGHLIGHT)
+    expect(view._joint!.fill()).toBe(DEFAULT_THEME.colors.jointHighlight)
 
     setJointHighlight(handle, false)
     expect(view._joint!.fill()).toBe(resolveJointStyle(handle).color)

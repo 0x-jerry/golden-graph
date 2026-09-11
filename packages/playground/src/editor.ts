@@ -60,5 +60,20 @@ export async function setup(workspace: Workspace) {
 
   workspace.connect(n1.getHandle('output')!, n2.getHandle('input')!)
 
+  // Style fixtures: a group (group chrome), a collapsed node (header-only
+  // silhouette) and a subgraph node (the Composite tag).
+  const grouped = workspace.addNode('Number', { pos: { x: 800, y: 100 } })
+  const grouped2 = workspace.addNode('Text', { pos: { x: 1050, y: 100 } })
+  workspace.addGroup([grouped.id, grouped2.id])
+
+  const collapsed = workspace.addNode('Number', { pos: { x: 800, y: 300 } })
+  collapsed.setCollapsed(true)
+
+  const subA = workspace.addNode('Number', { pos: { x: 800, y: 480 } })
+  const subB = workspace.addNode('Text', { pos: { x: 1050, y: 480 } })
+  workspace.addGroup([subA.id, subB.id])
+  const groups = workspace.groups
+  workspace.convertGroupToSubGraph(groups[groups.length - 1]!.id)
+
   return workspace
 }

@@ -3,7 +3,8 @@ import type Konva from 'konva'
 import { Group } from '@0x-jerry/golden-graph'
 import { find } from '../helpers/konva'
 import { GroupView } from '../../src/renderer/GroupView'
-import { COLORS, RESIZE_HANDLE_SIZE } from '../../src/renderer/constants'
+import { RESIZE_HANDLE_SIZE } from '../../src/renderer/constants'
+import { DEFAULT_THEME } from '../../src/theme'
 
 describe('GroupView', () => {
   it('syncs position/size/name and active stroke', () => {
@@ -29,10 +30,10 @@ describe('GroupView', () => {
     const body = find<Konva.Rect>(view.group, '.body')
 
     view.setActive(true)
-    expect(body.stroke()).toBe(COLORS.ACCENT)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
 
     view.setActive(false)
-    expect(body.stroke()).toBe(COLORS.GROUP_BORDER)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.groupBorder)
   })
 
   it('shows the resize grip only while selected and syncs its position', () => {

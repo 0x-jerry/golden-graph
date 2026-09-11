@@ -18,6 +18,13 @@ const NAME_X = 8
 const NAME_Y = 16
 const NAME_INPUT_HEIGHT = 18
 
+/** Full-bleed group header: inherits the body's top corners so a rounded
+ *  group doesn't show the band's square corners. */
+function groupHeaderCorners(theme: GraphTheme): [number, number, number, number] {
+  const radius = theme.metrics.groupCornerRadius
+  return [radius, radius, 0, 0]
+}
+
 export class GroupView extends EntityView<Group> {
   _body: Konva.Rect
   _header: Konva.Rect
@@ -42,6 +49,7 @@ export class GroupView extends EntityView<Group> {
       fill: theme.colors.groupBg,
       stroke: theme.colors.groupBorder,
       strokeWidth: 1,
+      dash: theme.metrics.edgeDash,
       cornerRadius: theme.metrics.groupCornerRadius,
       name: NODE_SHAPE.BODY,
     })
@@ -51,6 +59,7 @@ export class GroupView extends EntityView<Group> {
       width: group.size.x,
       height: LAYOUT.GROUP_HEADER_HEIGHT,
       fill: theme.colors.groupHeaderBg,
+      cornerRadius: groupHeaderCorners(theme),
       name: NODE_SHAPE.HEADER,
     })
     g.add(header)
@@ -115,8 +124,10 @@ export class GroupView extends EntityView<Group> {
     this._theme = theme
     this._body.fill(theme.colors.groupBg)
     this._body.stroke(theme.colors.groupBorder)
+    this._body.dash(theme.metrics.edgeDash)
     this._body.cornerRadius(theme.metrics.groupCornerRadius)
     this._header.fill(theme.colors.groupHeaderBg)
+    this._header.cornerRadius(groupHeaderCorners(theme))
     // Keep the inline title editor's background in sync with the group
     // header for future edit sessions.
     this._name.setInputFill(theme.colors.groupHeaderBg)

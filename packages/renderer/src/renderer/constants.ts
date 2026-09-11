@@ -10,46 +10,15 @@ export const LAYOUT = {
   GROUP_PADDING: 40,
 } as const
 
-export const COLORS = {
-  // --- Node surfaces (neutral warm-gray) ---
-  BG: '#ffffff',
-  BORDER: '#d9d9de',
-  HEADER_BG: '#f5f5f7',
-  TEXT_PRIMARY: '#1f2328',
-  /** Handle / parameter labels — small 12px text, needs extra contrast. */
-  TEXT_LABEL: '#4b5563',
-  TEXT_MUTED: '#5f6670',
-
-  // --- Accent (indigo) ---
-  ACCENT: '#6366f1',
-  /** Executor glow while a node is running. */
-  ACCENT_SOFT: 'rgba(99, 102, 241, 0.3)',
-
-  // --- SubGraph node tag ---
-  SUBGRAPH_TAG_BG: '#eef2ff',
-  SUBGRAPH_TAG_TEXT: '#4f46e5',
-
-  // --- Edges & joints (rose) ---
-  EDGE: 'rgba(225, 93, 118, 0.5)',
-  EDGE_WIDTH: 3,
-  JOINT_DEFAULT: '#9ca3af',
-  /** Joint fill while a connection drag is hovering a compatible handle. */
-  JOINT_HIGHLIGHT: '#6366f1',
-
-  // --- Groups (indigo tint) ---
-  GROUP_BG: 'rgba(129, 140, 248, 0.1)',
-  GROUP_BORDER: '#a5b4fc',
-  GROUP_HEADER_BG: 'rgba(99, 102, 241, 0.08)',
-
-  // --- Canvas ---
-  GRID_COLOR: '#e9e9ee',
-
-  // --- Selection ---
-  SELECTION_BORDER: '#6366f1',
-  SELECTION_FILL: 'rgba(99, 102, 241, 0.12)',
-} as const
+/**
+ * Stroke width of the node body outline. Painted as a compile-time value, not a
+ * theme token: the header band is inset by it (on top of `headerInset`) so the
+ * outline stays visible around the band.
+ */
+export const NODE_BODY_STROKE_WIDTH = 1
 
 export const NODE_SHAPE = {
+  SHADOW: 'shadow',
   BODY: 'body',
   HEADER: 'header',
   NAME: 'name',
@@ -57,6 +26,8 @@ export const NODE_SHAPE = {
   RESIZE: 'resize',
   TAG: 'tag',
   CARET: 'caret',
+  HEADER_DIVIDER: 'headerDivider',
+  ROW_DIVIDER: 'rowDivider',
 } as const
 
 export const ELEMENT_TYPE = {
@@ -126,6 +97,7 @@ export const PROXIMITY_RADIUS = 24
 export const BEZIER_MIN_OFFSET = 10
 export const BEZIER_MAX_OFFSET = 200
 export const EDGE_HIT_STROKE = 20
+/** Dash of the in-progress connection preview (real edges use `metrics.edgeDash`). */
 export const DASH_PATTERN: number[] = [8, 4]
 export const HANDLE_CONTENT_X = LAYOUT.JOINT_RADIUS + 4
 export const HANDLE_CONTENT_Y_OFFSET = 8
@@ -133,7 +105,6 @@ export const HANDLE_NAME_WIDTH = 60
 export const HANDLE_NAME_GAP = 6
 /** Stage-container cursor while the pointer hovers a handle joint. */
 export const JOINT_CURSOR = 'crosshair'
-export const EXECUTOR_SHADOW_BLUR = 10
 export const ZOOM_MIN = 0.1
 export const ZOOM_MAX = 4
 

@@ -7,12 +7,12 @@ import { NodeView } from '../../src/renderer/NodeView'
 import { getHandleView } from '../../src/renderer/HandleView'
 import { notifyContentResized } from '../../src/renderer/HandleView'
 import {
-  COLORS,
   LAYOUT,
   NODE_BODY_PADDING,
   CARET_SIZE,
 } from '../../src/renderer/constants'
 import { SubGraph, SubGraphNode, Workspace } from '@0x-jerry/golden-graph'
+import { DEFAULT_THEME } from '../../src/theme'
 
 describe('NodeView', () => {
   it('wraps the group with the node id and syncs position/name/size', () => {
@@ -51,13 +51,13 @@ describe('NodeView', () => {
     const view = new NodeView(node)
     const body = find<Konva.Rect>(view.group, '.body')
 
-    expect(body.stroke()).toBe(COLORS.BORDER)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
 
     view.setActive(true)
-    expect(body.stroke()).toBe(COLORS.ACCENT)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
 
     view.setActive(false)
-    expect(body.stroke()).toBe(COLORS.BORDER)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
   })
 
   it('shows the resize grip only while selected', () => {
@@ -78,13 +78,19 @@ describe('NodeView', () => {
     addHandle(node, 'a')
 
     const view = new NodeView(node)
-    const body = find<Konva.Rect>(view.group, '.body')
+    const shadow = find<Konva.Rect>(view.group, '.shadow')
+    const styled = shadow.shadowOffset()
 
     view.setExecuteHighlight(true, true)
-    expect(body.shadowEnabled()).toBe(true)
+    expect(shadow.shadowColor()).toBe(DEFAULT_THEME.colors.accentSoft)
+    expect(shadow.shadowBlur()).toBe(DEFAULT_THEME.metrics.executorShadowBlur)
+    expect(shadow.shadowOffset()).toEqual({ x: 0, y: 0 })
 
+    // The glow is replaced by the theme's own shadow (not by "no shadow"),
+    // which is why the offset/colour are asserted rather than `shadowEnabled`.
     view.setExecuteHighlight(false, true)
-    expect(body.shadowEnabled()).toBe(false)
+    expect(shadow.shadowColor()).toBe(DEFAULT_THEME.colors.nodeShadow)
+    expect(shadow.shadowOffset()).toEqual(styled)
   })
 
   it('unregisters its handle views on destroy', () => {
@@ -118,24 +124,29 @@ describe('NodeView collapse', () => {
     expect(body.height()).toBe(collapsedHeight)
   })
 
-  it('does not render the body while collapsed', () => {
+  it('keeps the body as the collapsed silhouette and hides the shadow', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a')
     const view = new NodeView(node)
     const body = find<Konva.Rect>(view.group, '.body')
+    const shadow = find<Konva.Rect>(view.group, '.shadow')
 
     expect(body.visible()).toBe(true)
+    expect(shadow.visible()).toBe(true)
 
     node.setCollapsed(true)
     view.update()
-    expect(body.visible()).toBe(false)
+    // The body stays: its outline is what frames the collapsed band, while the
+    // shadow and the handle rows go.
+    expect(body.visible()).toBe(true)
+    expect(shadow.visible()).toBe(false)
 
     node.setCollapsed(false)
     view.update()
-    expect(body.visible()).toBe(true)
+    expect(shadow.visible()).toBe(true)
   })
 
-  it('accents the header instead of the body while collapsed and active', () => {
+  it('accents the body while collapsed and active', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a')
     const view = new NodeView(node)
@@ -145,17 +156,16 @@ describe('NodeView collapse', () => {
     node.setCollapsed(true)
     view.update()
     view.setActive(true)
-    expect(body.visible()).toBe(false)
-    expect(header.stroke()).toBe(COLORS.ACCENT)
+    // The band is fill-only, so the accent border is always the body's.
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
+    expect(header.hasStroke()).toBe(false)
 
-    // Expanding returns the accent to the body and clears the header.
     node.setCollapsed(false)
     view.update()
-    expect(header.stroke()).toBe('')
-    expect(body.stroke()).toBe(COLORS.ACCENT)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
 
     view.setActive(false)
-    expect(body.stroke()).toBe(COLORS.BORDER)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
   })
 
   it('hides the handle layer (and its joints) while collapsed', () => {

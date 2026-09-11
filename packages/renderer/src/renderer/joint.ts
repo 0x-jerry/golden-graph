@@ -1,23 +1,25 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
-import { COLORS, LAYOUT } from './constants'
+import { LAYOUT } from './constants'
 import { getHandleFactory } from './handles'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
 import type { HandleJointShape, IHandleJointStyle } from './handles/types'
 
 /**
- * Joint style used when a handle type has no registered joint config.
+ * Joint style for a handle: a handle type's registered `config.joint` wins,
+ * else the theme's `jointDefault` colour and `jointShape`.
  */
-export const DEFAULT_JOINT_STYLE: IHandleJointStyle = {
-  color: COLORS.JOINT_DEFAULT,
-  shape: 'circle',
-}
-
-/**
- * Resolve the joint style for a handle. A pure function of `handle.type`:
- * the registered factory's `config.joint`, else the default.
- */
-export function resolveJointStyle(handle: NodeHandle): IHandleJointStyle {
-  return getHandleFactory(handle.type)?.config?.joint ?? DEFAULT_JOINT_STYLE
+export function resolveJointStyle(
+  handle: NodeHandle,
+  theme: GraphTheme = DEFAULT_THEME,
+): IHandleJointStyle {
+  return (
+    getHandleFactory(handle.type)?.config?.joint ?? {
+      color: theme.colors.jointDefault,
+      shape: theme.metrics.jointShape,
+    }
+  )
 }
 
 /**
@@ -50,6 +52,9 @@ function hexToRgba(hex: string, alpha: number): string | null {
  * Create the Konva node drawing a joint. One `Konva.Shape` per style. The
  * shape's local origin is its center (no offset) — `_centroid` is set like
  * `Konva.Circle`, so `x`/`y` position the joint center exactly.
+ *
+ * The style is carried on the shape and read on every draw, so a theme
+ * hot-swap only has to replace it (see {@link setJointStyle}) — no rebuild.
  */
 export function createJointShape(style: IHandleJointStyle): Konva.Shape {
   const radius = LAYOUT.JOINT_RADIUS
@@ -58,13 +63,37 @@ export function createJointShape(style: IHandleJointStyle): Konva.Shape {
     height: radius * 2,
     sceneFunc: (context, s) => {
       context.beginPath()
-      drawJointPath(context, style.shape, radius)
+      drawJointPath(context, carrier(s).jointStyle.shape, radius)
       context.closePath()
       context.fillStrokeShape(s)
     },
-  })
-  ;(shape as Konva.Shape & { _centroid: boolean })._centroid = true
+  }) as JointShapeCarrier
+  shape.jointStyle = style
+  shape._centroid = true
   return shape
+}
+
+/**
+ * Replace a joint's style. The style is a plain property read by the scene
+ * func, so Konva is not notified of the change — this marks the layer dirty
+ * rather than relying on the following fill/stroke setters firing an event
+ * (they no-op when a theme only changes the joint shape).
+ */
+export function setJointStyle(
+  shape: Konva.Shape,
+  style: IHandleJointStyle,
+): void {
+  carrier(shape).jointStyle = style
+  shape.getLayer()?.batchDraw()
+}
+
+interface JointShapeCarrier extends Konva.Shape {
+  jointStyle: IHandleJointStyle
+  _centroid: boolean
+}
+
+function carrier(shape: Konva.Shape): JointShapeCarrier {
+  return shape as JointShapeCarrier
 }
 
 function drawJointPath(

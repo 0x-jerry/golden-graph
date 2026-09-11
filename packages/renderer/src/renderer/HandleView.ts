@@ -15,7 +15,7 @@ import {
 import { registerStageCursor } from './cursor'
 import { getHandleFactory } from './handles'
 import { TOOLTIP_DELAY, hideTooltip, showTooltip } from './tooltip'
-import { createJointShape, resolveJointStyle } from './joint'
+import { createJointShape, resolveJointStyle, setJointStyle } from './joint'
 import { DEFAULT_THEME } from '../theme'
 import type { GraphTheme } from '../theme'
 import {
@@ -95,7 +95,7 @@ export class HandleView {
       handle.position === HandlePosition.Left ||
       handle.position === HandlePosition.Right
     ) {
-      const joint = createJointShape(resolveJointStyle(handle))
+      const joint = createJointShape(resolveJointStyle(handle, theme))
       joint.position({
         x:
           handle.position === HandlePosition.Left
@@ -103,13 +103,11 @@ export class HandleView {
             : getNodeWidth(handle.node),
         y,
       })
-      joint.fill(this._jointFill())
-      joint.stroke(this._theme.colors.border)
-      joint.strokeWidth(1)
       joint.name(ELEMENT_TYPE.JOINT)
       registerStageCursor(joint, JOINT_CURSOR)
       group.add(joint)
       this._joint = joint
+      this._applyJointStyle()
     }
 
     const label = new Konva.Text({
@@ -169,7 +167,7 @@ export class HandleView {
           ? 0
           : getNodeWidth(this.handle.node),
       )
-      joint.fill(this._jointFill())
+      this._applyJointStyle()
     }
 
     this._label.y(y)
@@ -191,7 +189,23 @@ export class HandleView {
 
   setJointHighlight(highlighted: boolean): void {
     this._highlighted = highlighted
-    this._joint?.fill(this._jointFill())
+    this._applyJointStyle()
+  }
+
+  /**
+   * Joint paint: a filled dot by default, or a hollow ring when the theme asks
+   * for one (`jointRingWidth > 0`) — the ring's stroke carries the handle
+   * color so highlights stay visible.
+   */
+  _applyJointStyle(): void {
+    const joint = this._joint
+    if (!joint) {
+      return
+    }
+    const ring = this._theme.metrics.jointRingWidth
+    joint.fill(ring > 0 ? this._theme.colors.jointRing : this._jointFill())
+    joint.stroke(ring > 0 ? this._jointFill() : this._theme.colors.border)
+    joint.strokeWidth(ring > 0 ? ring : 1)
   }
 
   _setupTooltip(): void {
@@ -290,8 +304,8 @@ export class HandleView {
     this._theme = theme
     const joint = this._joint
     if (joint) {
-      joint.fill(this._jointFill())
-      joint.stroke(theme.colors.border)
+      setJointStyle(joint, resolveJointStyle(this.handle, theme))
+      this._applyJointStyle()
     }
     this._label.fill(theme.colors.textLabel)
     this._label.fontFamily(theme.fonts.family)

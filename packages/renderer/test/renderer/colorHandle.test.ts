@@ -4,7 +4,7 @@ import { HandlePosition, Workspace } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import { find } from '../helpers/konva'
 import { NodeView } from '../../src/renderer/NodeView'
-import { COLORS } from '../../src/renderer/constants'
+import { DEFAULT_THEME } from '../../src/theme'
 import {
   COLOR_FIELD_HEIGHT,
   ColorPicker,
@@ -296,7 +296,7 @@ describe('ColorHandle', () => {
 
     swatch.fire('click')
 
-    expect(swatch.stroke()).toBe(COLORS.ACCENT)
+    expect(swatch.stroke()).toBe(DEFAULT_THEME.colors.accent)
     expect(picker._panel).not.toBeNull()
 
     stage.destroy()
