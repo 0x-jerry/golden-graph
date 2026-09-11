@@ -1,35 +1,27 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
-import {
-  LAYOUT,
-  HANDLE_CONTENT_X,
-  HANDLE_CONTENT_Y_OFFSET,
-  HANDLE_NAME_WIDTH,
-  HANDLE_NAME_GAP,
-  ELEMENT_TYPE,
-  ATTR,
-  JOINT_CURSOR,
-  getNodeWidth,
-} from './constants'
+import { ELEMENT_TYPE, ATTR, JOINT_CURSOR, getNodeWidth } from './constants'
 import { registerStageCursor } from './cursor'
 import { getHandleFactory } from './handles'
-import { TOOLTIP_DELAY, hideTooltip, showTooltip } from './tooltip'
-import { createJointShape, resolveJointStyle, setJointStyle } from './joint'
-import { DEFAULT_THEME } from '../theme'
-import type { GraphTheme } from '../theme'
 import {
   clearMeasuredRowHeight,
-  getHandleRowHeight,
-  hasLabelRow,
+  contentY,
   handleY,
-  setMeasuredRowHeight,
+  isBlockHandle,
+  measureHandleRow,
 } from './handles/layout'
-import type {
-  NodeHandleFactory,
-  NodeHandleModule,
-  HandleContentLayout,
-} from './handles/types'
+import { contentX, labelWidth, labelX } from './handles/placement'
+import type { NodeHandleFactory, NodeHandleModule } from './handles/types'
+import {
+  createJointShape,
+  paintJoint,
+  resolveJointStyle,
+  setJointStyle,
+} from './joint'
+import { Tooltip } from './tooltip'
+import { DEFAULT_THEME } from '../theme'
+import type { GraphTheme } from '../theme'
 
 /**
  * Registry mapping a core handle to its rendered view, used for cross-cutting
@@ -51,6 +43,12 @@ export function notifyContentResized(group: Konva.Group) {
   contentViewMap.get(group)?._onContentResized()
 }
 
+/**
+ * Renders one handle row — joint, label and content widget — and keeps it in
+ * sync with the handle's node, theme and connection state. Row geometry lives
+ * in `handles/layout` and `handles/placement`, joint visuals in `joint`,
+ * tooltip lifecycle in {@link Tooltip}.
+ */
 export class HandleView {
   readonly handle: NodeHandle
   readonly group: Konva.Group
@@ -60,16 +58,13 @@ export class HandleView {
   _label: Konva.Text
   _factory: NodeHandleFactory | null
   _module: NodeHandleModule | null = null
-  _layout: HandleContentLayout
   _highlighted = false
   /** Fired after this handle's row height is re-measured. */
   _onResize?: () => void
-  /** Timer for the description tooltip's hover delay. */
-  _tooltipTimer: ReturnType<typeof setTimeout> | null = null
+  /** Description tooltip; present only for handles that have one. */
+  _tooltip?: Tooltip
   /** Active theme, re-applied on hot-swap via `applyTheme`. */
   _theme: GraphTheme
-  /** Unsubscribe from `coord:changed` while the tooltip is armed. */
-  _closeTooltipOnCoordChange?: () => void
 
   constructor(
     handle: NodeHandle,
@@ -81,7 +76,6 @@ export class HandleView {
     this.key = handle.key
     this._onResize = onResize
     this._factory = getHandleFactory(handle.type) ?? null
-    this._layout = this._factory?.config?.layout ?? 'inline'
 
     const group = new Konva.Group({
       name: ELEMENT_TYPE.HANDLE,
@@ -90,57 +84,19 @@ export class HandleView {
     this.group = group
 
     const y = handleY(handle.node, handle)
-
     if (
       handle.position === HandlePosition.Left ||
       handle.position === HandlePosition.Right
     ) {
-      const joint = createJointShape(resolveJointStyle(handle, theme))
-      joint.position({
-        x:
-          handle.position === HandlePosition.Left
-            ? 0
-            : getNodeWidth(handle.node),
-        y,
-      })
-      joint.name(ELEMENT_TYPE.JOINT)
-      registerStageCursor(joint, JOINT_CURSOR)
-      group.add(joint)
-      this._joint = joint
-      this._applyJointStyle()
+      this._createJoint(theme, y)
     }
+    this._label = this._createLabel(theme, y)
 
-    const label = new Konva.Text({
-      name: 'label',
-      text: handle.name,
-      // Unnamed handles reserve no name column and render nothing.
-      visible: handle.name !== '',
-      fontSize: theme.fonts.size,
-      fontFamily: this._theme.fonts.family,
-      fill: this._theme.colors.textLabel,
-      // Fixed-width name column: keeps handle contents aligned across rows.
-      // Handles without a name reserve no space (auto width = 0).
-      width: handle.name ? HANDLE_NAME_WIDTH : undefined,
-      wrap: 'none',
-      ellipsis: true,
-    })
-    label.x(labelX(handle))
-    if (handle.position === HandlePosition.Right) {
-      label.align('right')
-    }
-    label.offsetY(label.height() / 2)
-    label.y(y)
-    group.add(label)
-    this._label = label
-
-    if (this._factory?.create) {
-      const module = this._factory.create(
-        handle,
-        handle.getOptions(),
-        theme,
-      )
+    const factory = this._factory
+    if (factory?.create) {
+      const module = factory.create(handle, handle.getOptions(), theme)
       module.name('content')
-      module.y(this._contentY())
+      module.y(contentY(handle))
       this._layoutContent(module)
       group.add(module)
       this._module = module
@@ -150,7 +106,15 @@ export class HandleView {
     handleViewMap.set(handle, this)
 
     if (handle.description) {
-      this._setupTooltip()
+      this._tooltip = new Tooltip(group, {
+        text: handle.description,
+        // The anchor must sit at the handle row — the joint, or the label for
+        // layout-only handles — since the group lives at the node's origin.
+        anchor: () => this._joint ?? this._label,
+        // Right-positioned handles grow their tooltip leftward from the joint
+        // so it stays over the handle instead of hanging off the node's edge.
+        align: handle.position === HandlePosition.Right ? 'end' : 'start',
+      })
     }
 
     // Measure the block content and re-position using the final row height.
@@ -159,21 +123,28 @@ export class HandleView {
   }
 
   update(): void {
-    const y = handleY(this.handle.node, this.handle)
+    const handle = this.handle
+    const y = handleY(handle.node, handle)
 
     const joint = this._joint
     if (joint) {
       joint.y(y)
       joint.x(
-        this.handle.position === HandlePosition.Left
+        handle.position === HandlePosition.Left
           ? 0
-          : getNodeWidth(this.handle.node),
+          : getNodeWidth(handle.node),
       )
       this._applyJointStyle()
     }
 
     this._label.y(y)
-    this._label.x(labelX(this.handle))
+    this._label.x(labelX(handle))
+    // A full-width label tracks the node width across resizes; unnamed
+    // handles keep their auto width.
+    const width = labelWidth(handle)
+    if (width !== undefined) {
+      this._label.width(width)
+    }
 
     const module = this._module
     module?.update?.()
@@ -181,7 +152,7 @@ export class HandleView {
       // Re-layout after the module may have changed its own size
       // (e.g. width follows the node width).
       this._layoutContent(module)
-      module.y(this._contentY())
+      module.y(contentY(handle))
     }
 
     // Measure after the module re-rendered its content, so the row reflects
@@ -194,112 +165,16 @@ export class HandleView {
     this._applyJointStyle()
   }
 
-  /**
-   * Joint paint: a filled dot by default, or a hollow ring when the theme asks
-   * for one (`jointRingWidth > 0`) — the ring's stroke carries the handle
-   * color so highlights stay visible.
-   */
-  _applyJointStyle(): void {
-    const joint = this._joint
-    if (!joint) {
-      return
-    }
-    const ring = this._theme.metrics.jointRingWidth
-    joint.fill(ring > 0 ? this._theme.colors.jointRing : this._jointFill())
-    joint.stroke(ring > 0 ? this._jointFill() : this._theme.colors.border)
-    joint.strokeWidth(ring > 0 ? ring : 1)
-  }
-
-  _setupTooltip(): void {
-    // Anchor on something actually positioned at the handle row (the joint,
-    // or the label for layout-only handles) — the handle group itself lives
-    // at the node's origin.
-    const anchor = () => this._joint ?? this._label
-    // Right-positioned handles grow their tooltip leftward from the joint so
-    // it stays over the handle instead of hanging off the node's right edge.
-    const align =
-      this.handle.position === HandlePosition.Right ? 'end' : 'start'
-
-    this.group.on('mouseenter', () => {
-      this._clearTooltipTimer()
-      this._tooltipTimer = setTimeout(() => {
-        showTooltip(anchor(), this.handle.description, align)
-      }, TOOLTIP_DELAY)
-      // Hide when the coordinate system changes (pan/zoom) — the anchor
-      // cannot be tracked reliably.
-      this._closeTooltipOnCoordChange ??= this.handle.node.workspace.events.on(
-        'coord:changed',
-        () => this._hideTooltip(),
-      )
-    })
-
-    this.group.on('mouseleave', () => this._hideTooltip())
-  }
-
-  _clearTooltipTimer(): void {
-    if (this._tooltipTimer !== null) {
-      clearTimeout(this._tooltipTimer)
-      this._tooltipTimer = null
-    }
-  }
-
-  _hideTooltip(): void {
-    this._clearTooltipTimer()
-    hideTooltip()
-    // The listener only needs to live while a tooltip is armed/visible.
-    this._closeTooltipOnCoordChange?.()
-    this._closeTooltipOnCoordChange = undefined
-  }
-
   destroy(): void {
     handleViewMap.delete(this.handle)
     clearMeasuredRowHeight(this.handle)
-    this._clearTooltipTimer()
-    hideTooltip()
-    this._closeTooltipOnCoordChange?.()
-    this._closeTooltipOnCoordChange = undefined
+    this._tooltip?.destroy()
     const module = this._module
     if (module) {
       contentViewMap.delete(module)
       module.destroy()
     }
     this.group.destroy()
-  }
-
-  _measureRowHeight(): void {
-    if (this._layout !== 'block') {
-      return
-    }
-    const contentHeight = this._module
-      ? this._module.getClientRect({ skipTransform: true }).height
-      : 0
-    const minHeight =
-      this._factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
-    const content = Math.max(minHeight, contentHeight)
-    // Store the desired (uncapped) row height: `getHandleRowHeight` caps it
-    // to the vertical space the node allocates this row, so measured content
-    // can never expand the node.
-    setMeasuredRowHeight(
-      this.handle,
-      hasLabelRow(this.handle)
-        ? LAYOUT.HANDLE_ROW_HEIGHT + content
-        : content,
-    )
-  }
-
-  _onContentResized(): void {
-    this._measureRowHeight()
-    this._onResize?.()
-  }
-
-  _jointFill(): string {
-    if (this._highlighted) {
-      return this._theme.colors.jointHighlight
-    }
-    return (
-      getHandleFactory(this.handle.type)?.config?.joint?.color ??
-      this._theme.colors.jointDefault
-    )
   }
 
   applyTheme(theme: GraphTheme): void {
@@ -318,52 +193,80 @@ export class HandleView {
     this._module?.applyTheme?.(theme)
   }
 
-  _blockRowTop(rowCenterY: number): number {
-    if (this._layout !== 'block') {
-      return rowCenterY
-    }
-    return hasLabelRow(this.handle)
-      ? rowCenterY - LAYOUT.HANDLE_ROW_HEIGHT / 2
-      : rowCenterY - getHandleRowHeight(this.handle) / 2
+  _createJoint(theme: GraphTheme, y: number): void {
+    const handle = this.handle
+    const joint = createJointShape(resolveJointStyle(handle, theme))
+    joint.position({
+      x:
+        handle.position === HandlePosition.Left
+          ? 0
+          : getNodeWidth(handle.node),
+      y,
+    })
+    joint.name(ELEMENT_TYPE.JOINT)
+    registerStageCursor(joint, JOINT_CURSOR)
+    this.group.add(joint)
+    this._joint = joint
+    this._applyJointStyle()
   }
 
-  _contentY(): number {
-    if (this._layout === 'block') {
-      const blockTop = this._blockRowTop(handleY(this.handle.node, this.handle))
-      return hasLabelRow(this.handle)
-        ? blockTop + LAYOUT.HANDLE_ROW_HEIGHT
-        : blockTop
+  _createLabel(theme: GraphTheme, y: number): Konva.Text {
+    const handle = this.handle
+    const label = new Konva.Text({
+      name: 'label',
+      text: handle.name,
+      // Unnamed handles reserve no name column and render nothing.
+      visible: handle.name !== '',
+      fontSize: theme.fonts.size,
+      fontFamily: theme.fonts.family,
+      fill: theme.colors.textLabel,
+      width: labelWidth(handle),
+      wrap: 'none',
+      ellipsis: true,
+    })
+    label.x(labelX(handle))
+    if (handle.position === HandlePosition.Right) {
+      label.align('right')
     }
-    return handleY(this.handle.node, this.handle) - HANDLE_CONTENT_Y_OFFSET
+    label.offsetY(label.height() / 2)
+    label.y(y)
+    this.group.add(label)
+    return label
+  }
+
+  _applyJointStyle(): void {
+    const joint = this._joint
+    if (joint) {
+      paintJoint(joint, this.handle, this._theme, this._highlighted)
+    }
+  }
+
+  _measureRowHeight(): void {
+    if (!isBlockHandle(this.handle)) {
+      return
+    }
+    const contentHeight = this._module
+      ? this._module.getClientRect({ skipTransform: true }).height
+      : 0
+    measureHandleRow(this.handle, contentHeight)
+  }
+
+  _onContentResized(): void {
+    this._measureRowHeight()
+    this._onResize?.()
   }
 
   _layoutContent(content: Konva.Group): void {
-    if (this._layout === 'block') {
-      const w = getNodeWidth(this.handle.node)
-      if (this.handle.position === HandlePosition.Right) {
-        content.x(w - HANDLE_CONTENT_X)
-        // Local-space width: `getClientRect()` without `skipTransform` would
-        // include the stage zoom, shifting right-aligned content on resize.
-        content.offsetX(content.getClientRect({ skipTransform: true }).width)
-      } else if (this.handle.position === HandlePosition.Left) {
-        content.x(HANDLE_CONTENT_X)
-        content.offsetX(0)
-      } else {
-        content.x(LAYOUT.HANDLE_PADDING)
-        content.offsetX(0)
-      }
-      return
-    }
-
-    const nameWidth = this._label.width()
-    content.x(contentX(this.handle, nameWidth))
-    if (this.handle.position === HandlePosition.Right) {
-      // Local-space width: `getClientRect()` without `skipTransform` would
-      // include the stage zoom, shifting right-aligned content on resize.
-      content.offsetX(content.getClientRect({ skipTransform: true }).width)
-    } else {
-      content.offsetX(0)
-    }
+    content.x(contentX(this.handle, this._label.width()))
+    // Right-positioned content is right-anchored: shift the group left by its
+    // own width so the box ends at the origin. Local-space width —
+    // `getClientRect()` without `skipTransform` would include the stage zoom,
+    // shifting right-aligned content on resize.
+    content.offsetX(
+      this.handle.position === HandlePosition.Right
+        ? content.getClientRect({ skipTransform: true }).width
+        : 0,
+    )
   }
 }
 
@@ -378,24 +281,4 @@ export function getHandleView(handle: NodeHandle): HandleView | undefined {
  */
 export function setJointHighlight(handle: NodeHandle, highlighted: boolean) {
   handleViewMap.get(handle)?.setJointHighlight(highlighted)
-}
-
-function labelX(handle: NodeHandle): number {
-  if (handle.position === HandlePosition.Right) {
-    return getNodeWidth(handle.node) - HANDLE_CONTENT_X - HANDLE_NAME_WIDTH
-  }
-  return handle.position === HandlePosition.Left
-    ? HANDLE_CONTENT_X
-    : LAYOUT.HANDLE_PADDING
-}
-
-function contentX(handle: NodeHandle, nameWidth: number): number {
-  const nameGap = nameWidth > 0 ? HANDLE_NAME_GAP : 0
-  if (handle.position === HandlePosition.Right) {
-    return getNodeWidth(handle.node) - HANDLE_CONTENT_X - nameWidth - nameGap
-  }
-  if (handle.position === HandlePosition.Left) {
-    return HANDLE_CONTENT_X + nameWidth + nameGap
-  }
-  return LAYOUT.HANDLE_PADDING + nameWidth + nameGap
 }

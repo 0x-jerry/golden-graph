@@ -87,6 +87,36 @@ export function setJointStyle(
   shape.getLayer()?.batchDraw()
 }
 
+/**
+ * Paint a joint: a filled dot by default, or a hollow ring when the theme asks
+ * for one (`jointRingWidth > 0`) — the ring's stroke carries the handle
+ * color so highlights stay visible.
+ */
+export function paintJoint(
+  joint: Konva.Shape,
+  handle: NodeHandle,
+  theme: GraphTheme,
+  highlighted: boolean,
+): void {
+  const color = resolveJointFill(handle, theme, highlighted)
+  const ring = theme.metrics.jointRingWidth
+  joint.fill(ring > 0 ? theme.colors.jointRing : color)
+  joint.stroke(ring > 0 ? color : theme.colors.border)
+  joint.strokeWidth(ring > 0 ? ring : 1)
+}
+
+/** Joint color: an active highlight beats the handle type's configured color. */
+function resolveJointFill(
+  handle: NodeHandle,
+  theme: GraphTheme,
+  highlighted: boolean,
+): string {
+  if (highlighted) {
+    return theme.colors.jointHighlight
+  }
+  return resolveJointStyle(handle, theme).color
+}
+
 interface JointShapeCarrier extends Konva.Shape {
   jointStyle: IHandleJointStyle
   _centroid: boolean

@@ -1,6 +1,10 @@
 import type { Node, NodeHandle } from '@0x-jerry/golden-graph'
 import { HandlePosition } from '@0x-jerry/golden-graph'
-import { LAYOUT, NODE_BODY_PADDING } from '../constants'
+import {
+  LAYOUT,
+  NODE_BODY_PADDING,
+  HANDLE_CONTENT_Y_OFFSET,
+} from '../constants'
 import { getHandleFactory } from './index'
 
 /** Measured row heights from live `HandleView`s, keyed by handle. */
@@ -15,12 +19,27 @@ export function clearMeasuredRowHeight(handle: NodeHandle) {
 }
 
 /**
+ * Whether a handle renders its content in block layout — label on its own
+ * row, content below spanning the node width — instead of inline.
+ */
+export function isBlockHandle(handle: NodeHandle): boolean {
+  return getHandleFactory(handle.type)?.config?.layout === 'block'
+}
+
+/** Configured minimum height of a block handle's content area. */
+function getHandleMinHeight(handle: NodeHandle): number {
+  return (
+    getHandleFactory(handle.type)?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+  )
+}
+
+/**
  * Whether a block-layout handle renders its label row. A block handle with
  * neither a name nor a position (layout-only) skips the label row entirely, so
  * its content starts at the top of the row. Inline handles always render a row.
  */
 export function hasLabelRow(handle: NodeHandle): boolean {
-  if (getHandleFactory(handle.type)?.config?.layout !== 'block') {
+  if (!isBlockHandle(handle)) {
     return true
   }
   return handle.name !== '' || handle.position !== HandlePosition.None
@@ -28,11 +47,10 @@ export function hasLabelRow(handle: NodeHandle): boolean {
 
 /** Static minimum row height for a handle, ignoring measured content. */
 function staticRowHeight(handle: NodeHandle): number {
-  const factory = getHandleFactory(handle.type)
-  if (factory?.config?.layout !== 'block') {
+  if (!isBlockHandle(handle)) {
     return LAYOUT.HANDLE_ROW_HEIGHT
   }
-  const minHeight = factory.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+  const minHeight = getHandleMinHeight(handle)
   return hasLabelRow(handle) ? LAYOUT.HANDLE_ROW_HEIGHT + minHeight : minHeight
 }
 
@@ -42,7 +60,7 @@ function staticRowHeight(handle: NodeHandle): number {
  * fixed-height.
  */
 function desiredRowHeight(handle: NodeHandle): number {
-  if (getHandleFactory(handle.type)?.config?.layout !== 'block') {
+  if (!isBlockHandle(handle)) {
     return LAYOUT.HANDLE_ROW_HEIGHT
   }
   return Math.max(staticRowHeight(handle), measuredRows.get(handle) ?? 0)
@@ -85,9 +103,8 @@ function layoutRows(node: Node): RowLayout[] {
   let remaining = node.size.y - LAYOUT.HEADER_HEIGHT - NODE_BODY_PADDING
 
   return order.map((h) => {
-    const factory = getHandleFactory(h.type)
-    const isBlock = factory?.config?.layout === 'block'
-    const minHeight = factory?.config?.minHeight ?? LAYOUT.HANDLE_ROW_HEIGHT
+    const isBlock = isBlockHandle(h)
+    const minHeight = getHandleMinHeight(h)
     const labelRow = hasLabelRow(h) ? LAYOUT.HANDLE_ROW_HEIGHT : 0
 
     const row = auto
@@ -118,8 +135,7 @@ export function getHandleRowHeight(handle: NodeHandle): number {
     // read `0` instead of throwing on the missing layout slot.
     return 0
   }
-  const factory = getHandleFactory(handle.type)
-  if (factory?.config?.layout !== 'block') {
+  if (!isBlockHandle(handle)) {
     return LAYOUT.HANDLE_ROW_HEIGHT
   }
   const rows = layoutRows(handle.node)
@@ -202,8 +218,7 @@ export function handleY(node: Node, handle: NodeHandle): number {
     const h = order[i]
     const height = rows[i]!.row
     if (h === handle) {
-      const factory = getHandleFactory(h.type)
-      if (factory?.config?.layout === 'block') {
+      if (isBlockHandle(h)) {
         return hasLabelRow(h)
           ? y + LAYOUT.HANDLE_ROW_HEIGHT / 2
           : y + height / 2
@@ -213,4 +228,38 @@ export function handleY(node: Node, handle: NodeHandle): number {
     y += height
   }
   return y
+}
+
+/**
+ * Record a block handle's measured content height as the row height it would
+ * like. The value is uncapped: {@link getHandleRowHeight} caps it to the
+ * vertical space the node allocates this row, so measured content can never
+ * expand the node.
+ */
+export function measureHandleRow(
+  handle: NodeHandle,
+  contentHeight: number,
+): void {
+  if (!isBlockHandle(handle)) {
+    return
+  }
+  const content = Math.max(getHandleMinHeight(handle), contentHeight)
+  setMeasuredRowHeight(
+    handle,
+    hasLabelRow(handle) ? LAYOUT.HANDLE_ROW_HEIGHT + content : content,
+  )
+}
+
+/** Local Y of a handle content group's top edge. */
+export function contentY(handle: NodeHandle): number {
+  if (!isBlockHandle(handle)) {
+    return handleY(handle.node, handle) - HANDLE_CONTENT_Y_OFFSET
+  }
+  const rowCenter = handleY(handle.node, handle)
+  const blockTop = hasLabelRow(handle)
+    ? rowCenter - LAYOUT.HANDLE_ROW_HEIGHT / 2
+    : rowCenter - getHandleRowHeight(handle) / 2
+  return hasLabelRow(handle)
+    ? blockTop + LAYOUT.HANDLE_ROW_HEIGHT
+    : blockTop
 }

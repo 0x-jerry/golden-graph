@@ -1,7 +1,7 @@
 import type Konva from 'konva'
 
-/** Hover time (ms) before a handle's description tooltip appears. */
-export const TOOLTIP_DELAY = 500
+/** Default show/hide delay (ms) for a tooltip. */
+export const TOOLTIP_DELAY = 200
 
 const TOOLTIP_OFFSET = 8
 const TOOLTIP_MAX_WIDTH = 240
@@ -97,5 +97,118 @@ export function disposeTooltip() {
   if (_el) {
     _el.remove()
     _el = null
+  }
+}
+
+export interface TooltipOptions {
+  /** Text shown while hovering. */
+  text: string
+  /** Node the tooltip points at; defaults to the hovered node. */
+  anchor?: () => Konva.Node
+  /** Which side of the anchor the tooltip grows from. */
+  align?: TooltipAlign
+  /** Wait (ms) after pointer-over before showing. Defaults to `TOOLTIP_DELAY`. */
+  showDelay?: number
+  /** Grace period (ms) after pointer-leave before hiding. Defaults to `TOOLTIP_DELAY`. */
+  hideDelay?: number
+}
+
+/**
+ * Hover tooltip for a Konva node: shows `text` anchored at `anchor()` — the
+ * hovered node itself by default — after `showDelay`, and hides `hideDelay`
+ * after the pointer leaves.
+ */
+export class Tooltip {
+  _target: Konva.Node
+  _text: string
+  _anchor: () => Konva.Node
+  _align: TooltipAlign
+  _showDelay: number
+  _hideDelay: number
+  _showTimer: ReturnType<typeof setTimeout> | null = null
+  _hideTimer: ReturnType<typeof setTimeout> | null = null
+  _visible = false
+
+  constructor(target: Konva.Node, options: TooltipOptions) {
+    this._target = target
+    this._text = options.text
+    this._anchor = options.anchor ?? (() => target)
+    this._align = options.align ?? 'start'
+    this._showDelay = options.showDelay ?? TOOLTIP_DELAY
+    this._hideDelay = options.hideDelay ?? TOOLTIP_DELAY
+
+    target.on('mouseover', this._onOver)
+    target.on('mouseleave', this._onLeave)
+  }
+
+  /** Reveal now, skipping `showDelay`. */
+  show = (): void => {
+    this._clearTimers()
+    showTooltip(this._anchor(), this._text, this._align)
+    this._visible = true
+  }
+
+  /** Hide now, skipping `hideDelay`. */
+  hide = (): void => {
+    this._clearTimers()
+    hideTooltip()
+    this._visible = false
+  }
+
+  destroy(): void {
+    this.hide()
+    this._target.off('mouseover', this._onOver)
+    this._target.off('mouseleave', this._onLeave)
+  }
+
+  // `mouseover` bubbles from the target's children, so an already-armed or
+  // visible tooltip must not restart its show timer.
+  _onOver = (): void => {
+    this._clearHideTimer()
+    if (this._visible || this._showTimer !== null) {
+      return
+    }
+    if (this._showDelay <= 0) {
+      this.show()
+      return
+    }
+    this._showTimer = setTimeout(() => {
+      this._showTimer = null
+      this.show()
+    }, this._showDelay)
+  }
+
+  _onLeave = (): void => {
+    this._clearShowTimer()
+    if (!this._visible) {
+      return
+    }
+    if (this._hideDelay <= 0) {
+      this.hide()
+      return
+    }
+    this._hideTimer = setTimeout(() => {
+      this._hideTimer = null
+      this.hide()
+    }, this._hideDelay)
+  }
+
+  _clearTimers(): void {
+    this._clearShowTimer()
+    this._clearHideTimer()
+  }
+
+  _clearShowTimer(): void {
+    if (this._showTimer !== null) {
+      clearTimeout(this._showTimer)
+      this._showTimer = null
+    }
+  }
+
+  _clearHideTimer(): void {
+    if (this._hideTimer !== null) {
+      clearTimeout(this._hideTimer)
+      this._hideTimer = null
+    }
   }
 }

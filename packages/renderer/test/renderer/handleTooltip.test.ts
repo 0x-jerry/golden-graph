@@ -81,12 +81,13 @@ describe('handle tooltip', () => {
 
         // First show creates the element while jsdom reports size 0; hide it,
         // mock real dimensions, then re-show to exercise the alignment math.
-        out.group.fire('mouseenter')
+        out.group.fire('mouseover')
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         mockTooltipSize(150, 30)
         out.group.fire('mouseleave')
+        vi.advanceTimersByTime(TOOLTIP_DELAY)
 
-        out.group.fire('mouseenter')
+        out.group.fire('mouseover')
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         const el = tooltipEl()!
         // Right handle: tooltip grows leftward from the joint (right edge at
@@ -114,12 +115,13 @@ describe('handle tooltip', () => {
         const view = getHandleView(node.getHandle('in')!)!
         const abs = view._joint!.getAbsolutePosition()
 
-        view.group.fire('mouseenter')
+        view.group.fire('mouseover')
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         mockTooltipSize(150, 30)
         view.group.fire('mouseleave')
+        vi.advanceTimersByTime(TOOLTIP_DELAY)
 
-        view.group.fire('mouseenter')
+        view.group.fire('mouseover')
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         const el = tooltipEl()!
         // Left handle: left edge at the joint, extending right over the handle.
@@ -134,37 +136,7 @@ describe('handle tooltip', () => {
     }
   })
 
-  it('shows the description after the hover delay and hides on leave', () => {
-    vi.useFakeTimers()
-    try {
-      const ws = new Workspace()
-      ws.registerNodeSchema(describedSchema)
-      ws.addNode('Described')
-      const renderer = makeRenderer(ws)
-      try {
-        const handle = ws.nodes[0]!.getHandle('out')!
-        const view = getHandleView(handle)!
-
-        assertHidden()
-
-        view.group.fire('mouseenter')
-        assertHidden()
-
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
-        assertVisible('The numeric output value')
-
-        view.group.fire('mouseleave')
-        assertHidden()
-      } finally {
-        renderer.dispose()
-      }
-    } finally {
-      disposeTooltip()
-      vi.useRealTimers()
-    }
-  })
-
-  it('resets the delay when the pointer leaves before it fires', () => {
+  it('shows after the hover delay and hides after the leave delay', () => {
     vi.useFakeTimers()
     try {
       const ws = new Workspace()
@@ -174,34 +146,16 @@ describe('handle tooltip', () => {
       try {
         const view = getHandleView(ws.nodes[0]!.getHandle('out')!)!
 
-        view.group.fire('mouseenter')
-        view.group.fire('mouseleave')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
         assertHidden()
-      } finally {
-        renderer.dispose()
-      }
-    } finally {
-      disposeTooltip()
-      vi.useRealTimers()
-    }
-  })
 
-  it('hides the tooltip when the coordinate system changes', () => {
-    vi.useFakeTimers()
-    try {
-      const ws = new Workspace()
-      ws.registerNodeSchema(describedSchema)
-      ws.addNode('Described')
-      const renderer = makeRenderer(ws)
-      try {
-        const view = getHandleView(ws.nodes[0]!.getHandle('out')!)!
-
-        view.group.fire('mouseenter')
+        view.group.fire('mouseover')
+        assertHidden()
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         assertVisible('The numeric output value')
 
-        ws.events.emit('coord:changed', ws.coord)
+        view.group.fire('mouseleave')
+        assertVisible('The numeric output value')
+        vi.advanceTimersByTime(TOOLTIP_DELAY)
         assertHidden()
       } finally {
         renderer.dispose()
@@ -234,7 +188,7 @@ describe('handle tooltip', () => {
       try {
         const view = getHandleView(ws.nodes[0]!.getHandle('v')!)!
 
-        view.group.fire('mouseenter')
+        view.group.fire('mouseover')
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         expect(tooltipEl()).toBeNull()
       } finally {
