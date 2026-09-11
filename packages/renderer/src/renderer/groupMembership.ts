@@ -1,6 +1,6 @@
 import type { Group, Node, Workspace } from '@0x-jerry/golden-graph'
 import { getNodeWidth } from './constants'
-import { getNodeHeight } from './NodeView'
+import { getNodeHeight } from './nodeMetrics'
 
 interface IRect {
   left: number

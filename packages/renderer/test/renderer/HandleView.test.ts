@@ -44,4 +44,16 @@ describe('HandleView content layout under zoom', () => {
     const content = find<Konva.Group>(view.group, '.content')
     expect(content.y()).toBe(LAYOUT.HEADER_HEIGHT)
   })
+
+  it('hides the label of an unnamed handle', () => {
+    const node = makeNode(1, 'N')
+    addHandle(node, 'out', { type: 'display' })
+    addHandle(node, 'in', { type: 'display', name: 'Input' })
+    const view = new NodeView(node)
+
+    const labels = view.group.find<Konva.Text>('.label')
+    expect(labels).toHaveLength(2)
+    expect(labels[0]!.visible()).toBe(false)
+    expect(labels[1]!.visible()).toBe(true)
+  })
 })

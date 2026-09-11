@@ -5,7 +5,7 @@ import {
   LAYER_NAME,
   getNodeWidth,
 } from '../constants'
-import { getNodeHeight } from '../NodeView'
+import { getNodeHeight } from '../nodeMetrics'
 import type { GestureContext, IGesture } from './types'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'

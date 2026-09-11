@@ -1,6 +1,6 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
 import { LAYOUT, getNodeWidth } from '../constants'
-import { getNodeHeight } from '../NodeView'
+import { getNodeHeight } from '../nodeMetrics'
 import { getNodeStaticMinHeight } from '../handles/layout'
 import type { GestureContext, IGesture } from './types'
 

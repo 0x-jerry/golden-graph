@@ -1,13 +1,13 @@
 import Konva from 'konva'
-import type { Node, NodeHandle } from '@0x-jerry/golden-graph'
-import { HandlePosition, isSubGraphNode } from '@0x-jerry/golden-graph'
+import type { Node } from '@0x-jerry/golden-graph'
+import { isSubGraphNode } from '@0x-jerry/golden-graph'
 import {
   LAYOUT,
   NODE_SHAPE,
-  NODE_BODY_PADDING,
   NODE_BODY_STROKE_WIDTH,
   RESIZE_HANDLE_SIZE,
-  getCollapsedNodeHeight,
+  SUBGRAPH_TAG_WIDTH,
+  SUBGRAPH_TAG_HEIGHT,
   getNodeWidth,
   ELEMENT_TYPE,
   ATTR,
@@ -15,16 +15,15 @@ import {
   CARET_HIT_PADDING,
   CARET_NAME_GAP,
 } from './constants'
-import { getHandleRowHeight } from './handles/layout'
 import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
+import { getNodeHeight } from './nodeMetrics'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CaretHandle } from './components/CaretHandle'
+import { RowDividers } from './components/RowDividers'
+import { SubGraphTag } from './components/SubGraphTag'
 import { DEFAULT_THEME } from '../theme'
 import type { GraphTheme, NodeCornerRadius } from '../theme'
-
-/** A Konva.Group that may carry a theme re-application hook. */
-type ThemedGroup = Konva.Group & { applyTheme?: (theme: GraphTheme) => void }
 
 export class NodeView extends EntityView<Node> {
   _body: Konva.Rect
@@ -32,9 +31,8 @@ export class NodeView extends EntityView<Node> {
   _shadow: Konva.Rect
   _header: Konva.Rect
   _headerDivider: Konva.Line
-  /** Container for the pooled row separators. */
-  _dividerLayer: Konva.Group
-  _rowDividers: Konva.Line[] = []
+  /** Pooled separators between handle rows. */
+  _rowDividers: RowDividers
   _name: Konva.Text
   _resize: ResizeHandle
   /** Latest selection state, re-applied on fold/theme changes. */
@@ -43,7 +41,7 @@ export class NodeView extends EntityView<Node> {
   _isProcessing = false
   _isCurrent = false
   /** SubGraph marker tag rendered in the header, absent for normal nodes. */
-  _tag?: ThemedGroup
+  _tag?: SubGraphTag
   /** Expand/collapse caret rendered in the header, absent for handle-less nodes. */
   _caret?: CaretHandle | null
   /**
@@ -96,8 +94,6 @@ export class NodeView extends EntityView<Node> {
 
     // Decorations are always constructed (in paint order) and toggled by the
     // theme, so a style hot-swap never has to rebuild the view.
-    const dividerLayer = new Konva.Group({ listening: false })
-
     const header = new Konva.Rect({
       width,
       height: LAYOUT.HEADER_HEIGHT,
@@ -147,14 +143,13 @@ export class NodeView extends EntityView<Node> {
     this._theme = theme
     this._body = body
     this._shadow = shadow
-    this._dividerLayer = dividerLayer
     this._header = header
     this._headerDivider = headerDivider
     this._name = nameText
     this._caret = caret
 
     if (isSubGraphNode(node)) {
-      const tag = createSubGraphTag(theme)
+      const tag = new SubGraphTag(theme)
       g.add(tag)
       this._tag = tag
     }
@@ -173,10 +168,12 @@ export class NodeView extends EntityView<Node> {
     // Row separators live inside the clip (under every row) so a node shorter
     // than its rows cuts them with the content instead of drawing past its own
     // silhouette, and collapsing hides them with the rows.
-    handleLayer.add(dividerLayer)
-    dividerLayer.moveToBottom()
+    const rowDividers = new RowDividers()
+    handleLayer.add(rowDividers)
+    rowDividers.moveToBottom()
     g.add(handleLayer)
     this._handleLayer = handleLayer
+    this._rowDividers = rowDividers
     shadow.visible(!node.collapsed)
     handleLayer.visible(!node.collapsed)
 
@@ -241,15 +238,27 @@ export class NodeView extends EntityView<Node> {
    */
   _layoutChrome(): void {
     const node = this.entity
+    const width = getNodeWidth(node)
+    const height = getNodeHeight(node)
+
+    const bodyRadius = this._theme.metrics.nodeCornerRadius
+    this._body.cornerRadius(bodyRadius)
+    this._shadow.cornerRadius(bodyRadius)
+
+    this._layoutHeader(bodyRadius)
+    this._rowDividers.sync(node, this._theme, bodyRadius)
+
+    this._resize.x(width - RESIZE_HANDLE_SIZE)
+    this._resize.y(height - RESIZE_HANDLE_SIZE)
+  }
+
+  /** Header band, title slot, caret and SubGraph tag. */
+  _layoutHeader(bodyRadius: NodeCornerRadius): void {
+    const node = this.entity
     const theme = this._theme
     const { metrics, colors } = theme
     const width = getNodeWidth(node)
-    const height = getNodeHeight(node)
     const collapsed = node.collapsed
-
-    const bodyRadius = metrics.nodeCornerRadius
-    this._body.cornerRadius(bodyRadius)
-    this._shadow.cornerRadius(bodyRadius)
 
     // A collapsed node IS the header band, so insetting the band would leave
     // the node's own silhouette empty.
@@ -314,46 +323,6 @@ export class NodeView extends EntityView<Node> {
         y,
       ])
     }
-
-    this._syncRowDividers(bodyRadius)
-
-    this._resize.x(width - RESIZE_HANDLE_SIZE)
-    this._resize.y(height - RESIZE_HANDLE_SIZE)
-  }
-
-  /**
-   * Pooled separators between handle rows. Positions come from the same row
-   * layout the handle views use, so they track measured block content.
-   */
-  _syncRowDividers(bodyRadius: NodeCornerRadius): void {
-    const node = this.entity
-    const visible = !node.collapsed && this._theme.colors.rowDivider !== ''
-
-    const order = node.handles
-      .map((handle) => ({ handle, index: getHandleIndex(node, handle) }))
-      .filter((entry) => entry.index >= 0)
-      .sort((a, b) => a.index - b.index)
-
-    const count = visible ? Math.max(0, order.length - 1) : 0
-    while (this._rowDividers.length < count) {
-      const line = new Konva.Line({
-        strokeWidth: 1,
-        name: NODE_SHAPE.ROW_DIVIDER,
-      })
-      this._rowDividers.push(line)
-      this._dividerLayer.add(line)
-    }
-
-    const width = getNodeWidth(node)
-    const inset = dividerInset(bodyRadius, width)
-    let y = LAYOUT.HEADER_HEIGHT
-    for (let i = 0; i < count; i++) {
-      y += getHandleRowHeight(order[i]!.handle)
-      this._rowDividers[i]!.points([inset, y, width - inset, y]).visible(true)
-    }
-    for (let i = count; i < this._rowDividers.length; i++) {
-      this._rowDividers[i]!.visible(false)
-    }
   }
 
   /** Paint the current theme + interaction state. Geometry lives in `_layoutChrome`. */
@@ -398,9 +367,7 @@ export class NodeView extends EntityView<Node> {
     this._header.fill(theme.colors.headerBg)
 
     this._headerDivider.stroke(theme.colors.headerDivider)
-    for (const divider of this._rowDividers) {
-      divider.stroke(theme.colors.rowDivider)
-    }
+    this._rowDividers.applyTheme(theme)
 
     this._name.fill(theme.colors.headerText)
 
@@ -420,9 +387,6 @@ export class NodeView extends EntityView<Node> {
 
     // Add/update views to match the current handle list.
     node.handles.forEach((handle) => {
-      const index = getHandleIndex(node, handle)
-      if (index < 0) return
-
       let view = this._handleViews.get(handle.key)
 
       // Rebuild the view when the handle object was replaced (e.g. a
@@ -454,58 +418,13 @@ export class NodeView extends EntityView<Node> {
 
   applyTheme(theme: GraphTheme): void {
     this._theme = theme
-    this._tag?.applyTheme?.(theme)
-    this._caret?.applyTheme?.(theme)
-    this._resize.applyTheme?.(theme)
+    this._tag?.applyTheme(theme)
+    this._caret?.applyTheme(theme)
+    this._resize.applyTheme(theme)
     for (const view of this._handleViews.values()) view.applyTheme?.(theme)
     this._layoutChrome()
     this._applyStyles()
   }
-}
-
-/**
- * Content-driven node height (header + handle rows + padding), using measured
- * block row heights when live handle views exist.
- */
-export function getNodeContentHeight(node: Node): number {
-  let contentHeight = LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING
-  for (const handle of node.handles) {
-    contentHeight += getHandleRowHeight(handle)
-  }
-  return contentHeight
-}
-
-/**
- * Effective node height. A manually sized node (`size.y > 0`) keeps exactly
- * its size — block content that doesn't fit is clipped by the node body
- * instead of expanding it. Auto-height nodes render at their content-driven
- * height, which is bounded because block rows never exceed their allocated
- * space.
- */
-export function getNodeHeight(node: Node): number {
-  if (node.collapsed) {
-    return getCollapsedNodeHeight()
-  }
-  if (node.size.y > 0) {
-    return node.size.y
-  }
-  return getNodeContentHeight(node)
-}
-
-export function getHandleIndex(node: Node, handle: NodeHandle): number {
-  const positioned = node.handles.filter(
-    (h) => h.position !== HandlePosition.None,
-  )
-  const idx = positioned.indexOf(handle)
-  if (idx >= 0) return idx
-
-  const noneHandles = node.handles.filter(
-    (h) => h.position === HandlePosition.None,
-  )
-  const noneIdx = noneHandles.indexOf(handle)
-  if (noneIdx >= 0) return positioned.length + noneIdx
-
-  return -1
 }
 
 /**
@@ -521,16 +440,6 @@ function topCorners(
   return [radius, radius, 0, 0]
 }
 
-/**
- * Horizontal inset keeping a row separator inside a rounded silhouette. The
- * exact chord depends on how far the boundary sits from the arc, so this is a
- * deliberately conservative half-radius approximation.
- */
-function dividerInset(radius: NodeCornerRadius, width: number): number {
-  const max = Array.isArray(radius) ? Math.max(0, ...radius) : radius
-  return Math.min(max / 2, width / 2)
-}
-
 /** Header left edge: caret + title start here. */
 const CARET_LEFT = 8
 /** Horizontal slot a caret occupies (chevron + hit padding + gap to title). */
@@ -539,41 +448,3 @@ const CARET_AREA = CARET_SIZE + CARET_HIT_PADDING * 2 + CARET_NAME_GAP
 const TITLE_PADDING = 8
 /** Node titles are always bold — not themeable. */
 const TITLE_FONT_STYLE = 'bold'
-
-const SUBGRAPH_TAG_TEXT = 'Composite'
-const SUBGRAPH_TAG_WIDTH = 56
-const SUBGRAPH_TAG_HEIGHT = 16
-
-/** Marker tag drawn on the right of a SubGraphNode's header title. */
-function createSubGraphTag(theme: GraphTheme): ThemedGroup {
-  const tag = new Konva.Group({ name: NODE_SHAPE.TAG }) as ThemedGroup
-
-  const bg = new Konva.Rect({
-    width: SUBGRAPH_TAG_WIDTH,
-    height: SUBGRAPH_TAG_HEIGHT,
-    cornerRadius: 3,
-    fill: theme.colors.subgraphTagBg,
-  })
-
-  const text = new Konva.Text({
-    text: SUBGRAPH_TAG_TEXT,
-    fontSize: theme.fonts.size - 2,
-    fontFamily: theme.fonts.family,
-    fill: theme.colors.subgraphTagText,
-    width: SUBGRAPH_TAG_WIDTH,
-    height: SUBGRAPH_TAG_HEIGHT,
-    align: 'center',
-    verticalAlign: 'middle',
-  })
-
-  tag.add(bg, text)
-
-  tag.applyTheme = (t: GraphTheme) => {
-    bg.fill(t.colors.subgraphTagBg)
-    text.fill(t.colors.subgraphTagText)
-    text.fontFamily(t.fonts.family)
-    text.fontSize(t.fonts.size - 2)
-  }
-
-  return tag
-}

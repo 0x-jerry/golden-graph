@@ -88,6 +88,10 @@ export const GROUP_MIN_HEIGHT = 80
 /** Size of the corner resize grip (drawn as a triangle). */
 export const RESIZE_HANDLE_SIZE = 12
 
+/** Header tag marking a SubGraphNode. */
+export const SUBGRAPH_TAG_WIDTH = 56
+export const SUBGRAPH_TAG_HEIGHT = 16
+
 /**
  * Screen-pixel radius around a joint that auto-targets it during a
  * connection drag, so users don't need to aim exactly at the small joint.

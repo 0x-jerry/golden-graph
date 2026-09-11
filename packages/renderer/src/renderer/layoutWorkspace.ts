@@ -1,7 +1,7 @@
 import type { Workspace } from '@0x-jerry/golden-graph'
 import { autoLayout, type LayoutResult } from '../layout'
 import { getNodeWidth } from './constants'
-import { getNodeHeight } from './NodeView'
+import { getNodeHeight } from './nodeMetrics'
 import { handleY } from './handles/layout'
 
 /**

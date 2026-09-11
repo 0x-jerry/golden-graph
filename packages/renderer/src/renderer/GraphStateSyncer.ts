@@ -1,7 +1,6 @@
 import type Konva from 'konva'
 import type { NodeHandle, Workspace } from '@0x-jerry/golden-graph'
 import { getHandleView } from './HandleView'
-import { getHandleIndex } from './NodeView'
 import type { EntityViewStore } from './EntityViewStore'
 
 /**
@@ -77,8 +76,6 @@ export class GraphStateSyncer {
   }
 
   _updateHandleView(handle: NodeHandle) {
-    if (getHandleIndex(handle.node, handle) >= 0) {
-      getHandleView(handle)?.update()
-    }
+    getHandleView(handle)?.update()
   }
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import { getJointPos, bezierOffset } from '../../src/renderer/EdgeView'
-import { getHandleIndex, getNodeHeight } from '../../src/renderer/NodeView'
+import { getNodeHeight } from '../../src/renderer/nodeMetrics'
 import {
   getNodeWidth,
   LAYOUT,
@@ -75,21 +75,6 @@ describe('bezierOffset', () => {
 
     const near = bezierOffset({ x: 0, y: 0 }, { x: 10, y: 0 })
     expect(near.handleOffset).toBe(10)
-  })
-})
-
-describe('getHandleIndex', () => {
-  it('returns the absolute row index mixing positioned + none handles', () => {
-    const node = makeNode(4, 'D')
-    const p1 = addHandle(node, 'p1', { position: HandlePosition.Left })
-    const p2 = addHandle(node, 'p2', { position: HandlePosition.Left })
-    const none = addHandle(node, 'row', { position: HandlePosition.None })
-    const p3 = addHandle(node, 'p3', { position: HandlePosition.Left })
-
-    expect(getHandleIndex(node, p1)).toBe(0)
-    expect(getHandleIndex(node, p2)).toBe(1)
-    expect(getHandleIndex(node, p3)).toBe(2)
-    expect(getHandleIndex(node, none)).toBe(3)
   })
 })
 

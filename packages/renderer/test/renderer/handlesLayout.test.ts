@@ -4,6 +4,7 @@ import { makeNode, addHandle } from '../helpers/entities'
 import {
   clearMeasuredRowHeight,
   getBlockContentMaxHeight,
+  getHandleOrder,
   getHandleRowHeight,
   getNodeStaticMinHeight,
   handleY,
@@ -227,5 +228,21 @@ describe('collapsed nodes', () => {
     node.setCollapsed(true)
 
     expect(getNodeStaticMinHeight(node)).toBe(LAYOUT.HEADER_HEIGHT)
+  })
+})
+
+describe('getHandleOrder', () => {
+  it('returns the absolute row index mixing positioned + none handles', () => {
+    const node = makeNode(4, 'D')
+    const p1 = addHandle(node, 'p1', { position: HandlePosition.Left })
+    const p2 = addHandle(node, 'p2', { position: HandlePosition.Left })
+    const none = addHandle(node, 'row', { position: HandlePosition.None })
+    const p3 = addHandle(node, 'p3', { position: HandlePosition.Left })
+
+    const order = getHandleOrder(node)
+    expect(order.indexOf(p1)).toBe(0)
+    expect(order.indexOf(p2)).toBe(1)
+    expect(order.indexOf(p3)).toBe(2)
+    expect(order.indexOf(none)).toBe(3)
   })
 })

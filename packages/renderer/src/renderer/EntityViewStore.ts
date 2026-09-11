@@ -8,7 +8,7 @@ import type { IRect } from '../utils/RectBox'
 import { LAYER_NAME, getNodeWidth } from './constants'
 import { ThemeContext } from '../theme'
 import type { GraphTheme } from '../theme'
-import { getNodeHeight } from './NodeView'
+import { getNodeHeight } from './nodeMetrics'
 
 /**
  * Map of entity views keyed by entity id. `add` draws the view into the given

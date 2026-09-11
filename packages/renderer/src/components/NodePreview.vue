@@ -3,7 +3,8 @@ import Konva from 'konva'
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { Node, Workspace } from '@0x-jerry/golden-graph'
 import { SubGraphNode } from '@0x-jerry/golden-graph'
-import { NodeView, getNodeHeight } from '../renderer/NodeView'
+import { NodeView } from '../renderer/NodeView'
+import { getNodeHeight } from '../renderer/nodeMetrics'
 import { getNodeWidth } from '../renderer/constants'
 
 export interface NodePreviewProps {

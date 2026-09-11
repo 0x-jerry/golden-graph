@@ -113,6 +113,8 @@ export class HandleView {
     const label = new Konva.Text({
       name: 'label',
       text: handle.name,
+      // Unnamed handles reserve no name column and render nothing.
+      visible: handle.name !== '',
       fontSize: theme.fonts.size,
       fontFamily: this._theme.fonts.family,
       fill: this._theme.colors.textLabel,

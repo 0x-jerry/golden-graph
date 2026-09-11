@@ -174,7 +174,7 @@ export function getNodeStaticMinHeight(node: Node): number {
 }
 
 /** Handles in render order: positioned rows first, then layout-only rows. */
-function getHandleOrder(node: Node): NodeHandle[] {
+export function getHandleOrder(node: Node): NodeHandle[] {
   return [
     ...node.handles.filter((h) => h.position !== HandlePosition.None),
     ...node.handles.filter((h) => h.position === HandlePosition.None),
