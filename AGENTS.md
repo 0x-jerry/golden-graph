@@ -4,7 +4,8 @@ Bun workspace monorepo. No root `bun build`/`bun check` — run per-package with
 
 ```bash
 bun run dev            # start playground
-bun run test           # vitest run in all @0x-jerry/* packages
+bun run test           # vitest projects run from root (vitest.config.ts → packages/!(playground))
+bun run test --project core   # single project (also '!renderer' to exclude, wildcards ok)
 bun run play:build     # build playground
 bun vitest run <file>  # single test file (-t "name" to filter)
 ```

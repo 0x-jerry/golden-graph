@@ -27,31 +27,31 @@
     "canvas"
   ],
   "devDependencies": {
-    "@iconify-json/carbon": "latest",
-    "@types/bun": "latest",
+    "@iconify-json/carbon": "^1.2.27",
+    "@types/bun": "^1.4.2",
     "@types/lodash-es": "^4.17.12",
-    "@types/node": "^26.1.1",
-    "@vitejs/plugin-vue": "^6.0.7",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@types/node": "^26.1.2",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vitest/coverage-v8": "^5.0.0",
     "canvas": "^3.2.3",
-    "jsdom": "^29.1.1",
-    "less": "^4.6.7",
-    "typescript": "npm:typescript-native-bridge@6.0.3-bridge.9.tsgo.7.0.2",
-    "unplugin-icons": "latest",
-    "vite": "^8.1.3",
-    "vite-plugin-dts": "^5.0.3",
-    "vitest": "^4.1.10",
-    "vue-tsc": "^3.3.7"
+    "jsdom": "^30.0.1",
+    "less": "^4.9.1",
+    "typescript": "npm:typescript-native-bridge@6.0.3-bridge.16.tsgo.7.0.2",
+    "unplugin-icons": "^24.0.0",
+    "vite": "^8.3.0",
+    "vite-plugin-dts": "^5.1.0",
+    "vitest": "^5.0.0",
+    "vue-tsc": "^3.3.11"
   },
   "dependencies": {
     "@0x-jerry/golden-graph": "workspace:*",
     "@0x-jerry/utils": "^6.6.0",
     "@0x-jerry/vue-kit": "^2.3.1",
     "@dagrejs/dagre": "^3.1.1",
-    "@floating-ui/vue": "^2.0.0",
-    "@vueuse/core": "^14.3.0",
-    "konva": "^10.3.0",
+    "@floating-ui/vue": "^2.0.1",
+    "@vueuse/core": "^14.4.0",
+    "konva": "^10.5.0",
     "lodash-es": "^4.18.1",
-    "vue": "^3.5.39"
+    "vue": "^3.5.42"
   }
 }

@@ -1,17 +1,15 @@
 import vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vitest/config'
+import { defineProject } from 'vitest/config'
 
-export default defineConfig({
+export default defineProject({
   plugins: [vue()],
   test: {
+    name: 'renderer',
     globals: true,
     environment: 'jsdom',
+    // reuse the jsdom environment per worker (native `canvas` still loads
+    // fine here); keeps per-file isolation, unlike `isolate: false`
+    pool: 'vmThreads',
     setupFiles: ['./test/setup.ts'],
-    coverage: {
-      provider: 'v8',
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
-      reporter: ['clover', 'html'],
-    },
   },
 })

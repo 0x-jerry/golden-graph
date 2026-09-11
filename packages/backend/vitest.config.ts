@@ -1,14 +1,11 @@
-import { defineConfig } from 'vitest/config'
+import { defineProject } from 'vitest/config'
 
-export default defineConfig({
+export default defineProject({
   test: {
+    name: 'backend',
     globals: true,
     environment: 'edge-runtime',
-    coverage: {
-      provider: 'v8',
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
-      reporter: ['clover', 'html'],
-    },
+    // reuse env per worker; keeps per-file isolation
+    pool: 'vmThreads',
   },
 })
