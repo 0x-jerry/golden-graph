@@ -5,6 +5,8 @@ import type { NodeHandleFactory, NodeHandleModule } from './types'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'
 
+const TOP_PADDING = 6
+
 class DisplayModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
   _text: Konva.Text
@@ -21,6 +23,7 @@ class DisplayModule extends Konva.Group implements NodeHandleModule {
       fill: theme.colors.textMuted,
       width: displayWidth(handle),
       wrap: 'word',
+      y: TOP_PADDING,
     })
     this.add(text)
     this._text = text
