@@ -170,6 +170,10 @@ export class Select extends FormElement {
   }
 
   setValue(value: string) {
+    if (value === this._val) {
+      return
+    }
+
     this._val = value
     const opt = this._opts.find((o) => o.value === value)
     this._textNode.text(opt?.label ?? '')

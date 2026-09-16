@@ -257,6 +257,33 @@ export class WorkflowExecutor {
     }
   }
 
+  /**
+   * Carry backend-authored output values from the last successful cache into
+   * the current index, so a snapshot that omits an output (the frontend
+   * dropped the write-back) still diffs as unchanged for that node. Only
+   * output keys missing from the snapshot are seeded, and only from entries
+   * that previously committed; input keys are always read from the snapshot
+   * so user edits keep invalidating the cache.
+   */
+  _seedOutputBaseline(index: IGraphIndex) {
+    for (const [nodeId, cached] of this._cache) {
+      const node = index.nodes.get(nodeId)
+      if (!node) continue
+
+      let values = index.values.get(nodeId)
+
+      for (const key of this._nodeInfo(index, node).outputKeys) {
+        if (cached[key] !== undefined && values?.[key] === undefined) {
+          if (!values) {
+            values = {}
+            index.values.set(nodeId, values)
+          }
+          values[key] = cached[key]
+        }
+      }
+    }
+  }
+
   async _run(
     index: IGraphIndex,
     entryNodeIds: number[],
@@ -266,6 +293,13 @@ export class WorkflowExecutor {
     // Use the array as a stack (push/pop are O(1), unlike shift/unshift).
     const stack = [...entryNodeIds].reverse()
     const processed = new Set<number>()
+
+    // Backend-authored outputs the frontend didn't echo back into `node.data`
+    // stay authoritative for the diff baseline — otherwise an output dropped
+    // from the snapshot would disagree with its cache entry and re-diff (and
+    // re-execute) on every run. Inputs are left to the snapshot, so genuine
+    // user edits still invalidate the cache.
+    this._seedOutputBaseline(index)
 
     let i = MAX_ITERATIONS
 
@@ -320,8 +354,6 @@ export class WorkflowExecutor {
     debug: boolean,
     signal: AbortSignal,
   ) {
-    this._events.onProgress(node.id)
-
     if (signal.aborted) {
       throw new CancelledError()
     }
@@ -331,6 +363,11 @@ export class WorkflowExecutor {
     const isTheSameData = isEqual(currentData, prevData)
 
     if (!isTheSameData) {
+      // Only report progress for nodes that actually (re)execute. The diff
+      // cache skips unchanged nodes — reporting all of them as "processing"
+      // on a no-op run would flood progress notifications on large graphs.
+      this._events.onProgress(node.id)
+
       if (debug) {
         await sleep(100)
       }

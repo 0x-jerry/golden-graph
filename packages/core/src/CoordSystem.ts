@@ -27,13 +27,19 @@ export class CoordSystem implements IPersistent<ICoordinate> {
     return this._state.scale
   }
 
+  /**
+   * Zoom to `scale`, keeping the content under the screen-space `point` fixed
+   * (same space as `convertToScreenCoord`, e.g. the pointer position).
+   *
+   * @param point screen-space anchor to hold fixed while zooming
+   * @param scale target zoom factor
+   */
   zoomAt(point: IVec2, scale: number) {
     const dx = point.x / scale - point.x / this.scale
     const dy = point.y / scale - point.y / this.scale
 
     this._state.x += dx
     this._state.y += dy
-
     this._state.scale = scale
     this._workspace?.events.emit('coord:changed', this)
   }

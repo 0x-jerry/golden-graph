@@ -20,6 +20,12 @@ export class ConnectGesture implements IGesture {
   _proximityRadius: number
   /** Candidate joints (all positioned handles on other nodes), built at start. */
   _candidates: NodeHandle[] = []
+  /**
+   * Each candidate's joint as a screen position, precomputed at `start()`. Node
+   * positions don't change during a connect gesture, so this stays valid — it
+   * avoids re-running the coordinate transform per candidate on every move.
+   */
+  _candidateScreens: Map<NodeHandle, IVec2> = new Map()
 
   constructor(
     _ctx: GestureContext,
@@ -58,6 +64,12 @@ export class ConnectGesture implements IGesture {
       .flatMap((node) =>
         node.handles.filter((handle) => handle.isLeft || handle.isRight),
       )
+    this._candidateScreens = new Map(
+      this._candidates.map((handle) => [
+        handle,
+        this._ctx.ws.coord.convertToScreenCoord(getJointPos(handle)),
+      ]),
+    )
 
     // Keep the source joint highlighted for the whole gesture so it is clear
     // which handle the drag started from.
@@ -187,9 +199,7 @@ export class ConnectGesture implements IGesture {
       if (!this._ctx.ws.getNode(handle.node.id)) continue
       if (!source.canConnectTo(handle)) continue
 
-      const jointPos = this._ctx.ws.coord.convertToScreenCoord(
-        getJointPos(handle),
-      )
+      const jointPos = this._candidateScreens.get(handle)!
       const dx = screenPos.x - jointPos.x
       const dy = screenPos.y - jointPos.y
       const distSq = dx * dx + dy * dy

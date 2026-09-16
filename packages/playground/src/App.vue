@@ -149,18 +149,19 @@ function save() {
   localStorage.setItem(cacheKey, JSON.stringify(data))
 }
 
-async function load() {
+/**
+ * Replace the whole workspace content with `data`. The incoming data is
+ * always top-level, so any active subgraph must be exited first — `clear()`
+ * intentionally leaves `_workspaceDataStack` untouched, and a stale snapshot
+ * would corrupt the next `save()` (its `exitSubGraph()` pops a stack entry
+ * that no longer matches the workspace).
+ */
+async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
   const ws = workspace.value
   if (!ws) {
     return
   }
-  const data = localStorage.getItem(cacheKey)
-  if (!data) {
-    return
-  }
 
-  // Mirror `save()`: the saved data is always the top-level graph, so exit
-  // any active subgraph before replacing the workspace content.
   while (ws.isActiveSubGraph) {
     ws.exitSubGraph()
   }
@@ -169,10 +170,19 @@ async function load() {
     ws.clear()
 
     await nextTick()
-    ws.fromJSON(JSON.parse(data))
+    ws.fromJSON(data)
   } catch (error) {
-    console.error('Failed to load workspace from storage:', error)
+    console.error('Failed to load workspace:', error)
   }
+}
+
+async function load() {
+  const data = localStorage.getItem(cacheKey)
+  if (!data) {
+    return
+  }
+
+  await replaceGraph(JSON.parse(data) as Parameters<Workspace['fromJSON']>[0])
 }
 
 function clear() {
@@ -209,26 +219,12 @@ function cancel() {
 }
 
 async function loadFromJSON() {
-  const ws = workspace.value
-  if (!ws) {
-    return
-  }
-
   const json = window.prompt('Input JSON String')
   if (!json) {
     return
   }
 
-  try {
-    const data = JSON.parse(json)
-
-    ws.clear()
-
-    await nextTick()
-    ws.fromJSON(data)
-  } catch (error) {
-    console.error('Failed to load workspace from JSON:', error)
-  }
+  await replaceGraph(JSON.parse(json) as Parameters<Workspace['fromJSON']>[0])
 }
 </script>
 

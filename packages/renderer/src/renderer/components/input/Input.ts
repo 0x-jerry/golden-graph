@@ -241,6 +241,10 @@ export class Input extends FormElement {
   }
 
   setValue(value: string) {
+    if (value === this._model.value) {
+      return
+    }
+
     this._model.reset(value)
     this._scrollX = 0
     this._syncDisplay()

@@ -97,6 +97,25 @@ describe('Workspace', () => {
     expect(ws2.nodes[0]!.pos).toEqual({ x: 10, y: 20 })
   })
 
+  it('removeNodeByIds prunes removed ids from group membership', () => {
+    const ws = new Workspace()
+    ws.registerNodeSchema(sourceSchema)
+    const a = ws.addNode('Source')
+    const b = ws.addNode('Source')
+
+    const group = new Group()
+    group.id = ws.nextId()
+    group.setWorkspace(ws)
+    group.nodes.push(a.id, b.id)
+    ws._groups.push(group)
+
+    ws.removeNodeByIds(a.id)
+
+    expect(ws.nodes.map((n) => n.id)).not.toContain(a.id)
+    expect(group.nodes).toEqual([b.id])
+    expect(group.toJSON().nodes).toEqual([b.id])
+  })
+
   it('should convert group to subgraph', () => {
     const ws = new Workspace()
     ws.registerNodeSchema(groupTestNodeSchema)

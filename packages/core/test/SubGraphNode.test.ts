@@ -166,4 +166,28 @@ describe('copySubGraphNode', () => {
     expect(innerSum.getHandle('a')!.isConnected).toBe(true)
     expect(innerSum.getHandle('b')!.isConnected).toBe(true)
   })
+
+  it('exits a subgraph with no referencing nodes without throwing or dropping edits', () => {
+    const { ws, subGraph } = makeSubGraph()
+    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
+
+    // Remove the only SubGraphNode; the SubGraph (and its content) remain.
+    ws.removeNodeByIds(subGraphNode.id)
+
+    ws.enterSubGraph(subGraph.id)
+    expect(ws.isActiveSubGraph).toBe(true)
+
+    const activeSum = ws.nodes.find((n) => n.name === 'Sum')!
+    activeSum.moveTo(111, 222)
+
+    // Must not throw, must restore the parent, and keep the in-flight edit.
+    // (exitSubGraph rebuilds the SubGraph objects via fromJSON, so look the
+    // subgraph up fresh rather than reusing the pre-exit reference.)
+    expect(() => ws.exitSubGraph()).not.toThrow()
+    expect(ws.isActiveSubGraph).toBe(false)
+    const innerSum = ws.subGraphs[0]!.workspace.nodes.find(
+      (n) => n.name === 'Sum',
+    )!
+    expect(innerSum.pos).toEqual({ x: 111, y: 222 })
+  })
 })

@@ -100,7 +100,7 @@ export class SubGraphManager {
     )
 
     if (!subGraphNodes.length) {
-      throw new Error(`Can not find sub graph node by id ${subGraph.id}`)
+      return
     }
 
     for (const subGraphNode of subGraphNodes) {

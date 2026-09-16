@@ -239,6 +239,57 @@ describe('WorkflowExecutor', () => {
     expect(collected.updates).toContainEqual({ nodeId: 2, key: 'out', value: 11 })
   })
 
+  it('emits progress only for nodes that actually re-execute', async () => {
+    calls.length = 0
+    const collected: CollectedEvents = { progress: [], updates: [] }
+    const executor = createExecutor(collected)
+
+    const g = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(2, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
+    })
+
+    await executor.execute(g, [1], false)
+    expect(collected.progress).toEqual([1, 2])
+
+    // Round-trip the writes, then re-run identically.
+    applyUpdates(g, collected.updates)
+    collected.progress.length = 0
+
+    await executor.execute(g, [1], false)
+    // Nothing re-executes, so no node reports progress — a no-op run must not
+    // flood "processing" notifications for the whole graph.
+    expect(calls).toEqual(['Source', 'Step(2)'])
+    expect(collected.progress).toEqual([])
+  })
+
+  it('does not re-run a node whose written output was dropped from the snapshot', async () => {
+    calls.length = 0
+    const executor = createExecutor()
+
+    const g = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(2, 'Step', { in: undefined, out: undefined }),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
+    })
+
+    await executor.execute(g, [1], false)
+    expect(calls).toEqual(['Source', 'Step(2)'])
+
+    // The frontend did NOT echo Step.out back into the snapshot, so the
+    // output key is absent from node.data on the next run. The backend
+    // baseline must still skip the unchanged node instead of re-executing it
+    // (and every downstream node) forever.
+    calls.length = 0
+    await executor.execute(g, [1], false)
+    expect(calls).toEqual([])
+  })
+
   it('drops partial cache after a failure so the next run re-processes', async () => {
     calls.length = 0
     const executor = createExecutor()

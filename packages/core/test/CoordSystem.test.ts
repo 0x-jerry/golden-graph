@@ -4,11 +4,11 @@ import { CoordSystem } from '../src'
 describe('CoordSystem', () => {
   it('move applies inverse scale', () => {
     const c = new CoordSystem()
-    c.move(10, 20)
-    expect(c.origin).toEqual({ x: 10, y: 20 })
     c.zoomAt({ x: 0, y: 0 }, 2)
+    expect(c.scale).toBe(2)
     c.move(10, 20)
-    expect(c.origin).toEqual({ x: 15, y: 30 })
+    expect(c.origin.x).toBeCloseTo(5)
+    expect(c.origin.y).toBeCloseTo(10)
   })
 
   it('zoomAt adjusts origin and scale', () => {
@@ -28,5 +28,22 @@ describe('CoordSystem', () => {
     const back = c.convertScreenCoord(screen)
     expect(back.x).toBeCloseTo(p.x)
     expect(back.y).toBeCloseTo(p.y)
+  })
+
+  it('zoomAt keeps the anchor screen point fixed after a pan', () => {
+    const c = new CoordSystem()
+    c.move(30, 40)
+    c.zoomAt({ x: 0, y: 0 }, 2)
+
+    // `zoomAt` anchors screen coordinates (what the renderer passes in).
+    const screen = { x: 200, y: 100 }
+    const world = c.convertScreenCoord(screen)
+    const before = c.convertToScreenCoord(world)
+
+    c.zoomAt(screen, 3)
+
+    const after = c.convertToScreenCoord(world)
+    expect(after.x).toBeCloseTo(before.x)
+    expect(after.y).toBeCloseTo(before.y)
   })
 })

@@ -42,14 +42,16 @@ export class NodeManager {
   }
 
   queryNodes(...ids: number[]) {
-    return this.ws.nodes.filter((n) => ids.includes(n.id))
+    const idSet = new Set(ids)
+    return this.ws.nodes.filter((n) => idSet.has(n.id))
   }
 
   removeNodeByIds(...ids: number[]) {
+    const idSet = new Set(ids)
     const edges = this.ws.queryConnectedEdges(...ids)
     this.ws.removeEdgeByIds(...edges.map((e) => e.id))
 
-    const nodes = remove(this.ws._nodes, (e) => ids.includes(e.id))
+    const nodes = remove(this.ws._nodes, (e) => idSet.has(e.id))
 
     for (const node of nodes) {
       if (isSubGraphNode(node)) {
@@ -57,6 +59,10 @@ export class NodeManager {
       }
 
       this.ws.events.emit('node:removed', node)
+    }
+
+    for (const group of this.ws._groups) {
+      remove(group.nodes, (id) => idSet.has(id))
     }
 
     return nodes

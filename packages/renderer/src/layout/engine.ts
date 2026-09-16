@@ -359,7 +359,13 @@ function alignHandleRows(
   // afterwards. Iterate enough to propagate a demand across the whole
   // component; over-constrained graphs settle on a compromise.
   const factor = 0.5
-  for (let i = 0; i < Math.max(16, placed.length * 2); i++) {
+  // Cap the relaxation at a constant, independent of component size: each
+  // damped round halves the remaining error, so extra rounds move sub-pixel
+  // amounts. Iterating `~2n` rounds would be O(n²) on large components for
+  // negligible additional alignment. If a very long rank ever under-aligns,
+  // raise ALIGN_ITERATIONS rather than scaling it with the node count.
+  const ALIGN_ITERATIONS = 32
+  for (let i = 0; i < ALIGN_ITERATIONS; i++) {
     const next = new Map<number, number>()
     placed.forEach((p) => {
       const list = constraints.get(p.id)

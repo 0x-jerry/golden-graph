@@ -71,8 +71,9 @@ export class Group implements IPersistent<IGroup> {
     this._state.pos.x += dPos.x
     this._state.pos.y += dPos.y
 
+    const memberIds = new Set(this.nodes)
     this._workspace?.nodes.forEach((item) => {
-      if (this.nodes.includes(item.id)) {
+      if (memberIds.has(item.id)) {
         item.move(dPos.x, dPos.y)
       }
     })

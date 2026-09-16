@@ -31,7 +31,9 @@ class TextModule extends Konva.Group implements NodeHandleModule {
   }
 
   update(): void {
-    this._input.setValue(String(this._handle.getValue() ?? ''))
+    if (!this._input.active) {
+      this._input.setValue(String(this._handle.getValue() ?? ''))
+    }
     this._input.setWidth(availableWidth(this._handle))
   }
 

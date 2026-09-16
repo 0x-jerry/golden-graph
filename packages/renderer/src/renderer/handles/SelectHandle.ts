@@ -38,7 +38,9 @@ class SelectModule extends Konva.Group implements NodeHandleModule {
 
   update(): void {
     this._select.setOptions(readOptions(this._handle))
-    this._select.setValue(String(this._handle.getValue() ?? ''))
+    if (!this._select.active) {
+      this._select.setValue(String(this._handle.getValue() ?? ''))
+    }
     this._select.setWidth(availableWidth(this._handle))
   }
 

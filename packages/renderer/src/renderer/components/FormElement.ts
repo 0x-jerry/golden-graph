@@ -23,6 +23,11 @@ export abstract class FormElement
 
   protected _active = false
 
+  /** Whether an edit session is currently active (input focused / dropdown open). */
+  get active(): boolean {
+    return this._active
+  }
+
   _keydownFn = this._onKeyDown.bind(this)
 
   constructor(config: BaseFormConfig, theme: GraphTheme = DEFAULT_THEME) {
