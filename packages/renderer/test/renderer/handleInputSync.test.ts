@@ -3,59 +3,46 @@ import { Input } from '../../src/renderer/components/input'
 import { Select } from '../../src/renderer/components/select'
 
 describe('handle editors do not write back unchanged values', () => {
-  it('Input.setValue fires onChange only when the value changes', () => {
-    let changes = 0
+  it('writes back only on change in Input/Select and matches numeric options', () => {
+    let inputChanges = 0
     const input = new Input({
       inputWidth: 120,
       value: 'Foo',
-      onChange: () => changes++,
+      onChange: () => inputChanges++,
     })
-
     // Syncing the same value back (e.g. an unrelated node update) must not
     // cascade a `handle.setValue` event.
     input.setValue('Foo')
-    expect(changes).toBe(0)
-
+    expect(inputChanges).toBe(0)
     input.setValue('Bar')
-    expect(changes).toBe(1)
-
+    expect(inputChanges).toBe(1)
     input.destroy()
-  })
 
-  it('Select.setValue fires onChange only when the value changes', () => {
-    let changes = 0
+    let selectChanges = 0
     const select = new Select({
       selectWidth: 120,
       options: ['a', 'b'],
       value: 'a',
-      onChange: () => changes++,
+      onChange: () => selectChanges++,
     })
-
     select.setValue('a')
-    expect(changes).toBe(0)
-
+    expect(selectChanges).toBe(0)
     select.setValue('b')
-    expect(changes).toBe(1)
-
+    expect(selectChanges).toBe(1)
     select.destroy()
-  })
 
-  it('Select shows and selects numeric options', () => {
+    // A numeric option list has to match the current value, otherwise the box
+    // renders its placeholder and the items render empty labels.
     const picked: string[] = []
-    const select = new Select({
+    const numeric = new Select({
       selectWidth: 120,
       options: [1, 2, 3],
       value: '2',
       onChange: (value) => picked.push(value),
     })
-
-    // A numeric option list has to match the current value, otherwise the box
-    // renders its placeholder and the items render empty labels.
-    expect(select._textNode.text()).toBe('2')
-
-    select._selectIndex(2)
+    expect(numeric._textNode.text()).toBe('2')
+    numeric._selectIndex(2)
     expect(picked).toEqual(['3'])
-
-    select.destroy()
+    numeric.destroy()
   })
 })

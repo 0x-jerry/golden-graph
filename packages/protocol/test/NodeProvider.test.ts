@@ -17,17 +17,14 @@ const numberSchema: INodeSchema = {
 }
 
 describe('deriveNodeType', () => {
-  it('namespaces with the provider id when present', () => {
+  it('namespaces with the provider id when present, key otherwise', () => {
     expect(deriveNodeType('Math', 'Op')).toBe('Math.Op')
-  })
-
-  it('falls back to the key for an empty provider id', () => {
     expect(deriveNodeType('', 'Number')).toBe('Number')
   })
 })
 
 describe('normalizeSchemaNodeProvider', () => {
-  it('stamps the derived type and does not mutate the input', () => {
+  it('stamps the derived type, keeps explicit matches and rejects conflicts', () => {
     const provider: INodeProvider<INodeSchema> = {
       id: '',
       name: 'Base',
@@ -39,26 +36,20 @@ describe('normalizeSchemaNodeProvider', () => {
     expect(normalized.nodes.Number!.type).toBe('Number')
     expect(provider.nodes.Number!.type).toBeUndefined()
     expect(provider.nodes.Number).toBe(numberSchema)
-  })
 
-  it('throws when an explicit type conflicts with the derived type', () => {
-    const provider: INodeProvider<INodeSchema> = {
-      id: 'Math',
-      name: 'Math',
-      nodes: { Op: { ...numberSchema, type: 'Wrong.Type' } },
-    }
-
-    expect(() => normalizeSchemaNodeProvider(provider)).toThrow(/derived type/)
-  })
-
-  it('accepts an explicit type that matches the derived type', () => {
-    const provider: INodeProvider<INodeSchema> = {
+    const explicit: INodeProvider<INodeSchema> = {
       id: 'Math',
       name: 'Math',
       nodes: { Op: { ...numberSchema, type: 'Math.Op' } },
     }
+    expect(normalizeSchemaNodeProvider(explicit).nodes.Op!.type).toBe('Math.Op')
 
-    expect(normalizeSchemaNodeProvider(provider).nodes.Op!.type).toBe('Math.Op')
+    const conflicting: INodeProvider<INodeSchema> = {
+      id: 'Math',
+      name: 'Math',
+      nodes: { Op: { ...numberSchema, type: 'Wrong.Type' } },
+    }
+    expect(() => normalizeSchemaNodeProvider(conflicting)).toThrow(/derived type/)
   })
 })
 
@@ -76,7 +67,7 @@ describe('collectNodeProviders', () => {
     },
   ]
 
-  it('flattens providers into a map keyed by derived type', () => {
+  it('flattens providers by derived type, last registration winning', () => {
     const map = collectNodeProviders(
       providers,
       (s) => s.type,
@@ -85,22 +76,20 @@ describe('collectNodeProviders', () => {
 
     expect([...map.keys()]).toEqual(['Number', 'Text', 'Math.Op'])
     expect(map.get('Math.Op')!.type).toBe('Math.Op')
-  })
 
-  it('last registration wins on duplicate types (no merging)', () => {
     const dupes: INodeProvider<INodeSchema>[] = [
       { id: '', name: 'A', nodes: { X: { ...numberSchema, name: 'A.X' } } },
       { id: '', name: 'B', nodes: { X: { ...numberSchema, name: 'B.X' } } },
     ]
 
-    const map = collectNodeProviders(
+    const dupMap = collectNodeProviders(
       dupes,
       (s) => s.type,
       (s, type) => ({ ...s, type }),
     )
 
-    expect(map.size).toBe(1)
-    expect(map.get('X')!.name).toBe('B.X')
+    expect(dupMap.size).toBe(1)
+    expect(dupMap.get('X')!.name).toBe('B.X')
   })
 
   it('works over arbitrary payloads via resolve/set callbacks', () => {

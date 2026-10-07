@@ -21,85 +21,75 @@ function press(key: string, opts: KeyboardEventInit = {}) {
 }
 
 describe('Textarea editing', () => {
-  it('inserts a newline on Enter', () => {
-    const ta = makeTextarea('ab')
+  it('inserts a newline on Enter and Shift+Enter', () => {
+    const a = makeTextarea('ab')
     press('Enter')
-    expect(ta.getValue()).toBe('ab\n')
-    expect(ta.active).toBe(true)
-  })
+    expect(a.getValue()).toBe('ab\n')
+    expect(a.active).toBe(true)
 
-  it('inserts a newline on Shift+Enter too', () => {
-    const ta = makeTextarea('ab')
+    const b = makeTextarea('ab')
     press('Enter', { shiftKey: true })
-    expect(ta.getValue()).toBe('ab\n')
+    expect(b.getValue()).toBe('ab\n')
   })
 
-  it('commits on Escape', () => {
-    const ta = makeTextarea('ab')
-    ta._model.insertText('c')
+  it('commits the edited value on Escape and on blur', () => {
+    const esc = makeTextarea('ab')
+    esc._model.insertText('c')
     press('Escape')
-    expect(ta.active).toBe(false)
-    expect(ta.getValue()).toBe('abc')
+    expect(esc.active).toBe(false)
+    expect(esc.getValue()).toBe('abc')
+
+    const blur = makeTextarea('ab')
+    blur._model.insertText('c')
+    blur.deactivate()
+    expect(blur.getValue()).toBe('abc')
   })
 
-  it('commits on blur (deactivate)', () => {
-    const ta = makeTextarea('ab')
-    ta._model.insertText('c')
-    ta.deactivate()
-    expect(ta.getValue()).toBe('abc')
-  })
-
-  it('moves down a line with ArrowDown', () => {
-    const ta = makeTextarea('a\nb')
-    ta._model.setCursor(0)
+  it('navigates lines with ArrowUp/Down and Home/End', () => {
+    const down = makeTextarea('a\nb')
+    down._model.setCursor(0)
     press('ArrowDown')
-    expect(ta._model.cursorPos).toBe(2)
-  })
+    expect(down._model.cursorPos).toBe(2)
 
-  it('moves up a line with ArrowUp', () => {
-    const ta = makeTextarea('a\nb')
-    ta._model.setCursor(3)
+    const up = makeTextarea('a\nb')
+    up._model.setCursor(3)
     press('ArrowUp')
-    expect(ta._layout!.pointAt(ta._model.cursorPos).line).toBe(0)
-  })
+    expect(up._layout!.pointAt(up._model.cursorPos).line).toBe(0)
 
-  it('makes Home/End line-relative', () => {
-    const ta = makeTextarea('aa\nbbb')
-    ta._model.setCursor(5)
+    const homeEnd = makeTextarea('aa\nbbb')
+    homeEnd._model.setCursor(5)
     press('Home')
-    expect(ta._model.cursorPos).toBe(3)
+    expect(homeEnd._model.cursorPos).toBe(3)
     press('End')
-    expect(ta._model.cursorPos).toBe(6)
+    expect(homeEnd._model.cursorPos).toBe(6)
   })
 })
 
 describe('Textarea scrolling', () => {
-  it('grows content past the box and scrolls on wheel', () => {
-    const ta = new Textarea({
+  it('scrolls content taller than the box and keeps short content inside', () => {
+    const tall = new Textarea({
       inputWidth: 60,
       inputHeight: 30,
       value: 'word '.repeat(50),
     })
-    live.push(ta)
-    ta._startEdit()
+    live.push(tall)
+    tall._startEdit()
 
-    const area = ta._scrollArea
+    const area = tall._scrollArea
     expect(area._contentHeight).toBeGreaterThan(area._h)
     area.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
     expect(area.scrollTop).toBeGreaterThan(0)
-  })
 
-  it('keeps short content inside the box', () => {
-    const ta = new Textarea({
+    const short = new Textarea({
       inputWidth: 100,
       inputHeight: 60,
       value: 'short',
     })
-    live.push(ta)
-    expect(ta._scrollArea._contentHeight).toBeLessThanOrEqual(60)
+    live.push(short)
+    expect(short._scrollArea._contentHeight).toBeLessThanOrEqual(60)
   })
 
-  it('keeps the scroll position on commit', () => {
+  it('keeps scroll position on commit and ends the caret drag on window mouseup', () => {
     const ta = new Textarea({
       inputWidth: 60,
       inputHeight: 30,
@@ -111,15 +101,13 @@ describe('Textarea scrolling', () => {
     expect(ta._scrollArea.scrollTop).toBe(30)
     press('Escape')
     expect(ta._scrollArea.scrollTop).toBe(30)
-  })
 
-  it('ends the caret drag on a window mouseup', () => {
-    const ta = makeTextarea('a\nb')
-    ta._scrollArea.fire('mousedown', { evt: {} }, true)
-    expect(ta._dragging).toBe(true)
+    const drag = makeTextarea('a\nb')
+    drag._scrollArea.fire('mousedown', { evt: {} }, true)
+    expect(drag._dragging).toBe(true)
 
     window.dispatchEvent(new MouseEvent('mouseup'))
-    expect(ta._dragging).toBe(false)
+    expect(drag._dragging).toBe(false)
   })
 })
 

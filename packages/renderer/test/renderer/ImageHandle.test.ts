@@ -35,50 +35,33 @@ describe('ImageHandle block content containment', () => {
     return { node, module }
   }
 
-  it('contains a tall portrait image into the available content box', () => {
-    const { module } = makeSizedImageNode(200, 200)
-
-    const image = mockImage(400, 800)
-    fit(module, image)
-
-    // available box: width = 200 - 2*padding; content height = node height
-    // minus header, bottom padding and the label row.
+  it('contains tall images, never upscales and anchors top-center', () => {
     const availableW = 200 - LAYOUT.HANDLE_PADDING * 2
     const boxH =
       200 - LAYOUT.HEADER_HEIGHT - NODE_BODY_PADDING - LAYOUT.HANDLE_ROW_HEIGHT
+
+    const portrait = makeSizedImageNode(200, 200)
+    const tall = mockImage(400, 800)
+    fit(portrait.module, tall)
     const scale = Math.min(1, availableW / 400, boxH / 800)
-
-    expect(image.width()).toBeCloseTo(400 * scale)
-    expect(image.height()).toBeCloseTo(800 * scale)
+    expect(tall.width()).toBeCloseTo(400 * scale)
+    expect(tall.height()).toBeCloseTo(800 * scale)
     // Aspect ratio is preserved — the height constraint dominates.
-    expect(image.height() / image.width()).toBeCloseTo(2)
-  })
+    expect(tall.height() / tall.width()).toBeCloseTo(2)
 
-  it('never upscales an image that already fits', () => {
-    const { module } = makeSizedImageNode(200, 200)
+    const small = makeSizedImageNode(200, 200)
+    const fitting = mockImage(60, 30)
+    fit(small.module, fitting)
+    expect(fitting.width()).toBe(60)
+    expect(fitting.height()).toBe(30)
 
-    const image = mockImage(60, 30)
-    fit(module, image)
-
-    expect(image.width()).toBe(60)
-    expect(image.height()).toBe(30)
-  })
-
-  it('anchors top-center when the box is taller than the image', () => {
-    const { module } = makeSizedImageNode(200, 200)
-
-    // Landscape image: the width constraint binds, so the drawn image is
-    // shorter than the available content box.
-    const image = mockImage(800, 200)
-    fit(module, image)
-
-    const availableW = 200 - LAYOUT.HANDLE_PADDING * 2
-    const boxH =
-      200 - LAYOUT.HEADER_HEIGHT - NODE_BODY_PADDING - LAYOUT.HANDLE_ROW_HEIGHT
-    expect(image.width()).toBeCloseTo(availableW)
-    expect(image.height()).toBeLessThan(boxH)
-    // Hugs the content row top instead of floating in the middle of the box.
-    expect(image.y()).toBe(0)
+    // Landscape image: the width constraint binds, so it hugs the row top.
+    const wide = makeSizedImageNode(200, 200)
+    const landscape = mockImage(800, 200)
+    fit(wide.module, landscape)
+    expect(landscape.width()).toBeCloseTo(availableW)
+    expect(landscape.height()).toBeLessThan(boxH)
+    expect(landscape.y()).toBe(0)
   })
 
   it('shrinks the image when the node is resized smaller', () => {

@@ -37,23 +37,19 @@ function makeModule(value: string) {
 }
 
 describe('display handle scrolling', () => {
-  it('scrolls long content and shows the overflow', () => {
-    const module = makeModule('long text '.repeat(60))
-    const area = module._scrollArea
+  it('scrolls long content but not when it fits', () => {
+    const long = makeModule('long text '.repeat(60))
+    const longArea = long._scrollArea
+    expect(longArea._contentHeight).toBeGreaterThan(longArea._h)
+    longArea.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
+    expect(longArea.scrollTop).toBeGreaterThan(0)
+    long.destroy()
 
-    expect(area._contentHeight).toBeGreaterThan(area._h)
-    area.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
-    expect(area.scrollTop).toBeGreaterThan(0)
-    module.destroy()
-  })
-
-  it('does not scroll when the content fits', () => {
-    const module = makeModule('x')
-    const area = module._scrollArea
-
-    expect(area._contentHeight).toBeLessThanOrEqual(area._h)
-    area.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
-    expect(area.scrollTop).toBe(0)
-    module.destroy()
+    const short = makeModule('x')
+    const shortArea = short._scrollArea
+    expect(shortArea._contentHeight).toBeLessThanOrEqual(shortArea._h)
+    shortArea.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
+    expect(shortArea.scrollTop).toBe(0)
+    short.destroy()
   })
 })

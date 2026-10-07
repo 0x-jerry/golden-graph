@@ -25,7 +25,7 @@ const numberSchema: INodeSchema = {
 }
 
 describe('nodeClassFromSchema', () => {
-  it('builds a node class carrying the schema shape', () => {
+  it('builds a node class carrying the schema shape, including after a JSON round-trip', () => {
     const Ctor = nodeClassFromSchema(numberSchema)
     const node = new Ctor()
 
@@ -35,6 +35,15 @@ describe('nodeClassFromSchema', () => {
     expect(node.handles.length).toBe(1)
     expect(node.getHandle('output')?.isRight).toBe(true)
     expect(node.getData('output')).toBe(10)
+
+    const schema = JSON.parse(JSON.stringify(numberSchema)) as INodeSchema
+    const ws = new Workspace()
+    ws.registerNodeSchema(schema)
+
+    const registered = ws.addNode('Number')
+    expect(registered.name).toBe('Number Input')
+    expect(registered.nodeType).toBe(NodeType.Entry)
+    expect(registered.getData('output')).toBe(10)
   })
 
   it('exposes the internal flag as a static for menu filtering', () => {
@@ -48,17 +57,5 @@ describe('nodeClassFromSchema', () => {
 
     expect(internalCtor.internal).toBe(true)
     expect(publicCtor.internal).toBe(false)
-  })
-
-  it('registers a schema that survived a JSON round-trip', () => {
-    const schema = JSON.parse(JSON.stringify(numberSchema)) as INodeSchema
-
-    const ws = new Workspace()
-    ws.registerNodeSchema(schema)
-
-    const node = ws.addNode('Number')
-    expect(node.name).toBe('Number Input')
-    expect(node.nodeType).toBe(NodeType.Entry)
-    expect(node.getData('output')).toBe(10)
   })
 })

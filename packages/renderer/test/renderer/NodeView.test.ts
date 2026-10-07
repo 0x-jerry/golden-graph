@@ -35,42 +35,36 @@ describe('NodeView', () => {
     expect(find<Konva.Rect>(view.group, '.body').height()).toBe(200)
   })
 
-  it('renders one handle view per node handle', () => {
+  it('renders one handle view per handle and unregisters them on destroy', () => {
     const node = makeNode(2, 'B')
-    addHandle(node, 'in1')
+    const in1 = addHandle(node, 'in1')
     addHandle(node, 'in2')
 
     const view = new NodeView(node)
     expect(view.group.find('.handle').length).toBe(2)
+    expect(getHandleView(in1)).toBeDefined()
+
+    view.destroy()
+    expect(getHandleView(in1)).toBeUndefined()
   })
 
-  it('toggles active state border and resize grip', () => {
+  it('toggles the active border and shows the resize grip only while selected', () => {
     const node = makeNode(3, 'C')
     addHandle(node, 'a')
 
     const view = new NodeView(node)
     const body = find<Konva.Rect>(view.group, '.body')
-
-    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
-
-    view.setActive(true)
-    expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
-
-    view.setActive(false)
-    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
-  })
-
-  it('shows the resize grip only while selected', () => {
-    const node = makeNode(4, 'D')
-    addHandle(node, 'a')
-
-    const view = new NodeView(node)
     const resize = find<Konva.Group>(view.group, '.resize')
 
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
     expect(resize.visible()).toBe(false)
 
     view.setActive(true)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
     expect(resize.visible()).toBe(true)
+
+    view.setActive(false)
+    expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
   })
 
   it('highlights the body while executing', () => {
@@ -92,39 +86,12 @@ describe('NodeView', () => {
     expect(shadow.shadowColor()).toBe(DEFAULT_THEME.colors.nodeShadow)
     expect(shadow.shadowOffset()).toEqual(styled)
   })
-
-  it('unregisters its handle views on destroy', () => {
-    const node = makeNode(6, 'F')
-    const handle = addHandle(node, 'a')
-    const view = new NodeView(node)
-
-    expect(getHandleView(handle)).toBeDefined()
-
-    view.destroy()
-    expect(getHandleView(handle)).toBeUndefined()
-  })
 })
 
 describe('NodeView collapse', () => {
   const collapsedHeight = LAYOUT.HEADER_HEIGHT
 
-  it('renders header-only height when collapsed, ignoring manual size', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a')
-    node.setCollapsed(true)
-
-    const view = new NodeView(node)
-    const body = find<Konva.Rect>(view.group, '.body')
-    expect(body.height()).toBe(collapsedHeight)
-
-    // A collapsed node keeps its stored size (restored on expand) but never
-    // renders taller than the header band.
-    node.setSize({ x: 0, y: 200 })
-    view.update()
-    expect(body.height()).toBe(collapsedHeight)
-  })
-
-  it('keeps the body as the collapsed silhouette and hides the shadow', () => {
+  it('renders header-only height, hides the shadow, and constructs folded', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a')
     const view = new NodeView(node)
@@ -136,76 +103,65 @@ describe('NodeView collapse', () => {
 
     node.setCollapsed(true)
     view.update()
-    // The body stays: its outline is what frames the collapsed band, while the
-    // shadow and the handle rows go.
+    // The body stays: its outline frames the collapsed band; shadow and rows go.
     expect(body.visible()).toBe(true)
     expect(shadow.visible()).toBe(false)
+    expect(body.height()).toBe(collapsedHeight)
+
+    // A collapsed node keeps its stored size but never renders taller.
+    node.setSize({ x: 0, y: 200 })
+    view.update()
+    expect(body.height()).toBe(collapsedHeight)
 
     node.setCollapsed(false)
     view.update()
     expect(shadow.visible()).toBe(true)
+
+    // Constructor must fold directly, bypassing `update()`.
+    const fresh = makeNode(1, 'N')
+    addHandle(fresh, 'a')
+    fresh.setCollapsed(true)
+    const freshView = new NodeView(fresh)
+    expect(layerOf(freshView).visible()).toBe(false)
+    expect(find<Konva.Rect>(freshView.group, '.body').height()).toBe(
+      collapsedHeight,
+    )
   })
 
-  it('accents the body while collapsed and active', () => {
+  it('hides the handle layer + resize grip while collapsed and accents the body', () => {
     const node = makeNode(1, 'N')
-    addHandle(node, 'a')
+    addHandle(node, 'out', { position: HandlePosition.Right, type: 'text' })
     const view = new NodeView(node)
     const header = find<Konva.Rect>(view.group, '.header')
     const body = find<Konva.Rect>(view.group, '.body')
+    const layer = view.group.find('.handleLayer')[0]! as Konva.Group
+    const resize = find<Konva.Group>(view.group, '.resize')
+
+    expect(layer.visible()).toBe(true)
+    view.setActive(true)
+    expect(resize.visible()).toBe(true)
 
     node.setCollapsed(true)
     view.update()
     view.setActive(true)
+    expect(layer.visible()).toBe(false)
+    expect(resize.visible()).toBe(false)
     // The band is fill-only, so the accent border is always the body's.
     expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
     expect(header.hasStroke()).toBe(false)
 
     node.setCollapsed(false)
     view.update()
+    view.setActive(true)
+    expect(layer.visible()).toBe(true)
+    expect(resize.visible()).toBe(true)
     expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
 
     view.setActive(false)
     expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
   })
 
-  it('hides the handle layer (and its joints) while collapsed', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'out', { position: HandlePosition.Right, type: 'text' })
-
-    const view = new NodeView(node)
-    const layer = view.group.find('.handleLayer')[0]! as Konva.Group
-    expect(layer.visible()).toBe(true)
-
-    node.setCollapsed(true)
-    view.update()
-    expect(layer.visible()).toBe(false)
-
-    node.setCollapsed(false)
-    view.update()
-    expect(layer.visible()).toBe(true)
-  })
-
-  it('hides the resize grip while collapsed even when active', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a')
-    const view = new NodeView(node)
-    const resize = find<Konva.Group>(view.group, '.resize')
-
-    view.setActive(true)
-    expect(resize.visible()).toBe(true)
-
-    node.setCollapsed(true)
-    view.update()
-    view.setActive(true)
-    expect(resize.visible()).toBe(false)
-
-    node.setCollapsed(false)
-    view.update()
-    view.setActive(true)
-    expect(resize.visible()).toBe(true)
-  })
-
-  it('renders a caret only for nodes with foldable content', () => {
+  it('renders a caret only for foldable content, clear of the title', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a')
     const view = new NodeView(node)
@@ -214,16 +170,9 @@ describe('NodeView collapse', () => {
     const empty = makeNode(2, 'M')
     const emptyView = new NodeView(empty)
     expect(emptyView.group.find('.caret').length).toBe(0)
-  })
-
-  it('keeps the caret slot clear of the title', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a')
-    const view = new NodeView(node)
 
     const caret = view.group.find('.caret')[0]! as Konva.Group
     const name = find<Konva.Text>(view.group, '.name')
-    // Title starts right of the caret's hit zone.
     expect(name.x()).toBeGreaterThan(caret.x() + CARET_SIZE / 2)
   })
 
@@ -250,17 +199,6 @@ describe('NodeView collapse', () => {
     expect(caret.rotation()).toBe(0)
     expect(layerOf(view).visible()).toBe(true)
   })
-
-  it('constructs an already-collapsed node folded', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a')
-    node.setCollapsed(true)
-
-    // Bypass `update()`: the constructor must hide the layer itself.
-    const view = new NodeView(node)
-    expect(layerOf(view).visible()).toBe(false)
-    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(collapsedHeight)
-  })
 })
 
 /** Handle layer group of a view (exists on every NodeView). */
@@ -280,7 +218,7 @@ describe('Konva shape construction in jsdom', () => {
 })
 
 describe('NodeView sub-graph tag', () => {
-  it('renders a tag on the right of the title for SubGraphNodes', () => {
+  it('renders a tag only for SubGraphNodes', () => {
     const subGraph = new SubGraph(new Workspace())
     subGraph.id = 10
 
@@ -296,14 +234,10 @@ describe('NodeView sub-graph tag', () => {
     // anchored to the right side of the header, not the top-left corner
     expect(tag.x()).toBeGreaterThan(0)
     expect(tag.y()).toBeGreaterThan(0)
-  })
 
-  it('does not render a tag for normal nodes', () => {
-    const node = makeNode(2, 'B')
-    addHandle(node, 'a')
-
-    const view = new NodeView(node)
-    expect(view.group.find('.tag').length).toBe(0)
+    const normal = makeNode(2, 'B')
+    addHandle(normal, 'a')
+    expect(new NodeView(normal).group.find('.tag').length).toBe(0)
   })
 })
 
@@ -312,7 +246,7 @@ describe('NodeView block content containment', () => {
   const staticNodeHeight =
     LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING + staticBlockRow
 
-  it('keeps auto-height nodes static regardless of content', () => {
+  it('keeps auto and manual heights regardless of tall content', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'out', { type: 'display' })
     const handle = node.getHandle('out')!
@@ -320,27 +254,16 @@ describe('NodeView block content containment', () => {
 
     const view = new NodeView(node)
     const body = find<Konva.Rect>(view.group, '.body')
-
     // Always-contain: tall block content is clipped, never grown into.
     expect(body.height()).toBe(staticNodeHeight)
-  })
 
-  it('keeps a manual size even with tall content (content is clipped)', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'out', { type: 'display' })
-    const handle = node.getHandle('out')!
-    handle.setInitialValue('long text '.repeat(60))
-
-    const view = new NodeView(node)
     node.setSize({ x: 0, y: 200 })
     view.update()
-
-    const body = find<Konva.Rect>(view.group, '.body')
     expect(body.height()).toBe(200)
     expect(node.size.y).toBe(200)
   })
 
-  it('does not grow the node via notifyContentResized', () => {
+  it('does not grow via content resize and clips handles to the node boundary', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'out', { type: 'display' })
     const handle = node.getHandle('out')!
@@ -348,30 +271,20 @@ describe('NodeView block content containment', () => {
 
     const view = new NodeView(node)
     const before = node.size.y
-
-    const content = find<Konva.Group>(view.group, '.content')
-    content.add(new Konva.Rect({ name: 'big', width: 100, height: 300 }))
-    notifyContentResized(content)
-
-    expect(node.size.y).toBe(before)
-    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(
-      staticNodeHeight,
-    )
-  })
-
-  it('clips handle content to the node boundary', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a')
-    const view = new NodeView(node)
     const layer = view.group.find('.handleLayer')[0]! as Konva.Group
 
     // Default auto-width node (LAYOUT.NODE_WIDTH), content-driven height.
     expect(layer.clipWidth()).toBe(LAYOUT.NODE_WIDTH + LAYOUT.JOINT_RADIUS * 2)
     expect(layer.clipHeight()).toBe(staticNodeHeight)
 
+    const content = find<Konva.Group>(view.group, '.content')
+    content.add(new Konva.Rect({ name: 'big', width: 100, height: 300 }))
+    notifyContentResized(content)
+    expect(node.size.y).toBe(before)
+    expect(find<Konva.Rect>(view.group, '.body').height()).toBe(staticNodeHeight)
+
     node.setSize({ x: 300, y: 160 })
     view.update()
-
     expect(layer.clipWidth()).toBe(300 + LAYOUT.JOINT_RADIUS * 2)
     expect(layer.clipHeight()).toBe(160)
   })

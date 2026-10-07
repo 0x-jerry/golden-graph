@@ -145,23 +145,21 @@ function rawConnect(ws: Workspace, a: NodeHandle, b: NodeHandle) {
 }
 
 describe('resolveEdgeDirection', () => {
-  it('resolves a Right→Left edge to producer→consumer', () => {
+  it('resolves producer→consumer regardless of start/end order', () => {
     const { ws, nodes } = chain([sourceSchema, sinkSchema])
     const edge = ws.queryConnectedEdges(at(nodes, 0).id)[0]!
     expect(resolveEdgeDirection(edge)).toEqual([
       at(nodes, 0).id,
       at(nodes, 1).id,
     ])
-  })
 
-  it('still resolves direction when edge endpoints are written reversed', () => {
-    const ws = makeWorkspace()
-    const a = ws.addNode(sourceSchema.type)
-    const b = ws.addNode(sinkSchema.type)
-    ws.connect(a.getHandle('out')!, b.getHandle('in')!)
-    const edge = ws.queryConnectedEdges(a.id)[0]!
+    const ws2 = makeWorkspace()
+    const a = ws2.addNode(sourceSchema.type)
+    const b = ws2.addNode(sinkSchema.type)
+    ws2.connect(a.getHandle('out')!, b.getHandle('in')!)
+    const reversed = ws2.queryConnectedEdges(a.id)[0]!
     // start/end order is unreliable, but direction must come from positions.
-    expect(resolveEdgeDirection(edge)).toEqual([a.id, b.id])
+    expect(resolveEdgeDirection(reversed)).toEqual([a.id, b.id])
   })
 
   it('returns null when both endpoints are on the same side', () => {
@@ -175,7 +173,7 @@ describe('resolveEdgeDirection', () => {
 })
 
 describe('computeNodePositions', () => {
-  it('lays a linear chain in increasing rank along the main axis', () => {
+  it('lays a linear chain in increasing rank and keeps same-side edges in one rank', () => {
     const { ws, nodes } = chain([sourceSchema, passSchema, sinkSchema])
     const { positions } = computeNodePositions(ws.nodes, ws.edges, { measure })
 
@@ -187,9 +185,17 @@ describe('computeNodePositions', () => {
     expect(p2.x).toBeGreaterThan(p1.x)
     expect(p1.y).toBe(p0.y)
     expect(p2.y).toBe(p1.y)
+
+    // a same-side edge cannot imply direction, so both nodes share a rank
+    const ws2 = makeWorkspace()
+    const a = ws2.addNode(passSchema.type)
+    const b = ws2.addNode(passSchema.type)
+    rawConnect(ws2, a.getHandle('out')!, b.getHandle('out')!)
+    const same = computeNodePositions(ws2.nodes, ws2.edges, { measure })
+    expect(same.positions.get(a.id)!.x).toBe(same.positions.get(b.id)!.x)
   })
 
-  it('stacks fan-out consumers vertically in the same rank, spaced by yGap', () => {
+  it('stacks fan-out consumers vertically without overlaps', () => {
     const ws = makeWorkspace()
     const src = ws.addNode(sourceSchema.type)
     const c1 = ws.addNode(sinkSchema.type)
@@ -208,37 +214,21 @@ describe('computeNodePositions', () => {
     expect(ps.x).toBeLessThan(p1.x)
     expect(p1.x).toBe(p2.x)
     expect(Math.abs(p1.y - p2.y)).toBeGreaterThanOrEqual(40)
-  })
 
-  it('keeps nodes connected by a same-side edge in the same rank', () => {
-    const ws = makeWorkspace()
-    const a = ws.addNode(passSchema.type)
-    const b = ws.addNode(passSchema.type)
-    rawConnect(ws, a.getHandle('out')!, b.getHandle('out')!)
-
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, { measure })
-    const p0 = positions.get(a.id)!
-    const p1 = positions.get(b.id)!
-
-    expect(p0.x).toBe(p1.x)
-  })
-
-  it('does not overlap nodes within a rank', () => {
-    const ws = makeWorkspace()
-    const src = ws.addNode(sourceSchema.type)
+    // adding more consumers keeps every same-rank pair non-overlapping
+    const ws2 = makeWorkspace()
+    const src2 = ws2.addNode(sourceSchema.type)
     for (let i = 0; i < 6; i++) {
-      const s = ws.addNode(sinkSchema.type)
-      ws.connect(src.getHandle('out')!, s.getHandle('in')!)
+      const s = ws2.addNode(sinkSchema.type)
+      ws2.connect(src2.getHandle('out')!, s.getHandle('in')!)
     }
-
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, { measure })
-    const sameRank = Array.from(positions.values()).filter(
-      (p) => p.x === positions.get(src.id)!.x,
-    )
-    const ys = sameRank.map((p) => p.y).sort((a, b) => a - b)
-
-    for (let i = 1; i < ys.length; i++) {
-      expect(ys[i]! - ys[i - 1]!).toBeGreaterThanOrEqual(50)
+    const spread = computeNodePositions(ws2.nodes, ws2.edges, { measure })
+    const sameRank = Array.from(spread.positions.values())
+      .filter((p) => p.x === spread.positions.get(src2.id)!.x)
+      .map((p) => p.y)
+      .sort((a, b) => a - b)
+    for (let i = 1; i < sameRank.length; i++) {
+      expect(sameRank[i]! - sameRank[i - 1]!).toBeGreaterThanOrEqual(50)
     }
   })
 
@@ -256,7 +246,7 @@ describe('computeNodePositions', () => {
     expect(positions.get(b.id)).toBeDefined()
   })
 
-  it('separates disconnected components with componentGap', () => {
+  it('stacks components and isolated nodes top-to-bottom with componentGap', () => {
     const ws = makeWorkspace()
     const srcA = ws.addNode(sourceSchema.type)
     const sinkA = ws.addNode(sinkSchema.type)
@@ -268,10 +258,7 @@ describe('computeNodePositions', () => {
       componentGap: 80,
     })
 
-    const minYA = Math.min(
-      positions.get(srcA.id)!.y,
-      positions.get(sinkA.id)!.y,
-    )
+    const minYA = Math.min(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y)
     const maxYA =
       Math.max(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y) + 50
     const yB = positions.get(srcB.id)!.y
@@ -281,77 +268,58 @@ describe('computeNodePositions', () => {
     expect(yB).toBeGreaterThan(maxYA)
     expect(yB - maxYA).toBeGreaterThanOrEqual(80)
     expect(minYA).toBeGreaterThanOrEqual(0)
-  })
 
-  it('stacks isolated (unconnected) nodes top-to-bottom', () => {
-    const ws = makeWorkspace()
-    const n1 = ws.addNode(sourceSchema.type)
-    const n2 = ws.addNode(sourceSchema.type)
-    const n3 = ws.addNode(sourceSchema.type)
-
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+    // several isolated nodes share a column, stacked with the gap
+    const iso = makeWorkspace()
+    const n1 = iso.addNode(sourceSchema.type)
+    const n2 = iso.addNode(sourceSchema.type)
+    const n3 = iso.addNode(sourceSchema.type)
+    const isoPos = computeNodePositions(iso.nodes, iso.edges, {
       measure,
       componentGap: 80,
-    })
+    }).positions
 
-    const xs = [n1, n2, n3].map((n) => positions.get(n.id)!.x)
+    const xs = [n1, n2, n3].map((n) => isoPos.get(n.id)!.x)
     const ys = [n1, n2, n3]
-      .map((n) => positions.get(n.id)!.y)
+      .map((n) => isoPos.get(n.id)!.y)
       .sort((a, b) => a - b)
-    // All isolated nodes share the same column x.
     expect(xs[0]).toBe(xs[1])
     expect(xs[1]).toBe(xs[2])
-    // Each node is 50 tall; consecutive isolated nodes are separated by more
-    // than a node's height (footprint includes extents, not just origins).
     expect(ys[1]!).toBeGreaterThanOrEqual(ys[0]! + 50 + 80)
     expect(ys[2]!).toBeGreaterThanOrEqual(ys[1]! + 50 + 80)
-  })
 
-  it('treats a self-loop node as isolated (no edges to other nodes)', () => {
-    const ws = makeWorkspace()
-    const loop = ws.addNode(passSchema.type)
-    const lone = ws.addNode(sourceSchema.type)
-    rawConnect(ws, loop.getHandle('out')!, loop.getHandle('in')!)
-
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+    // a self-loop is not a connection to another node — it joins the isolated
+    const loop = makeWorkspace()
+    const loopNode = loop.addNode(passSchema.type)
+    const lone = loop.addNode(sourceSchema.type)
+    rawConnect(loop, loopNode.getHandle('out')!, loopNode.getHandle('in')!)
+    const loopPos = computeNodePositions(loop.nodes, loop.edges, {
       measure,
       componentGap: 80,
-    })
+    }).positions
+    expect(loopPos.get(loopNode.id)!.x).toBe(loopPos.get(lone.id)!.x)
+    expect(loopPos.get(lone.id)!.y).toBeGreaterThan(
+      loopPos.get(loopNode.id)!.y,
+    )
 
-    const pLoop = positions.get(loop.id)!
-    const pLone = positions.get(lone.id)!
-    // A node whose only edge is to itself is not connected to other nodes, so
-    // it joins the isolated column (same x) stacked top→bottom.
-    expect(pLoop.x).toBe(pLone.x)
-    expect(pLone.y).toBeGreaterThan(pLoop.y)
-  })
-
-  it('stacks a connected batch above isolated nodes in the same column', () => {
-    const ws = makeWorkspace()
-    const srcA = ws.addNode(sourceSchema.type)
-    const sinkA = ws.addNode(sinkSchema.type)
-    ws.connect(srcA.getHandle('out')!, sinkA.getHandle('in')!)
-    const iso1 = ws.addNode(sourceSchema.type)
-    const iso2 = ws.addNode(sourceSchema.type)
-
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+    // a connected batch stacks above isolated nodes in the same column
+    const mixed = makeWorkspace()
+    const mSrc = mixed.addNode(sourceSchema.type)
+    const mSink = mixed.addNode(sinkSchema.type)
+    mixed.connect(mSrc.getHandle('out')!, mSink.getHandle('in')!)
+    const iso1 = mixed.addNode(sourceSchema.type)
+    const iso2 = mixed.addNode(sourceSchema.type)
+    const mixedPos = computeNodePositions(mixed.nodes, mixed.edges, {
       measure,
       componentGap: 80,
-    })
+    }).positions
 
     const maxYConnected =
-      Math.max(positions.get(srcA.id)!.y, positions.get(sinkA.id)!.y) + 50
-    const pIso1 = positions.get(iso1.id)!
-    const pIso2 = positions.get(iso2.id)!
-
-    // The connected batch flows left→right internally, then isolated nodes
-    // stack below it sharing the same column x.
-    expect(positions.get(sinkA.id)!.x).toBeGreaterThan(
-      positions.get(srcA.id)!.x,
-    )
-    expect(pIso1.y).toBeGreaterThan(maxYConnected)
-    expect(pIso1.x).toBe(pIso2.x)
-    expect(pIso2.y).toBeGreaterThan(pIso1.y)
+      Math.max(mixedPos.get(mSrc.id)!.y, mixedPos.get(mSink.id)!.y) + 50
+    expect(mixedPos.get(mSink.id)!.x).toBeGreaterThan(mixedPos.get(mSrc.id)!.x)
+    expect(mixedPos.get(iso1.id)!.y).toBeGreaterThan(maxYConnected)
+    expect(mixedPos.get(iso1.id)!.x).toBe(mixedPos.get(iso2.id)!.x)
+    expect(mixedPos.get(iso2.id)!.y).toBeGreaterThan(mixedPos.get(iso1.id)!.y)
   })
 })
 
@@ -406,69 +374,68 @@ describe('computeNodePositions handle alignment', () => {
     expect(bottom).toBeGreaterThanOrEqual(top + 50 + 40 - 0.001)
   })
 
-  it('orders fan-out consumers by the source handle row', () => {
-    const ws = makeWorkspace()
-    const src = ws.addNode(biOutSchema.type)
-    const topCon = ws.addNode(sinkSchema.type)
-    const bottomCon = ws.addNode(sinkSchema.type)
-    ws.connect(src.getHandle('outTop')!, topCon.getHandle('in')!)
-    ws.connect(src.getHandle('outBottom')!, bottomCon.getHandle('in')!)
+  it('orders consumers/producers by their connected handle row', () => {
+    const wsOut = makeWorkspace()
+    const src = wsOut.addNode(biOutSchema.type)
+    const topCon = wsOut.addNode(sinkSchema.type)
+    const bottomCon = wsOut.addNode(sinkSchema.type)
+    wsOut.connect(src.getHandle('outTop')!, topCon.getHandle('in')!)
+    wsOut.connect(src.getHandle('outBottom')!, bottomCon.getHandle('in')!)
 
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+    const outPos = computeNodePositions(wsOut.nodes, wsOut.edges, {
       measure,
       getHandleY,
       yGap: 40,
-    })
+    }).positions
 
     // outTop (row 10) is above outBottom (row 40), so the consumer attached
-    // to the top handle must sit above the bottom-handle consumer.
-    expect(positions.get(topCon.id)!.y).toBeLessThan(
-      positions.get(bottomCon.id)!.y,
+    // to the top handle must sit above the bottom-handle consumer, and its
+    // in joint still aligns with the top out joint.
+    expect(outPos.get(topCon.id)!.y).toBeLessThan(outPos.get(bottomCon.id)!.y)
+    expect(outPos.get(src.id)!.y + 10).toBeCloseTo(
+      outPos.get(topCon.id)!.y + 10,
     )
-    // And top consumer's in joint still aligns with the top out joint.
-    const ps = positions.get(src.id)!
-    const pTop = positions.get(topCon.id)!
-    expect(ps.y + 10).toBeCloseTo(pTop.y + 10)
-  })
 
-  it('orders fan-in producers by the sink input handle row', () => {
-    const ws = makeWorkspace()
-    const topSrc = ws.addNode(sourceSchema.type)
-    const bottomSrc = ws.addNode(sourceSchema.type)
-    const sink = ws.addNode(biInSchema.type)
-    ws.connect(topSrc.getHandle('out')!, sink.getHandle('inTop')!)
-    ws.connect(bottomSrc.getHandle('out')!, sink.getHandle('inBottom')!)
+    const wsIn = makeWorkspace()
+    const topSrc = wsIn.addNode(sourceSchema.type)
+    const bottomSrc = wsIn.addNode(sourceSchema.type)
+    const sink = wsIn.addNode(biInSchema.type)
+    wsIn.connect(topSrc.getHandle('out')!, sink.getHandle('inTop')!)
+    wsIn.connect(bottomSrc.getHandle('out')!, sink.getHandle('inBottom')!)
 
-    const { positions } = computeNodePositions(ws.nodes, ws.edges, {
+    const inPos = computeNodePositions(wsIn.nodes, wsIn.edges, {
       measure,
       getHandleY,
       yGap: 40,
-    })
+    }).positions
 
     // inTop (row 10) is above inBottom (row 40), so the producer feeding the
     // top input must sit above the one feeding the bottom input.
-    expect(positions.get(topSrc.id)!.y).toBeLessThan(
-      positions.get(bottomSrc.id)!.y,
-    )
+    expect(inPos.get(topSrc.id)!.y).toBeLessThan(inPos.get(bottomSrc.id)!.y)
   })
 })
 
 describe('autoLayout', () => {
-  it('applies positions to the workspace nodes', () => {
-    const { ws, nodes } = chain([sourceSchema, passSchema, sinkSchema])
-    ws.nodes.forEach((n) => n.moveTo(0, 0))
+  it('applies positions, and is a no-op while the workspace is disabled', () => {
+    const first = chain([sourceSchema, passSchema, sinkSchema])
+    first.ws.nodes.forEach((n) => n.moveTo(0, 0))
+    autoLayout(first.ws, { measure })
 
-    autoLayout(ws, { measure })
-
-    const p0 = at(nodes, 0).pos
-    const p1 = at(nodes, 1).pos
-    const p2 = at(nodes, 2).pos
-
+    const p0 = at(first.nodes, 0).pos
+    const p1 = at(first.nodes, 1).pos
+    const p2 = at(first.nodes, 2).pos
     // Ranks flow left → right: downstream nodes move along the main axis.
     expect(p0.x).toBe(0)
     expect(p1.x).toBeGreaterThan(p0.x)
     expect(p2.x).toBeGreaterThan(p1.x)
     expect(p2.y).toBe(p0.y)
+
+    const { ws, nodes } = chain([sourceSchema, passSchema, sinkSchema])
+    nodes.forEach((n) => n.moveTo(0, 0))
+    const orig = nodes.map((n) => ({ ...n.pos }))
+    ws._state.disabled = true
+    autoLayout(ws, { measure })
+    expect(nodes.map((n) => n.pos)).toEqual(orig)
   })
 
   it('fits groups to their contained nodes', () => {
@@ -504,17 +471,6 @@ describe('autoLayout', () => {
       expect(n.pos.x + 100).toBeLessThanOrEqual(group.pos.x + group.size.x)
       expect(n.pos.y + 50).toBeLessThanOrEqual(group.pos.y + group.size.y)
     }
-  })
-
-  it('is a no-op while the workspace is disabled', () => {
-    const { ws, nodes } = chain([sourceSchema, passSchema, sinkSchema])
-    nodes.forEach((n) => n.moveTo(0, 0))
-    const orig = nodes.map((n) => ({ ...n.pos }))
-
-    ws._state.disabled = true
-    autoLayout(ws, { measure })
-
-    expect(nodes.map((n) => n.pos)).toEqual(orig)
   })
 
   it('centers the laid-out graph on the viewport center', () => {
@@ -591,7 +547,7 @@ describe('autoLayout', () => {
 })
 
 describe('shared helpers', () => {
-  it('boundingRect unions boxes and returns the zero rect when empty', () => {
+  it('exposes boundingRect, estimateSize and resolveLayoutOptions', () => {
     expect(boundingRect([])).toEqual({ x: 0, y: 0, width: 0, height: 0 })
     expect(
       boundingRect([
@@ -599,15 +555,11 @@ describe('shared helpers', () => {
         { x: 5, y: 50, width: 15, height: 10 },
       ]),
     ).toEqual({ x: 5, y: 20, width: 35, height: 40 })
-  })
 
-  it('estimateSize scales height with handle rows', () => {
     const node = makeWorkspace().addNode(sourceSchema.type)
     expect(estimateSize(node).width).toBeGreaterThan(0)
     expect(estimateSize(node).height).toBeGreaterThan(0)
-  })
 
-  it('resolveLayoutOptions fills defaults', () => {
     expect(resolveLayoutOptions()).toEqual({
       xGap: 60,
       yGap: 40,

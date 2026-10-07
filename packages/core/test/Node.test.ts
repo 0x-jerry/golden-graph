@@ -35,9 +35,14 @@ describe('Node', () => {
     expect(n.pos).toEqual({ x: 1, y: 2 })
   })
 
-  it('size defaults to auto (0, 0)', () => {
+  it('size defaults to auto, omits auto from JSON and tolerates missing size on load', () => {
     const n = new TNode()
     expect(n.size).toEqual({ x: 0, y: 0 })
+    expect(n.toJSON().size).toBeUndefined()
+
+    const loaded = new TNode()
+    loaded.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
+    expect(loaded.size).toEqual({ x: 0, y: 0 })
   })
 
   it('setSize and JSON round-trip', () => {
@@ -54,20 +59,14 @@ describe('Node', () => {
     expect(restored.size).toEqual({ x: 320, y: 140 })
   })
 
-  it('toJSON omits size when it is auto', () => {
-    const n = new TNode()
-    expect(n.toJSON().size).toBeUndefined()
-  })
-
-  it('fromJSON tolerates missing size (old files)', () => {
-    const n = new TNode()
-    n.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
-    expect(n.size).toEqual({ x: 0, y: 0 })
-  })
-
-  it('collapsed defaults to false', () => {
+  it('collapsed defaults to false, omits false from JSON and tolerates missing on load', () => {
     const n = new TNode()
     expect(n.collapsed).toBe(false)
+    expect(n.toJSON().collapsed).toBeUndefined()
+
+    const loaded = new TNode()
+    loaded.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
+    expect(loaded.collapsed).toBe(false)
   })
 
   it('setCollapsed toggles the flag and JSON round-trips it', () => {
@@ -80,16 +79,5 @@ describe('Node', () => {
     const restored = new TNode()
     restored.fromJSON(n.toJSON())
     expect(restored.collapsed).toBe(true)
-  })
-
-  it('toJSON omits collapsed when expanded', () => {
-    const n = new TNode()
-    expect(n.toJSON().collapsed).toBeUndefined()
-  })
-
-  it('fromJSON tolerates missing collapsed (old files) and loads expanded', () => {
-    const n = new TNode()
-    n.fromJSON({ id: 1, type: 'TNode', pos: { x: 1, y: 2 } })
-    expect(n.collapsed).toBe(false)
   })
 })

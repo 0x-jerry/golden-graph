@@ -65,64 +65,53 @@ describe('HandleView content layout under zoom', () => {
 })
 
 describe('HandleView label width', () => {
-  it('spans the node width for a content-less right handle', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'out', {
+  it('spans or caps label width by handle kind and follows node resize', () => {
+    const right = makeNode(1, 'N')
+    addHandle(right, 'out', {
       position: HandlePosition.Right,
       type: '',
       name: 'Output',
     })
-    const view = new NodeView(node)
+    const rightLabel = find<Konva.Text>(new NodeView(right).group, '.label')
+    expect(rightLabel.width()).toBe(FULL_LABEL_WIDTH)
+    expect(rightLabel.x()).toBe(LAYOUT.HANDLE_PADDING)
+    expect(rightLabel.align()).toBe('right')
 
-    const label = find<Konva.Text>(view.group, '.label')
-    expect(label.width()).toBe(FULL_LABEL_WIDTH)
-    expect(label.x()).toBe(LAYOUT.HANDLE_PADDING)
-    expect(label.align()).toBe('right')
-  })
-
-  it('keeps the fixed column for a right handle with content', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'out', {
+    const withContent = makeNode(1, 'N')
+    addHandle(withContent, 'out', {
       position: HandlePosition.Right,
       type: 'number',
       name: 'Number',
     })
-    const view = new NodeView(node)
-
-    const label = find<Konva.Text>(view.group, '.label')
-    expect(label.width()).toBe(HANDLE_NAME_WIDTH)
-    expect(label.x()).toBe(
+    const contentLabel = find<Konva.Text>(
+      new NodeView(withContent).group,
+      '.label',
+    )
+    expect(contentLabel.width()).toBe(HANDLE_NAME_WIDTH)
+    expect(contentLabel.x()).toBe(
       LAYOUT.NODE_WIDTH - HANDLE_CONTENT_X - HANDLE_NAME_WIDTH,
     )
-  })
 
-  it('spans the node width for a block handle', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'in', {
+    const block = makeNode(1, 'N')
+    addHandle(block, 'in', {
       position: HandlePosition.Left,
       type: 'display',
       name: 'Input',
     })
-    const view = new NodeView(node)
+    const blockLabel = find<Konva.Text>(new NodeView(block).group, '.label')
+    expect(blockLabel.width()).toBe(FULL_LABEL_WIDTH)
+    expect(blockLabel.x()).toBe(LAYOUT.HANDLE_PADDING)
 
-    const label = find<Konva.Text>(view.group, '.label')
-    expect(label.width()).toBe(FULL_LABEL_WIDTH)
-    expect(label.x()).toBe(LAYOUT.HANDLE_PADDING)
-  })
-
-  it('follows the node width on resize', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'out', {
+    const resized = makeNode(1, 'N')
+    addHandle(resized, 'out', {
       position: HandlePosition.Right,
       type: '',
       name: 'Output',
     })
-    const view = new NodeView(node)
-
-    node.setSize({ x: 400, y: 0 })
-    view.update()
-
-    const label = find<Konva.Text>(view.group, '.label')
-    expect(label.width()).toBe(400 - LAYOUT.HANDLE_PADDING * 2)
+    const resizedView = new NodeView(resized)
+    resized.setSize({ x: 400, y: 0 })
+    resizedView.update()
+    const resizedLabel = find<Konva.Text>(resizedView.group, '.label')
+    expect(resizedLabel.width()).toBe(400 - LAYOUT.HANDLE_PADDING * 2)
   })
 })

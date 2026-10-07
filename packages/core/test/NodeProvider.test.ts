@@ -14,7 +14,7 @@ function createWs() {
 }
 
 describe('Workspace.registerNodeProvider', () => {
-  it('registers providers and exposes them in order', () => {
+  it('registers providers in order and merges re-registrations by id', () => {
     const ws: Workspace = createWs()
 
     ws.registerNodeProvider({
@@ -26,16 +26,7 @@ describe('Workspace.registerNodeProvider', () => {
     expect(ws.providers.map((p) => p.id)).toEqual(['subgraph', 'Math'])
     expect(ws.providers.map((p) => p.name)).toEqual(['SubGraph', 'Math'])
     expect(ws.nodeRegister.has('Math.Op')).toBe(true)
-  })
 
-  it('merges re-registrations of the same provider id', () => {
-    const ws: Workspace = createWs()
-
-    ws.registerNodeProvider({
-      id: 'Math',
-      name: 'Math',
-      nodes: { Op: { ...numberSchema, name: 'Math - Op' } },
-    })
     ws.registerNodeProvider({
       id: 'Math',
       name: 'Math',

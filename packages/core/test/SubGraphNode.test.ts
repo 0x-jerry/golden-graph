@@ -67,7 +67,7 @@ function makeSubGraph() {
 }
 
 describe('SubGraphNode', () => {
-  it('is a Node whose subGraphId points at its SubGraph', () => {
+  it('is a Node whose subGraphId points at its SubGraph, which tracks it', () => {
     const { ws, subGraph } = makeSubGraph()
 
     const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
@@ -75,12 +75,6 @@ describe('SubGraphNode', () => {
     expect(subGraphNode).toBeInstanceOf(Node)
     expect(subGraphNode.subGraphId).toBe(subGraph.id)
     expect((subGraphNode as SubGraphNode).subGraph).toBe(subGraph)
-  })
-
-  it('tracks its relative nodes on the SubGraph', () => {
-    const { ws, subGraph } = makeSubGraph()
-    const subGraphNode = ws.nodes.find((n) => isSubGraphNode(n))!
-
     expect(subGraph.nodes).toContain(subGraphNode)
     expect(subGraph.nodes).toHaveLength(1)
   })
@@ -94,9 +88,10 @@ describe('SubGraphNode', () => {
 })
 
 describe('copySubGraphNode', () => {
-  it('reuses the same SubGraph (and inner workspace) as the original', () => {
-    const { ws, subGraph } = makeSubGraph()
+  it('copies the node over the shared SubGraph, offset, both driven by it', () => {
+    const { ws, subGraph, extIn, extOut } = makeSubGraph()
     const original = ws.nodes.find((n) => isSubGraphNode(n))!
+    original.moveTo(100, 200)
 
     const copy = ws.copySubGraphNode(subGraph.id)
 
@@ -106,27 +101,16 @@ describe('copySubGraphNode', () => {
     expect(copy.subGraphId).toBe(original.subGraphId)
     expect(copy.subGraph).toBe(subGraph)
     // both nodes are registered in the parent workspace
-    expect(ws.nodes.filter((n) => isSubGraphNode(n) && n.subGraphId === subGraph.id)).toHaveLength(2)
+    expect(
+      ws.nodes.filter(
+        (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+      ),
+    ).toHaveLength(2)
     // the SubGraph now tracks both relative nodes
     expect(subGraph.nodes).toHaveLength(2)
-  })
-
-  it('positions the copy offset from the source node', () => {
-    const { ws, subGraph } = makeSubGraph()
-    const original = ws.nodes.find((n) => isSubGraphNode(n))!
-    original.moveTo(100, 200)
-
-    const copy = ws.copySubGraphNode(subGraph.id)
 
     expect(copy.pos).toEqual({ x: 130, y: 230 })
     expect(original.pos).toEqual({ x: 100, y: 200 })
-  })
-
-  it('keeps both copies driven by the same inner workspace', () => {
-    const { ws, subGraph, extIn, extOut } = makeSubGraph()
-    const original = ws.nodes.find((n) => isSubGraphNode(n))!
-
-    const copy = ws.copySubGraphNode(subGraph.id)
 
     // the copied node exposes the same collapsed interface
     expect(copy.handles.map((h) => h.key).sort()).toEqual(

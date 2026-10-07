@@ -63,46 +63,46 @@ function press(key: 'ArrowUp' | 'ArrowDown') {
   window.dispatchEvent(new KeyboardEvent('keydown', { key }))
 }
 
+function keyEnv(step?: (delta: number) => void): InputKeyEnv {
+  return {
+    sync: () => {},
+    blink: () => {},
+    commit: () => {},
+    cancel: () => {},
+    clearHidden: () => {},
+    ...(step ? { step } : {}),
+  }
+}
+
 describe('number handle stepping', () => {
-  it('steps by 1 by default', () => {
-    const handle = makeNumberHandle()
-    const module = startEditing(handle)
-
-    expect(handle.getValue()).toBe(1)
+  it('steps by the configured amount without floating point noise', () => {
+    const base = makeNumberHandle()
+    const baseModule = startEditing(base)
+    expect(base.getValue()).toBe(1)
 
     press('ArrowUp')
-    expect(handle.getValue()).toBe(2)
-    expect(module._input.getValue()).toBe('2')
-
+    expect(base.getValue()).toBe(2)
+    expect(baseModule._input.getValue()).toBe('2')
     press('ArrowDown')
-    expect(handle.getValue()).toBe(1)
-
+    expect(base.getValue()).toBe(1)
     press('ArrowDown')
-    expect(handle.getValue()).toBe(0)
-  })
+    expect(base.getValue()).toBe(0)
 
-  it('honors the step option', () => {
-    const handle = makeNumberHandle({ step: 0.5 })
-    startEditing(handle)
-
+    const stepped = makeNumberHandle({ step: 0.5 })
+    startEditing(stepped)
     press('ArrowUp')
-    expect(handle.getValue()).toBe(1.5)
-
+    expect(stepped.getValue()).toBe(1.5)
     press('ArrowUp')
-    expect(handle.getValue()).toBe(2)
-  })
+    expect(stepped.getValue()).toBe(2)
 
-  it('avoids floating point noise on fractional steps', () => {
-    const handle = makeNumberHandle({ value: 0.1, step: 0.1 })
-    const module = startEditing(handle)
-
+    const frac = makeNumberHandle({ value: 0.1, step: 0.1 })
+    const fracModule = startEditing(frac)
     press('ArrowUp')
-    expect(handle.getValue()).toBe(0.2)
-    expect(module._input.getValue()).toBe('0.2')
-
+    expect(frac.getValue()).toBe(0.2)
+    expect(fracModule._input.getValue()).toBe('0.2')
     press('ArrowUp')
     press('ArrowUp')
-    expect(handle.getValue()).toBe(0.4)
+    expect(frac.getValue()).toBe(0.4)
   })
 
   it('falls back to 1 for a non-positive or invalid step', () => {
@@ -115,38 +115,19 @@ describe('number handle stepping', () => {
     }
   })
 
-  it('leaves the arrows to the text model when no step hook is provided', () => {
+  it('routes arrows to the step hook when provided, otherwise leaves them to the model', () => {
     const model = new TextModel({ value: '1', measure: () => 0 })
-    const env: InputKeyEnv = {
-      sync: () => {},
-      blink: () => {},
-      commit: () => {},
-      cancel: () => {},
-      clearHidden: () => {},
-    }
 
-    const evt = new KeyboardEvent('keydown', {
+    const plain = new KeyboardEvent('keydown', {
       key: 'ArrowUp',
       cancelable: true,
     })
-    handleInputKeyDown(model, evt, env)
-
+    handleInputKeyDown(model, plain, keyEnv())
     expect(model.value).toBe('1')
-    expect(evt.defaultPrevented).toBe(false)
-  })
+    expect(plain.defaultPrevented).toBe(false)
 
-  it('routes ArrowUp/ArrowDown to the step hook with +/-1', () => {
-    const model = new TextModel({ value: '1', measure: () => 0 })
     const deltas: number[] = []
-    const env: InputKeyEnv = {
-      sync: () => {},
-      blink: () => {},
-      commit: () => {},
-      cancel: () => {},
-      clearHidden: () => {},
-      step: (delta) => deltas.push(delta),
-    }
-
+    const env = keyEnv((delta) => deltas.push(delta))
     for (const key of ['ArrowUp', 'ArrowDown', 'ArrowUp'] as const) {
       const evt = new KeyboardEvent('keydown', { key, cancelable: true })
       handleInputKeyDown(model, evt, env)

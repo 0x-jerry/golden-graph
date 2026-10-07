@@ -14,40 +14,31 @@ describe('DEFAULT_THEME', () => {
 })
 
 describe('ThemeContext', () => {
-  it('merges partial theme over defaults', () => {
+  it('merges partial themes, hot-swaps listeners and unsubscribes', () => {
     const ctx = new ThemeContext({ colors: { accent: '#ff0000' } })
     expect(ctx.value.colors.accent).toBe('#ff0000')
     expect(ctx.value.colors.bg).toBe(DEFAULT_THEME.colors.bg)
-  })
 
-  it('notifies listeners on setTheme and hot-swaps in place', () => {
-    const ctx = new ThemeContext()
     const seen: string[] = []
-    ctx.onThemeChange(() => seen.push(ctx.value.colors.accent))
+    const off = ctx.onThemeChange(() => seen.push(ctx.value.colors.accent))
 
     ctx.setTheme({ colors: { accent: '#00ff00' } })
     ctx.setTheme({ colors: { accent: '#0000ff' } })
-
     expect(seen).toEqual(['#00ff00', '#0000ff'])
-  })
 
-  it('unsubscribes a listener', () => {
-    const ctx = new ThemeContext()
-    let calls = 0
-    const off = ctx.onThemeChange(() => calls++)
     off()
-    ctx.setTheme({ colors: { accent: '#ff0000' } })
-    expect(calls).toBe(0)
+    ctx.setTheme({ colors: { accent: '#123456' } })
+    expect(seen).toEqual(['#00ff00', '#0000ff'])
   })
 })
 
 describe('applyThemeToElement', () => {
   it('maps color tokens to --gr-* custom properties', () => {
     const el = document.createElement('div')
-    applyThemeToElement(
-      el,
-      { ...DEFAULT_THEME, colors: { ...DEFAULT_THEME.colors, accent: '#ff0000' } },
-    )
+    applyThemeToElement(el, {
+      ...DEFAULT_THEME,
+      colors: { ...DEFAULT_THEME.colors, accent: '#ff0000' },
+    })
     expect(el.style.getPropertyValue('--gr-color-accent')).toBe('#ff0000')
     expect(el.style.getPropertyValue('--gr-color-text-primary')).toBe(
       DEFAULT_THEME.colors.textPrimary,

@@ -208,7 +208,7 @@ describe('WorkflowExecutor', () => {
     expect(collected.updates).toContainEqual({ nodeId: 4, key: 'out', value: 4 })
   })
 
-  it('skips execution when node data is unchanged across runs', async () => {
+  it('caches unchanged nodes, emits progress only for re-runs, and survives dropped outputs', async () => {
     calls.length = 0
     const collected: CollectedEvents = { progress: [], updates: [] }
     const executor = createExecutor(collected)
@@ -223,28 +223,34 @@ describe('WorkflowExecutor', () => {
 
     await executor.execute(g, [1], false)
     expect(calls.length).toBe(2)
+    expect(collected.progress).toEqual([1, 2])
 
     // the frontend applies streamed-back writes to its nodes
     applyUpdates(g, collected.updates)
     collected.updates.length = 0
+    collected.progress.length = 0
 
-    // second run with identical data: nothing re-processes
+    // second run with identical data: nothing re-processes, and a no-op run
+    // must not flood "processing" notifications for the whole graph
     await executor.execute(g, [1], false)
     expect(calls.length).toBe(2)
+    expect(collected.progress).toEqual([])
 
     // changing source data invalidates the cache and re-processes
     g.nodes[0]!.data!.out = 10
     await executor.execute(g, [1], false)
     expect(calls.length).toBe(4)
-    expect(collected.updates).toContainEqual({ nodeId: 2, key: 'out', value: 11 })
-  })
+    expect(collected.updates).toContainEqual({
+      nodeId: 2,
+      key: 'out',
+      value: 11,
+    })
 
-  it('emits progress only for nodes that actually re-execute', async () => {
+    // a snapshot that drops the streamed output key must still hit the cache
+    // instead of re-executing the node forever
     calls.length = 0
-    const collected: CollectedEvents = { progress: [], updates: [] }
-    const executor = createExecutor(collected)
-
-    const g = graph({
+    const droppedExecutor = createExecutor()
+    const dropped = graph({
       nodes: [
         node(1, 'Source', { out: 1 }),
         node(2, 'Step', { in: undefined, out: undefined }),
@@ -252,41 +258,11 @@ describe('WorkflowExecutor', () => {
       edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
     })
 
-    await executor.execute(g, [1], false)
-    expect(collected.progress).toEqual([1, 2])
-
-    // Round-trip the writes, then re-run identically.
-    applyUpdates(g, collected.updates)
-    collected.progress.length = 0
-
-    await executor.execute(g, [1], false)
-    // Nothing re-executes, so no node reports progress — a no-op run must not
-    // flood "processing" notifications for the whole graph.
-    expect(calls).toEqual(['Source', 'Step(2)'])
-    expect(collected.progress).toEqual([])
-  })
-
-  it('does not re-run a node whose written output was dropped from the snapshot', async () => {
-    calls.length = 0
-    const executor = createExecutor()
-
-    const g = graph({
-      nodes: [
-        node(1, 'Source', { out: 1 }),
-        node(2, 'Step', { in: undefined, out: undefined }),
-      ],
-      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
-    })
-
-    await executor.execute(g, [1], false)
+    await droppedExecutor.execute(dropped, [1], false)
     expect(calls).toEqual(['Source', 'Step(2)'])
 
-    // The frontend did NOT echo Step.out back into the snapshot, so the
-    // output key is absent from node.data on the next run. The backend
-    // baseline must still skip the unchanged node instead of re-executing it
-    // (and every downstream node) forever.
     calls.length = 0
-    await executor.execute(g, [1], false)
+    await droppedExecutor.execute(dropped, [1], false)
     expect(calls).toEqual([])
   })
 
@@ -406,7 +382,7 @@ describe('WorkflowExecutor', () => {
     expect(calls).toEqual(['Source', 'Step(2)', 'Source', 'Step(11)'])
   })
 
-  it('stops a running workflow with a CancelledError when cancelled', async () => {
+  it('cancels a running workflow and its nested subgraph runs with the same token', async () => {
     calls.length = 0
     const executor = createExecutor()
 
@@ -428,57 +404,76 @@ describe('WorkflowExecutor', () => {
       (e: unknown) => e,
     )
     expect(isCancelledError(error)).toBe(true)
-
-    // the in-flight node never executed
     expect(calls).toEqual([])
+
+    // a cancel also propagates into a nested subgraph run
+    calls.length = 0
+    const nestedExecutor = createExecutor()
+    const nested = graph({
+      nodes: [
+        node(1, 'Source', { out: 1 }),
+        node(
+          2,
+          'DefaultNode',
+          { '1': undefined, '3': undefined },
+          { subGraphId: 9 },
+        ),
+      ],
+      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: '1' })],
+      subGraphs: [
+        {
+          id: 9,
+          workspace: graph({
+            nodes: [
+              node(1, 'subgraph.input', { Output: undefined, Name: 'x' }),
+              node(2, 'Slow', { in: undefined, out: undefined }),
+              node(3, 'subgraph.output', { Value: undefined, Name: 'y' }),
+            ],
+            edges: [
+              edge({ id: 1, key: 'Output' }, { id: 2, key: 'in' }),
+              edge({ id: 2, key: 'out' }, { id: 3, key: 'Value' }),
+            ],
+          }),
+        },
+      ],
+    })
+
+    const nestedRun = nestedExecutor.execute(nested, [1], false)
+    // give the nested Slow node a chance to start executing, then cancel
+    await sleep(5)
+    nestedExecutor.cancel()
+
+    const nestedError = await nestedRun.then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(isCancelledError(nestedError)).toBe(true)
   })
 
-  it('is a no-op when no run is in flight and does not affect the next run', async () => {
+  it('ignores cancel() when no run is in flight, including a stale cancel', async () => {
     calls.length = 0
     const executor = createExecutor()
 
-    const g = graph({
-      nodes: [
-        node(1, 'Source', { out: 1 }),
-        node(2, 'Step', { in: undefined, out: undefined }),
-      ],
-      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
-    })
+    const build = (base: number) =>
+      graph({
+        nodes: [
+          node(base, 'Source', { out: base === 1 ? 1 : 5 }),
+          node(base + 1, 'Step', { in: undefined, out: undefined }),
+        ],
+        edges: [edge({ id: base, key: 'out' }, { id: base + 1, key: 'in' })],
+      })
 
+    // no run in flight: cancel is a no-op and the next run executes fully
     executor.cancel()
-    await executor.execute(g, [1], false)
-
+    await executor.execute(build(1), [1], false)
     expect(calls).toEqual(['Source', 'Step(2)'])
-  })
-
-  it('a stale cancel for a settled run never affects the next run', async () => {
-    calls.length = 0
-    const executor = createExecutor()
-
-    const runA = graph({
-      nodes: [
-        node(1, 'Source', { out: 1 }),
-        node(2, 'Step', { in: undefined, out: undefined }),
-      ],
-      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: 'in' })],
-    })
-    await executor.execute(runA, [1], false)
 
     // Simulate a cancel that was in flight on the wire while run A was
     // settling: it reaches the executor only now, when `_currentRun` is
-    // already cleared (token identity check in `execute()`'s finally).
+    // already cleared (token identity check in `execute()`'s finally), so
+    // run B executes fully with no CancelledError or partial stop.
     executor.cancel()
-
-    const runB = graph({
-      nodes: [
-        node(3, 'Source', { out: 5 }),
-        node(4, 'Step', { in: undefined, out: undefined }),
-      ],
-      edges: [edge({ id: 3, key: 'out' }, { id: 4, key: 'in' })],
-    })
-
-    // run B executes fully — no CancelledError, no partial stop
-    await executor.execute(runB, [3], false)
+    await executor.execute(build(3), [3], false)
     expect(calls).toEqual(['Source', 'Step(2)', 'Source', 'Step(6)'])
   })
 
@@ -517,50 +512,5 @@ describe('WorkflowExecutor', () => {
       'Step(2)',
       'Step(3)',
     ])
-  })
-
-  it('cancels nested subgraph runs with the same token', async () => {
-    calls.length = 0
-    const executor = createExecutor()
-
-    const g = graph({
-      nodes: [
-        node(1, 'Source', { out: 1 }),
-        node(
-          2,
-          'DefaultNode',
-          { '1': undefined, '3': undefined },
-          { subGraphId: 9 },
-        ),
-      ],
-      edges: [edge({ id: 1, key: 'out' }, { id: 2, key: '1' })],
-      subGraphs: [
-        {
-          id: 9,
-          workspace: graph({
-            nodes: [
-              node(1, 'subgraph.input', { Output: undefined, Name: 'x' }),
-              node(2, 'Slow', { in: undefined, out: undefined }),
-              node(3, 'subgraph.output', { Value: undefined, Name: 'y' }),
-            ],
-            edges: [
-              edge({ id: 1, key: 'Output' }, { id: 2, key: 'in' }),
-              edge({ id: 2, key: 'out' }, { id: 3, key: 'Value' }),
-            ],
-          }),
-        },
-      ],
-    })
-
-    const run = executor.execute(g, [1], false)
-    // give the nested Slow node a chance to start executing, then cancel
-    await sleep(5)
-    executor.cancel()
-
-    const error = await run.then(
-      () => null,
-      (e: unknown) => e,
-    )
-    expect(isCancelledError(error)).toBe(true)
   })
 })

@@ -19,22 +19,20 @@ describe('select dropdown scrollbar', () => {
     vi.useRealTimers()
   })
 
-  it('is absent when the options fit', () => {
-    const { stage, select } = openSelect(3)
-    expect(select._dropdown!._scrollbar).toBe(null)
-    stage.destroy()
-  })
+  it('is absent when options fit and starts hidden when they overflow', () => {
+    const fitting = openSelect(3)
+    expect(fitting.select._dropdown!._scrollbar).toBe(null)
+    fitting.stage.destroy()
 
-  it('exists but starts hidden when options overflow', () => {
-    const { stage, select } = openSelect(10)
-    const bar = select._dropdown!._scrollbar!
+    const overflowing = openSelect(10)
+    const bar = overflowing.select._dropdown!._scrollbar!
     expect(bar).toBeTruthy()
     expect(bar.visible()).toBe(false)
     expect(bar._thumb.height()).toBeGreaterThan(0)
-    stage.destroy()
+    overflowing.stage.destroy()
   })
 
-  it('shows on hover and hides after leaving', () => {
+  it('shows on hover, hides on leave, and follows wheel scrolling', () => {
     vi.useFakeTimers()
     const { stage, select } = openSelect(10)
     const dropdown = select._dropdown!
@@ -46,35 +44,24 @@ describe('select dropdown scrollbar', () => {
     dropdown.fire('mouseleave')
     vi.advanceTimersByTime(600)
     expect(bar.visible()).toBe(false)
-    stage.destroy()
-  })
+    vi.useRealTimers()
 
-  it('scales the wheel step with the reported delta', () => {
-    const { stage, select } = openSelect(10)
-    const dropdown = select._dropdown!
-    dropdown.fire(
-      'wheel',
-      { evt: { preventDefault() {}, deltaY: 10 } },
-      true,
-    )
+    dropdown.fire('wheel', { evt: { preventDefault() {}, deltaY: 10 } }, true)
     expect(dropdown.scrollTop).toBeGreaterThan(0)
     expect(dropdown.scrollTop).toBeLessThan(1)
-    stage.destroy()
-  })
 
-  it('moves the thumb with wheel scrolling', () => {
-    const { stage, select } = openSelect(10)
-    const dropdown = select._dropdown!
-    const bar = dropdown._scrollbar!
-
-    const before = bar._thumb.y()
-    dropdown.fire(
+    const big = openSelect(10)
+    const bigDropdown = big.select._dropdown!
+    const bigBar = bigDropdown._scrollbar!
+    const before = bigBar._thumb.y()
+    bigDropdown.fire(
       'wheel',
       { evt: { preventDefault() {}, deltaY: 100 } },
       true,
     )
-    expect(dropdown.scrollTop).toBe(1)
-    expect(bar._thumb.y()).toBeGreaterThan(before)
+    expect(bigDropdown.scrollTop).toBe(1)
+    expect(bigBar._thumb.y()).toBeGreaterThan(before)
+    big.stage.destroy()
     stage.destroy()
   })
 })

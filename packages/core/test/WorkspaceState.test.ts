@@ -17,7 +17,7 @@ function createWs() {
 }
 
 describe('Workspace state', () => {
-  it('canConnect always returns a boolean', () => {
+  it('canConnect returns a boolean and clear() resets selection state', () => {
     const ws = createWs()
     const a = ws.addNode('Flow')
     const b = ws.addNode('Flow')
@@ -25,11 +25,6 @@ describe('Workspace state', () => {
     // same position -> false (not undefined)
     expect(ws.canConnect(a.getHandle('in')!, b.getHandle('in')!)).toBe(false)
     expect(ws.canConnect(a.getHandle('out')!, b.getHandle('in')!)).toBe(true)
-  })
-
-  it('clear() resets selection state', () => {
-    const ws = createWs()
-    const a = ws.addNode('Flow')
 
     ws.setActiveIds(ActiveType.Node, [a.id])
     expect(ws.state.activeIds.length).toBe(1)

@@ -7,7 +7,7 @@ import { RESIZE_HANDLE_SIZE } from '../../src/renderer/constants'
 import { DEFAULT_THEME } from '../../src/theme'
 
 describe('GroupView', () => {
-  it('syncs position/size/name and active stroke', () => {
+  it('syncs position/size/name and toggles the active border', () => {
     const group = new Group()
     group.id = 1
     group.setName('G')
@@ -21,14 +21,8 @@ describe('GroupView', () => {
     expect(view.group.y()).toBe(5)
     expect(find<Konva.Text>(view.group, '.name').text()).toBe('G')
     expect(find<Konva.Rect>(view.group, '.body').width()).toBe(200)
-  })
 
-  it('toggles active group border', () => {
-    const group = new Group()
-    group.id = 2
-    const view = new GroupView(group)
     const body = find<Konva.Rect>(view.group, '.body')
-
     view.setActive(true)
     expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
 
@@ -55,7 +49,7 @@ describe('GroupView', () => {
     expect(resize.y()).toBe(400 - RESIZE_HANDLE_SIZE)
   })
 
-  it('opens a title editor on startRename and tears it down on stop', () => {
+  it('opens a title editor on startRename and tears it down on stop or destroy', () => {
     const group = new Group()
     group.id = 4
     group.setName('G')
@@ -69,16 +63,9 @@ describe('GroupView', () => {
     input!.deactivate()
     expect(view._nameInput).toBeNull()
     expect(view._name.getChildren().includes(input!)).toBe(false)
-  })
-
-  it('destroys an open title editor when the view is destroyed', () => {
-    const group = new Group()
-    group.id = 5
-    const view = new GroupView(group)
 
     view.startRename()
     expect(view._nameInput).toBeDefined()
-
     view.destroy()
     expect(view._nameInput).toBeNull()
   })

@@ -14,16 +14,29 @@ import { getHandleFactory } from '../../src/renderer/handles'
 import { LAYOUT, NODE_BODY_PADDING } from '../../src/renderer/constants'
 
 describe('getHandleRowHeight', () => {
-  it('uses HANDLE_ROW_HEIGHT for inline handles', () => {
+  it('resolves row height by handle kind and position', () => {
     const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', { type: 'text' })
-    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT)
-  })
+    const inline = addHandle(node, 'a', { type: 'text' })
+    expect(getHandleRowHeight(inline)).toBe(LAYOUT.HANDLE_ROW_HEIGHT)
 
-  it('defaults block rows to label row + content row', () => {
-    const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', { type: 'display' })
-    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
+    const block = addHandle(node, 'b', { type: 'display' })
+    expect(getHandleRowHeight(block)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
+
+    // label-less + position-less block rows skip the label row
+    const noLabelNoPos = addHandle(node, 'c', {
+      position: HandlePosition.None,
+      type: 'display',
+    })
+    expect(getHandleRowHeight(noLabelNoPos)).toBe(LAYOUT.HANDLE_ROW_HEIGHT)
+
+    // label-less but positioned block rows keep it
+    const noLabelWithPos = addHandle(node, 'd', {
+      position: HandlePosition.Left,
+      type: 'display',
+    })
+    expect(getHandleRowHeight(noLabelWithPos)).toBe(
+      LAYOUT.HANDLE_ROW_HEIGHT * 2,
+    )
   })
 
   it('respects config.minHeight for block rows', () => {
@@ -45,25 +58,7 @@ describe('getHandleRowHeight', () => {
     }
   })
 
-  it('skips the label row for label-less, position-less block handles', () => {
-    const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', {
-      position: HandlePosition.None,
-      type: 'display',
-    })
-    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT)
-  })
-
-  it('adds the label row for label-less block handles with a position', () => {
-    const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', {
-      position: HandlePosition.Left,
-      type: 'display',
-    })
-    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
-  })
-
-  it('keeps auto-height rows at their static minimum with tall content', () => {
+  it('keeps rows at their static minimum with tall content or a short node', () => {
     const node = makeNode(1, 'N')
     const handle = addHandle(node, 'a', { type: 'display' })
 
@@ -72,6 +67,11 @@ describe('getHandleRowHeight', () => {
     expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
 
     clearMeasuredRowHeight(handle)
+    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
+
+    // 60 - header(30) - padding(8) = 22 available < static row (56) → the row
+    // holds its minimum and the overflow is clipped by the node body.
+    node.setSize({ x: 200, y: 60 })
     expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
   })
 
@@ -85,15 +85,6 @@ describe('getHandleRowHeight', () => {
     expect(getHandleRowHeight(handle)).toBe(112)
 
     clearMeasuredRowHeight(handle)
-    expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
-  })
-
-  it('keeps rows at their static minimum when the node is too short', () => {
-    const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', { type: 'display' })
-    node.setSize({ x: 200, y: 60 })
-    // 60 - header(30) - padding(8) = 22 available < static row (56) → the row
-    // holds its minimum and the overflow is clipped by the node body.
     expect(getHandleRowHeight(handle)).toBe(LAYOUT.HANDLE_ROW_HEIGHT * 2)
   })
 
@@ -125,15 +116,13 @@ describe('getHandleRowHeight', () => {
 })
 
 describe('getBlockContentMaxHeight', () => {
-  it('contains block content to minHeight on auto-height nodes', () => {
-    const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', { type: 'display' })
-    expect(getBlockContentMaxHeight(node, handle)).toBe(
+  it('limits block content to the space the node affords', () => {
+    const auto = makeNode(1, 'N')
+    const autoHandle = addHandle(auto, 'a', { type: 'display' })
+    expect(getBlockContentMaxHeight(auto, autoHandle)).toBe(
       LAYOUT.HANDLE_ROW_HEIGHT,
     )
-  })
 
-  it('gives a manual-size row the free space after the rows above it', () => {
     const node = makeNode(1, 'N')
     const a = addHandle(node, 'a', { type: 'display' })
     const b = addHandle(node, 'b', { type: 'display' })
@@ -168,10 +157,10 @@ describe('getBlockContentMaxHeight', () => {
 })
 
 describe('getNodeStaticMinHeight', () => {
-  it('is header + padding + every row at its static minimum', () => {
+  it('is header + padding + every row at its static minimum, ignoring measurements', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'txt', { type: 'text' }) // inline: HANDLE_ROW_HEIGHT
-    addHandle(node, 'disp', { type: 'display' }) // block: label + content row
+    const disp = addHandle(node, 'disp', { type: 'display' }) // block: label + content
 
     const expected =
       LAYOUT.HEADER_HEIGHT +
@@ -179,21 +168,14 @@ describe('getNodeStaticMinHeight', () => {
       LAYOUT.HANDLE_ROW_HEIGHT +
       LAYOUT.HANDLE_ROW_HEIGHT * 2
     expect(getNodeStaticMinHeight(node)).toBe(expected)
-  })
 
-  it('ignores measured content heights', () => {
-    const node = makeNode(1, 'N')
-    const handle = addHandle(node, 'a', { type: 'display' })
-    setMeasuredRowHeight(handle, 200)
-
-    expect(getNodeStaticMinHeight(node)).toBe(
-      LAYOUT.HEADER_HEIGHT + NODE_BODY_PADDING + LAYOUT.HANDLE_ROW_HEIGHT * 2,
-    )
+    setMeasuredRowHeight(disp, 200)
+    expect(getNodeStaticMinHeight(node)).toBe(expected)
   })
 })
 
 describe('collapsed nodes', () => {
-  it('hides every handle row', () => {
+  it('hides every row and docks handles at the header center', () => {
     const node = makeNode(1, 'N')
     const a = addHandle(node, 'a', { type: 'display' })
     const b = addHandle(node, 'b', { type: 'text' })
@@ -202,31 +184,16 @@ describe('collapsed nodes', () => {
     // Hidden rows occupy no space and must not throw for missing slots.
     expect(getHandleRowHeight(a)).toBe(0)
     expect(getHandleRowHeight(b)).toBe(0)
-  })
-
-  it('docks every handle at the header center', () => {
-    const node = makeNode(1, 'N')
-    const a = addHandle(node, 'a', { type: 'display' })
-    const b = addHandle(node, 'b', { type: 'text' })
-    node.setCollapsed(true)
-
     expect(handleY(node, a)).toBe(LAYOUT.HEADER_HEIGHT / 2)
     expect(handleY(node, b)).toBe(LAYOUT.HEADER_HEIGHT / 2)
   })
 
-  it('gives collapsed hidden content no box', () => {
+  it('gives collapsed hidden content no box and collapses the min to the header', () => {
     const node = makeNode(1, 'N')
     const handle = addHandle(node, 'a', { type: 'display' })
     node.setCollapsed(true)
 
     expect(getBlockContentMaxHeight(node, handle)).toBe(0)
-  })
-
-  it('collapses the static minimum to the header band', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a', { type: 'display' })
-    node.setCollapsed(true)
-
     expect(getNodeStaticMinHeight(node)).toBe(LAYOUT.HEADER_HEIGHT)
   })
 })

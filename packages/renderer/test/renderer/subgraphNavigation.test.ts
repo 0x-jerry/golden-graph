@@ -10,42 +10,7 @@ import { KonvaGraphRenderer } from '../../src/renderer/KonvaGraphRenderer'
 import { createSubGraphWorkspace } from '../helpers/workspace'
 
 describe('enter/exit subgraph edge cleanup', () => {
-  it('keeps the edge view store in sync with the workspace', () => {
-    const ws = createSubGraphWorkspace()
-    const subGraph = ws.subGraphs[0]!
-    const parentEdgeCount = ws.edges.length
-    const subEdgeCount = subGraph.workspace.edges.length
-
-    const store = new EntityViewStore(ws)
-    subscribeGraphEvents(
-      ws,
-      store,
-      {
-        syncCoord: () => {},
-        syncState: () => {},
-        syncExecutor: () => {},
-        onHandleUpdated: () => {},
-        onHandleConnectionChanged: () => {},
-      } as never,
-      { add: () => {} } as never,
-    )
-    store.renderAll()
-
-    expect(store._edgeViews.size).toBe(parentEdgeCount)
-
-    ws.enterSubGraph(subGraph.id)
-    expect(store._edgeViews.size).toBe(subEdgeCount)
-
-    ws.exitSubGraph()
-    expect(store._edgeViews.size).toBe(parentEdgeCount)
-
-    // no stale views — view ids match the live workspace edges
-    const viewIds = [...store._edgeViews.keys()].sort()
-    const wsEdgeIds = ws.edges.map((e) => e.id).sort()
-    expect(viewIds).toEqual(wsEdgeIds)
-  })
-
-  it('does not leave orphaned edge lines on the Konva layers', () => {
+  it('keeps the edge view store and Konva layers in sync across enter/exit', () => {
     const ws = createSubGraphWorkspace()
     const subGraph = ws.subGraphs[0]!
     const parentEdgeCount = ws.edges.length
@@ -59,13 +24,21 @@ describe('enter/exit subgraph edge cleanup', () => {
     const store = renderer._store
     const edgeLines = () => store.edgeLayer.find('.edge-line').length
 
+    expect(store._edgeViews.size).toBe(parentEdgeCount)
     expect(edgeLines()).toBe(parentEdgeCount)
 
     ws.enterSubGraph(subGraph.id)
+    expect(store._edgeViews.size).toBe(subEdgeCount)
     expect(edgeLines()).toBe(subEdgeCount)
 
     ws.exitSubGraph()
+    expect(store._edgeViews.size).toBe(parentEdgeCount)
     expect(edgeLines()).toBe(parentEdgeCount)
+
+    // no stale views — view ids match the live workspace edges
+    const viewIds = [...store._edgeViews.keys()].sort()
+    const wsEdgeIds = ws.edges.map((e) => e.id).sort()
+    expect(viewIds).toEqual(wsEdgeIds)
 
     renderer.dispose()
   })

@@ -12,7 +12,7 @@ function makeContainer() {
 }
 
 describe('renderer theme', () => {
-  it('applies a construction-time theme to live views', () => {
+  it('applies a construction-time theme and hot-swaps colors/fonts in place', () => {
     const ws = createWorkspace()
     const n = ws.addNode('Number')
     n.moveTo(10, 10)
@@ -24,20 +24,6 @@ describe('renderer theme', () => {
       const body = renderer.stage.findOne<Konva.Rect>('.body')!
       expect(body.fill()).toBe('#111111')
       expect(renderer.theme.colors.accent).toBe(DEFAULT_THEME.colors.accent)
-    } finally {
-      renderer.dispose()
-    }
-  })
-
-  it('hot-swaps colors/fonts in place via setTheme', () => {
-    const ws = createWorkspace()
-    const n = ws.addNode('Number')
-    n.moveTo(10, 10)
-
-    const renderer = new KonvaGraphRenderer(makeContainer(), ws)
-    try {
-      const body = renderer.stage.findOne<Konva.Rect>('.body')!
-      expect(body.fill()).toBe(DEFAULT_THEME.colors.bg)
 
       renderer.setTheme({
         colors: { bg: '#222222', accent: '#ff0000' },
@@ -52,7 +38,7 @@ describe('renderer theme', () => {
     }
   })
 
-  it('re-applies the theme across node, group, edge, handle and caret chrome', () => {
+  it('re-applies the theme across chrome and edges on hot-swap', () => {
     const ws = createWorkspace()
     const a = ws.addNode('Number')
     const b = ws.addNode('Sum')
@@ -62,13 +48,15 @@ describe('renderer theme', () => {
     ws.connect(a.getHandle('value')!, b.getHandle('a')!)
 
     const renderer = new KonvaGraphRenderer(makeContainer(), ws, {
-      theme: { fonts: { size: 14 } },
+      theme: { fonts: { size: 14 }, metrics: { edgeWidth: 5 } },
     })
     try {
       const name = renderer.stage.findOne<Konva.Text>('.name')!
       expect(name.fontSize()).toBe(15)
       const label = renderer.stage.findOne<Konva.Text>('.label')!
       expect(label.fontSize()).toBe(14)
+      const line = renderer.stage.findOne<Konva.Line>('.edge-line')!
+      expect(line.strokeWidth()).toBe(5)
 
       renderer.setTheme({
         colors: {
@@ -78,6 +66,7 @@ describe('renderer theme', () => {
           groupBg: '#222222',
         },
         fonts: { size: 16 },
+        metrics: { edgeWidth: 2 },
       })
 
       // Layer order is group → edge → node, so the first `.body` is the
@@ -95,34 +84,14 @@ describe('renderer theme', () => {
       expect(label.fontSize()).toBe(16)
       expect(label.offsetY()).toBe(label.height() / 2)
 
-      // Edge close button and caret chevron re-theme.
+      // Edge line width, close button and caret chevron re-theme.
+      expect(line.strokeWidth()).toBe(2)
       const close = renderer.stage.findOne<Konva.Group>('.edge-close')!
       const circle = close.getChildren()[0] as Konva.Rect
       expect(circle.fill()).toBe('#111111')
       const caret = renderer.stage.findOne<Konva.Group>('.caret')!
       const chevron = caret.getChildren()[0] as Konva.Line
       expect(chevron.stroke()).toBe('#0000ff')
-    } finally {
-      renderer.dispose()
-    }
-  })
-
-  it('re-applies theme to edges', () => {
-    const ws = createWorkspace()
-    const a = ws.addNode('Number')
-    const b = ws.addNode('Sum')
-    a.moveTo(10, 10)
-    b.moveTo(300, 10)
-    ws.connect(a.getHandle('value')!, b.getHandle('a')!)
-
-    const renderer = new KonvaGraphRenderer(makeContainer(), ws, {
-      theme: { metrics: { edgeWidth: 5 } },
-    })
-    try {
-      const line = renderer.stage.findOne<Konva.Line>('.edge-line')!
-      expect(line.strokeWidth()).toBe(5)
-      renderer.setTheme({ metrics: { edgeWidth: 2 } })
-      expect(line.strokeWidth()).toBe(2)
     } finally {
       renderer.dispose()
     }

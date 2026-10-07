@@ -33,35 +33,26 @@ function addSizedNode(
 }
 
 describe('NodeResizeGesture minimums', () => {
-  it('clamps width to the default node width when shrinking', () => {
-    const { ws, gesture } = makeGesture()
-    const node = addSizedNode(ws, 300, 300)
+  it('clamps width/height to their minimums when shrinking', () => {
+    const width = makeGesture()
+    const wn = addSizedNode(width.ws, 300, 300)
+    width.gesture.start(wn.id)
+    width.gesture.move({ x: -300, y: 100 }) // dx = -400
+    expect(wn.size.x).toBe(LAYOUT.NODE_WIDTH)
 
-    gesture.start(node.id)
-    gesture.move({ x: -300, y: 100 }) // dx = -400
+    const height = makeGesture()
+    const hn = addSizedNode(height.ws, 300, 300)
+    height.gesture.start(hn.id)
+    height.gesture.move({ x: 100, y: -300 }) // dy = -400
+    expect(hn.size.y).toBe(getNodeStaticMinHeight(hn))
 
-    expect(node.size.x).toBe(LAYOUT.NODE_WIDTH)
-  })
-
-  it('clamps height to the static content height when shrinking', () => {
-    const { ws, gesture } = makeGesture()
-    const node = addSizedNode(ws, 300, 300)
-
-    gesture.start(node.id)
-    gesture.move({ x: 100, y: -300 }) // dy = -400
-
-    expect(node.size.y).toBe(getNodeStaticMinHeight(node))
-  })
-
-  it('does not clip the minimums when only one dimension shrinks', () => {
-    const { ws, gesture } = makeGesture()
-    const node = addSizedNode(ws, 300, 300)
-
-    gesture.start(node.id)
-    gesture.move({ x: -300, y: -300 }) // both shrink hard
-
-    expect(node.size.x).toBe(LAYOUT.NODE_WIDTH)
-    expect(node.size.y).toBe(getNodeStaticMinHeight(node))
+    // shrinking both dimensions clamps both minimums at once
+    const both = makeGesture()
+    const bn = addSizedNode(both.ws, 300, 300)
+    both.gesture.start(bn.id)
+    both.gesture.move({ x: -300, y: -300 })
+    expect(bn.size.x).toBe(LAYOUT.NODE_WIDTH)
+    expect(bn.size.y).toBe(getNodeStaticMinHeight(bn))
   })
 
   it('still grows when dragging right and down', () => {

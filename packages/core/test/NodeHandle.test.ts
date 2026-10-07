@@ -10,7 +10,7 @@ class TestNode extends Node {
 }
 
 describe('NodeHandle', () => {
-  it('fromConfig and properties', () => {
+  it('fromConfig applies properties and defaults description to empty', () => {
     const node = new TestNode()
     const handle = new NodeHandle()
     handle.setNode(node)
@@ -29,19 +29,16 @@ describe('NodeHandle', () => {
     expect(handle.accepts).toEqual(['number'])
     expect(handle.isLeft).toBe(true)
     expect(handle.type).toBe('number')
-  })
 
-  it('defaults description to empty string when absent', () => {
-    const node = new TestNode()
-    const handle = new NodeHandle()
-    handle.setNode(node)
-    handle.fromConfig({
+    const plain = new NodeHandle()
+    plain.setNode(new TestNode())
+    plain.fromConfig({
       key: 'out',
       name: 'Output',
       position: HandlePosition.Right,
       accepts: ['number'],
     })
-    expect(handle.description).toBe('')
+    expect(plain.description).toBe('')
   })
 
   it('canConnectTo respects position and type', () => {

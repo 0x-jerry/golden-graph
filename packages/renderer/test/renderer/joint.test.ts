@@ -71,19 +71,17 @@ describe('resolveJointStyle', () => {
 })
 
 describe('jointColor', () => {
-  it('converts hex colors to rgba at the given alpha', () => {
-    expect(jointColor({ color: '#ff0000', shape: 'circle' }, 0.5)).toBe(
-      'rgba(255, 0, 0, 0.5)',
-    )
-    expect(jointColor({ color: '#f0f', shape: 'circle' }, 0.35)).toBe(
-      'rgba(255, 0, 255, 0.35)',
-    )
-  })
-
-  it('returns non-hex colors unchanged', () => {
-    expect(jointColor({ color: 'rgb(1, 2, 3)', shape: 'circle' }, 0.5)).toBe(
-      'rgb(1, 2, 3)',
-    )
+  it('converts hex to rgba and passes non-hex colors through', () => {
+    const cases: Array<[string, number, string]> = [
+      ['#ff0000', 0.5, 'rgba(255, 0, 0, 0.5)'],
+      ['#f0f', 0.35, 'rgba(255, 0, 255, 0.35)'],
+      ['rgb(1, 2, 3)', 0.5, 'rgb(1, 2, 3)'],
+    ]
+    for (const [color, alpha, expected] of cases) {
+      expect(jointColor({ color, shape: 'circle' }, alpha), color).toBe(
+        expected,
+      )
+    }
   })
 })
 
@@ -173,100 +171,85 @@ describe('registerHandleFactory', () => {
 })
 
 describe('stage cursor feedback', () => {
-  it('shows an I-beam over an editable handle widget and clears on leave', () => {
-    const input = new Input({ inputWidth: 120, inputHeight: 18, value: 'hi' })
-    const { stage, layer, container } = makeStage(1)
-    layer.add(input)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
-    const cursor = () => stage.content.style.cursor
+  type CursorCase = {
+    name: string
+    cursor: string
+    build: (layer: Konva.Layer) => () => [number, number]
+  }
 
-    try {
-      expect(cursor()).toBe('')
-      movePointer(stage, 60, 9)
-      expect(cursor()).toBe('text')
-      movePointer(stage, 500, 400)
-      expect(cursor()).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
-    }
-  })
+  const cursorCases: CursorCase[] = [
+    {
+      name: 'an editable handle widget',
+      cursor: 'text',
+      build: (layer) => {
+        layer.add(new Input({ inputWidth: 120, inputHeight: 18, value: 'hi' }))
+        return () => [60, 9]
+      },
+    },
+    {
+      name: 'the select widget',
+      cursor: 'pointer',
+      build: (layer) => {
+        layer.add(
+          new Select({
+            selectWidth: 120,
+            selectHeight: 18,
+            options: ['a', 'b'],
+            value: 'a',
+          }),
+        )
+        return () => [60, 9]
+      },
+    },
+    {
+      name: 'the node expand/collapse caret',
+      cursor: 'pointer',
+      build: (layer) => {
+        layer.add(new CaretHandle())
+        return () => [0, 0]
+      },
+    },
+    {
+      name: 'the edge close button',
+      cursor: 'pointer',
+      build: (layer) => {
+        const a = makeNode(20, 'A')
+        const b = makeNode(21, 'B')
+        addHandle(a, 'out', { position: HandlePosition.Right, type: 'number' })
+        addHandle(b, 'in', { position: HandlePosition.Left, type: 'number' })
+        const view = new EdgeView(
+          makeEdge({ node: a, key: 'out' }, { node: b, key: 'in' })!,
+        )
+        layer.add(view.group)
+        view.closeButton.visible(true)
+        return () => {
+          const p = view.closeButton.getAbsolutePosition()
+          return [p.x, p.y]
+        }
+      },
+    },
+  ]
 
-  it('shows pointer over the select widget and clears on leave', () => {
-    const select = new Select({
-      selectWidth: 120,
-      selectHeight: 18,
-      options: ['a', 'b'],
-      value: 'a',
-    })
-    const { stage, layer, container } = makeStage(1)
-    layer.add(select)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
-    const cursor = () => stage.content.style.cursor
+  it('shows the right cursor over each widget and clears on leave', () => {
+    for (const { name, build, cursor: expected } of cursorCases) {
+      const { stage, layer, container } = makeStage(1)
+      const getPos = build(layer)
+      stage.draw()
+      const detach = attachStageCursorCenter(stage)
+      const cursor = () => stage.content.style.cursor
 
-    try {
-      expect(cursor()).toBe('')
-      movePointer(stage, 60, 9)
-      expect(cursor()).toBe('pointer')
-      movePointer(stage, 500, 400)
-      expect(cursor()).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
-    }
-  })
-
-  it('shows pointer over the node expand/collapse caret and clears on leave', () => {
-    const caret = new CaretHandle()
-    const { stage, layer, container } = makeStage(1)
-    layer.add(caret)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
-    const cursor = () => stage.content.style.cursor
-
-    try {
-      expect(cursor()).toBe('')
-      movePointer(stage, 0, 0)
-      expect(cursor()).toBe('pointer')
-      movePointer(stage, 500, 400)
-      expect(cursor()).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
-    }
-  })
-
-  it('shows pointer over the edge close button and clears on leave', () => {
-    const a = makeNode(20, 'A')
-    const b = makeNode(21, 'B')
-    addHandle(a, 'out', { position: HandlePosition.Right, type: 'number' })
-    addHandle(b, 'in', { position: HandlePosition.Left, type: 'number' })
-    const edge = makeEdge({ node: a, key: 'out' }, { node: b, key: 'in' })!
-
-    const view = new EdgeView(edge)
-    const { stage, layer, container } = makeStage(1)
-    layer.add(view.group)
-    view.closeButton.visible(true)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
-    const cursor = () => stage.content.style.cursor
-    const pos = view.closeButton.getAbsolutePosition()
-
-    try {
-      expect(cursor()).toBe('')
-      movePointer(stage, pos.x, pos.y)
-      expect(cursor()).toBe('pointer')
-      movePointer(stage, 500, 400)
-      expect(cursor()).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
+      try {
+        expect(cursor(), name).toBe('')
+        const [x, y] = getPos()
+        movePointer(stage, x, y)
+        expect(cursor(), name).toBe(expected)
+        movePointer(stage, 500, 400)
+        expect(cursor(), name).toBe('')
+      } finally {
+        detach()
+        stage.destroy()
+        container.remove()
+      }
     }
   })
 
@@ -398,8 +381,8 @@ describe('cursor center', () => {
     }
   })
 
-  it('clears the cursor when the pointer leaves the stage content', () => {
-    const { stage, layer, container } = makeStage(1)
+  function mountCursorRect() {
+    const harness = makeStage(1)
     const rect = new Konva.Rect({
       x: 0,
       y: 0,
@@ -408,82 +391,62 @@ describe('cursor center', () => {
       fill: 'red',
     })
     registerStageCursor(rect, 'pointer')
-    layer.add(rect)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
+    harness.layer.add(rect)
+    harness.stage.draw()
+    const detach = attachStageCursorCenter(harness.stage)
+    return { ...harness, rect, detach }
+  }
 
-    try {
-      movePointer(stage, 25, 25)
-      expect(stage.content.style.cursor).toBe('pointer')
+  type ClearCase = {
+    name: string
+    clear: (ctx: {
+      stage: Konva.Stage
+      layer: Konva.Layer
+      rect: Konva.Rect
+    }) => void | Promise<void>
+  }
 
-      stage.content.dispatchEvent(new MouseEvent('pointerleave'))
-      expect(stage.content.style.cursor).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
-    }
-  })
+  const clearCases: ClearCase[] = [
+    {
+      name: 'pointer leaves the stage content',
+      clear: ({ stage }) => {
+        stage.content.dispatchEvent(new MouseEvent('pointerleave'))
+      },
+    },
+    {
+      name: 'the hovered element is hidden',
+      clear: async ({ layer, rect }) => {
+        // Hiding fires no pointermove; the layer redraw must drop the
+        // now-invisible element from the hit test and clear the cursor.
+        rect.visible(false)
+        layer.draw()
+        await Promise.resolve()
+      },
+    },
+    {
+      name: 'the hovered element is destroyed',
+      clear: async ({ layer, rect }) => {
+        rect.destroy()
+        layer.draw()
+        await Promise.resolve()
+      },
+    },
+  ]
 
-  it('clears the cursor when the hovered element is hidden', async () => {
-    const { stage, layer, container } = makeStage(1)
-    const rect = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: 50,
-      height: 50,
-      fill: 'red',
-    })
-    registerStageCursor(rect, 'pointer')
-    layer.add(rect)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
+  it('clears the cursor when the hovered element leaves, hides or is destroyed', async () => {
+    for (const { name, clear } of clearCases) {
+      const { stage, layer, container, rect, detach } = mountCursorRect()
+      try {
+        movePointer(stage, 25, 25)
+        expect(stage.content.style.cursor, name).toBe('pointer')
 
-    try {
-      movePointer(stage, 25, 25)
-      expect(stage.content.style.cursor).toBe('pointer')
-
-      // Hiding without pointer movement fires no pointermove; the layer redraw
-      // must drop the now-invisible element from the hit test and clear it.
-      rect.visible(false)
-      layer.draw()
-      await Promise.resolve()
-
-      expect(stage.content.style.cursor).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
-    }
-  })
-
-  it('clears the cursor when the hovered element is destroyed', async () => {
-    const { stage, layer, container } = makeStage(1)
-    const rect = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: 50,
-      height: 50,
-      fill: 'red',
-    })
-    registerStageCursor(rect, 'pointer')
-    layer.add(rect)
-    stage.draw()
-    const detach = attachStageCursorCenter(stage)
-
-    try {
-      movePointer(stage, 25, 25)
-      expect(stage.content.style.cursor).toBe('pointer')
-
-      rect.destroy()
-      layer.draw()
-      await Promise.resolve()
-
-      expect(stage.content.style.cursor).toBe('')
-    } finally {
-      detach()
-      stage.destroy()
-      container.remove()
+        await clear({ stage, layer, rect })
+        expect(stage.content.style.cursor, name).toBe('')
+      } finally {
+        detach()
+        stage.destroy()
+        container.remove()
+      }
     }
   })
 })

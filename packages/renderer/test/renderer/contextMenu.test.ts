@@ -5,7 +5,7 @@ import { ContextMenuTargetType } from '../../src/renderer/types'
 import { createWorkspace, groupNodes } from '../helpers/workspace'
 
 describe('buildDefaultContextMenu', () => {
-  it('adds an Enter SubGraph item for subgraph nodes', () => {
+  it('adds an Enter SubGraph item only for subgraph nodes', () => {
     const ws = createWorkspace()
     const a = ws.addNode('Number')
     const b = ws.addNode('Sum')
@@ -25,29 +25,25 @@ describe('buildDefaultContextMenu', () => {
     )
 
     expect(items[0]!.label).toBe('Enter SubGraph')
-
     items[0]!.action!()
     expect(ws.isActiveSubGraph).toBe(true)
-
     // entering swaps in the subgraph's internal workspace — the edge between
     // a and b is now the one inside the subgraph
     expect(ws.edges.length).toBe(internalEdgeCount)
     expect(ws.edges.length).toBe(1)
-
     ws.exitSubGraph()
     expect(ws.isActiveSubGraph).toBe(false)
-  })
 
-  it('does not add an Enter SubGraph item for regular nodes', () => {
-    const ws = createWorkspace()
-    const a = ws.addNode('Number')
-
-    const items = buildDefaultContextMenu(
-      { type: ContextMenuTargetType.Node, id: a.id },
-      ws,
+    // a regular node has no Enter SubGraph item
+    const plain = createWorkspace()
+    const n = plain.addNode('Number')
+    const plainItems = buildDefaultContextMenu(
+      { type: ContextMenuTargetType.Node, id: n.id },
+      plain,
     )
-
-    expect(items.some((item) => item.label === 'Enter SubGraph')).toBe(false)
+    expect(plainItems.some((item) => item.label === 'Enter SubGraph')).toBe(
+      false,
+    )
   })
 
   it('adds an Exit SubGraph item on the canvas while inside a subgraph', () => {

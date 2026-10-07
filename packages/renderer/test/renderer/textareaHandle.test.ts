@@ -40,9 +40,7 @@ describe('textarea handle', () => {
     expect(getHandleRowHeight(node.getHandle('a')!)).toBe(
       LAYOUT.HANDLE_ROW_HEIGHT + TEXTAREA_MIN_HEIGHT,
     )
-  })
 
-  it('exposes the minHeight as its content box', () => {
     const factory = getHandleFactory('textarea')!
     expect(factory.config?.layout).toBe('block')
     expect(factory.config?.minHeight).toBe(TEXTAREA_MIN_HEIGHT)

@@ -64,67 +64,58 @@ afterEach(() => {
 })
 
 describe('ConnectGesture proximity connect', () => {
-  it('snaps the preview line to a compatible joint within the radius', () => {
-    const { connect, src, srcJoint, targetJoint, onPointerAt } =
-      createRenderer()
-
-    onPointerAt(srcJoint)
-    connect.start('value', src.id)
+  it('snaps, connects on release, and honours an exact joint hit', () => {
+    const a = createRenderer()
+    a.onPointerAt(a.srcJoint)
+    a.connect.start('value', a.src.id)
 
     // Near (but not on) the target joint — 6px away, outside the 5px joint.
-    connect.move({ x: targetJoint.x + 6, y: targetJoint.y })
-
-    expect(connect._connectTargetHandle).not.toBeNull()
+    a.connect.move({ x: a.targetJoint.x + 6, y: a.targetJoint.y })
+    expect(a.connect._connectTargetHandle).not.toBeNull()
     // Endpoint snaps to the joint position, not the raw pointer.
-    const points = connect._connectionLine.points()
-    expect(points[6]).toBe(targetJoint.x)
-    expect(points[7]).toBe(targetJoint.y)
+    const points = a.connect._connectionLine.points()
+    expect(points[6]).toBe(a.targetJoint.x)
+    expect(points[7]).toBe(a.targetJoint.y)
+
+    a.onPointerAt({ x: a.targetJoint.x + 6, y: a.targetJoint.y })
+    a.connect.end()
+    const srcHandleA = a.src.getHandle('value')!
+    expect(a.ws.queryEdges(srcHandleA.loc)).toHaveLength(1)
+    expect(srcHandleA.connectedHandle).toBe(a.target.getHandle('a')!)
+
+    // Pointer landing exactly on the joint uses the hit shape directly.
+    const b = createRenderer()
+    const targetHandle = b.target.getHandle('a')!
+    vi.spyOn(b.renderer.stage, 'getIntersection').mockReturnValue(
+      getHandleView(targetHandle)!._joint!,
+    )
+    b.onPointerAt(b.srcJoint)
+    b.connect.start('value', b.src.id)
+    b.connect.move(b.targetJoint)
+    expect(b.connect._connectTargetHandle).toBe(targetHandle)
+    b.onPointerAt(b.targetJoint)
+    b.connect.end()
+    expect(b.ws.queryEdges(b.src.getHandle('value')!.loc)).toHaveLength(1)
   })
 
-  it('connects on release while the pointer stays within the radius', () => {
-    const { ws, connect, src, target, srcJoint, targetJoint, onPointerAt } =
-      createRenderer()
+  it('does not target beyond the radius or when the radius is 0', () => {
+    const a = createRenderer()
+    a.onPointerAt(a.srcJoint)
+    a.connect.start('value', a.src.id)
+    a.connect.move({ x: a.srcJoint.x, y: a.srcJoint.y + 200 })
+    expect(a.connect._connectTargetHandle).toBeNull()
+    a.onPointerAt({ x: a.srcJoint.x, y: a.srcJoint.y + 200 })
+    a.connect.end()
+    expect(a.ws.queryEdges(a.src.getHandle('value')!.loc)).toHaveLength(0)
 
-    onPointerAt(srcJoint)
-    connect.start('value', src.id)
-    connect.move({ x: targetJoint.x + 6, y: targetJoint.y })
-
-    onPointerAt({ x: targetJoint.x + 6, y: targetJoint.y })
-    connect.end()
-
-    const srcHandle = src.getHandle('value')!
-    expect(ws.queryEdges(srcHandle.loc)).toHaveLength(1)
-    expect(srcHandle.connectedHandle).toBe(target.getHandle('a')!)
-  })
-
-  it('does not target or connect when the pointer is beyond the radius', () => {
-    const { ws, connect, src, srcJoint, onPointerAt } = createRenderer()
-
-    onPointerAt(srcJoint)
-    connect.start('value', src.id)
-    connect.move({ x: srcJoint.x, y: srcJoint.y + 200 })
-
-    expect(connect._connectTargetHandle).toBeNull()
-
-    onPointerAt({ x: srcJoint.x, y: srcJoint.y + 200 })
-    connect.end()
-
-    expect(ws.queryEdges(src.getHandle('value')!.loc)).toHaveLength(0)
-  })
-
-  it('disables proximity when the radius is 0', () => {
-    const { ws, connect, src, targetJoint, onPointerAt } = createRenderer(0)
-
-    onPointerAt({ x: 200, y: 44 })
-    connect.start('value', src.id)
-    connect.move({ x: targetJoint.x + 6, y: targetJoint.y })
-
-    expect(connect._connectTargetHandle).toBeNull()
-
-    onPointerAt({ x: targetJoint.x + 6, y: targetJoint.y })
-    connect.end()
-
-    expect(ws.queryEdges(src.getHandle('value')!.loc)).toHaveLength(0)
+    const b = createRenderer(0)
+    b.onPointerAt({ x: 200, y: 44 })
+    b.connect.start('value', b.src.id)
+    b.connect.move({ x: b.targetJoint.x + 6, y: b.targetJoint.y })
+    expect(b.connect._connectTargetHandle).toBeNull()
+    b.onPointerAt({ x: b.targetJoint.x + 6, y: b.targetJoint.y })
+    b.connect.end()
+    expect(b.ws.queryEdges(b.src.getHandle('value')!.loc)).toHaveLength(0)
   })
 
   it('never targets a joint on the source node itself', () => {
@@ -137,37 +128,6 @@ describe('ConnectGesture proximity connect', () => {
     connect.move({ x: 5, y: srcJoint.y })
 
     expect(connect._connectTargetHandle).toBeNull()
-  })
-
-  it('connects on an exact compatible joint hit', () => {
-    const {
-      ws,
-      renderer,
-      connect,
-      src,
-      srcJoint,
-      target,
-      targetJoint,
-      onPointerAt,
-    } = createRenderer()
-
-    const targetHandle = target.getHandle('a')!
-    // Simulate the pointer landing exactly on the joint — the shape returned
-    // by `getIntersection` is the target's joint circle.
-    vi.spyOn(renderer.stage, 'getIntersection').mockReturnValue(
-      getHandleView(targetHandle)!._joint!,
-    )
-
-    onPointerAt(srcJoint)
-    connect.start('value', src.id)
-    connect.move(targetJoint)
-
-    expect(connect._connectTargetHandle).toBe(targetHandle)
-
-    onPointerAt(targetJoint)
-    connect.end()
-
-    expect(ws.queryEdges(src.getHandle('value')!.loc)).toHaveLength(1)
   })
 
   it('blocks proximity fallback when landing exactly on an incompatible joint', () => {

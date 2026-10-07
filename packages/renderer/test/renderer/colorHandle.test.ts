@@ -40,30 +40,24 @@ function modulePicker(view: NodeView): ColorPicker {
 }
 
 describe('ColorHandle', () => {
-  it('renders a circle swatch filled with the current value', () => {
+  it('renders a circle swatch filled with the current value, white by default', () => {
     const { node } = makeColorNode('#ff0000')
     const view = new NodeView(node)
-
-    const swatch = find<Konva.Group>(
-      view.group,
-      '.content',
-    ).findOne<Konva.Circle>('.swatch')
+    const swatch = find<Konva.Group>(view.group, '.content').findOne<
+      Konva.Circle
+    >('.swatch')
     expect(swatch).toBeTruthy()
     expect(swatch?.fill()).toBe('#ff0000')
-  })
 
-  it('defaults to white when the handle has no value', () => {
-    const { node } = makeColorNode()
-    const view = new NodeView(node)
-
-    const swatch = find<Konva.Group>(
-      view.group,
+    const { node: plain } = makeColorNode()
+    const plainSwatch = find<Konva.Group>(
+      new NodeView(plain).group,
       '.content',
     ).findOne<Konva.Circle>('.swatch')
-    expect(swatch?.fill()).toBe('#ffffff')
+    expect(plainSwatch?.fill()).toBe('#ffffff')
   })
 
-  it('applies a preset color only after the picker is dismissed', () => {
+  it('commits a preset only on dismissal, and never clobbers on a no-pick dismissal', () => {
     const { node, handle } = makeColorNode('#000000')
     const view = new NodeView(node)
     const { stage, layer, container } = makeStage()
@@ -89,38 +83,34 @@ describe('ColorHandle', () => {
 
     stage.destroy()
     container.remove()
-  })
-
-  it('does not commit when dismissed without picking', () => {
-    const { node, handle } = makeColorNode('red')
-    const view = new NodeView(node)
-    const { stage, layer, container } = makeStage()
-    layer.add(view.group)
-    stage.draw()
-
-    const picker = modulePicker(view)
-    picker._swatch.fire('click')
-    expect(picker._panel).toBeTruthy()
 
     // A non-hex value is normalized for display only; dismissing without a
     // pick must not clobber the handle value.
-    picker.deactivate()
-    expect(handle.getValue()).toBe('red')
+    const { node: n2, handle: h2 } = makeColorNode('red')
+    const view2 = new NodeView(n2)
+    const stage2 = makeStage()
+    stage2.layer.add(view2.group)
+    stage2.stage.draw()
 
-    stage.destroy()
-    container.remove()
+    const picker2 = modulePicker(view2)
+    picker2._swatch.fire('click')
+    expect(picker2._panel).toBeTruthy()
+    picker2.deactivate()
+    expect(h2.getValue()).toBe('red')
+
+    stage2.stage.destroy()
+    stage2.container.remove()
   })
 
-  it('syncs the custom picker when a preset is clicked', () => {
-    const picker = new ColorPicker({ pickerWidth: 180, value: '#ffffff' })
+  it('syncs the custom picker from presets and picks SV/hue without closing', () => {
+    const preset = new ColorPicker({ pickerWidth: 180, value: '#ffffff' })
     const { stage, layer, container } = makeStage()
-    layer.add(picker)
+    layer.add(preset)
     stage.draw()
 
-    picker._swatch.fire('click')
-    const panel = picker._panel!
+    preset._swatch.fire('click')
+    const panel = preset._panel!
     const custom = panel._custom
-
     panel.findOne<Konva.Rect>('.swatch')!.fire('click')
 
     const { h, s, v } = hexToHsv(PRESET_COLORS[0]!)
@@ -131,44 +121,30 @@ describe('ColorHandle', () => {
 
     stage.destroy()
     container.remove()
-  })
-
-  it('picks a custom color from the SV field without closing', () => {
-    const picker = new ColorPicker({ pickerWidth: 180, value: '#ff0000' })
-    const { stage, layer, container } = makeStage()
-    layer.add(picker)
-    stage.draw()
-
-    picker._swatch.fire('click')
-    const panel = picker._panel!
-    expect(panel).toBeTruthy()
 
     // Top-left of the SV field → saturation 0, value 1 → white.
-    panel._custom._pickSV(0, 0)
-    expect(picker.getValue()).toBe('#ffffff')
-    // Panel stays open for continued custom picking.
-    expect(picker._panel).not.toBeNull()
-
-    stage.destroy()
-    container.remove()
-  })
-
-  it('picks a hue from the hue bar', () => {
-    const picker = new ColorPicker({ pickerWidth: 180, value: '#ff0000' })
-    const { stage, layer, container } = makeStage()
-    layer.add(picker)
-    stage.draw()
-
-    picker._swatch.fire('click')
-    const panel = picker._panel!
+    const sv = new ColorPicker({ pickerWidth: 180, value: '#ff0000' })
+    const svStage = makeStage()
+    svStage.layer.add(sv)
+    svStage.stage.draw()
+    sv._swatch.fire('click')
+    sv._panel!._custom._pickSV(0, 0)
+    expect(sv.getValue()).toBe('#ffffff')
+    expect(sv._panel).not.toBeNull()
+    svStage.stage.destroy()
+    svStage.container.remove()
 
     // Middle of the hue bar → hue 180 → cyan (sat 1, val 1 preserved).
-    panel._custom._pickHue(COLOR_FIELD_HEIGHT / 2)
-    expect(picker.getValue()).toBe('#00ffff')
-    expect(picker._panel).not.toBeNull()
-
-    stage.destroy()
-    container.remove()
+    const hue = new ColorPicker({ pickerWidth: 180, value: '#ff0000' })
+    const hueStage = makeStage()
+    hueStage.layer.add(hue)
+    hueStage.stage.draw()
+    hue._swatch.fire('click')
+    hue._panel!._custom._pickHue(COLOR_FIELD_HEIGHT / 2)
+    expect(hue.getValue()).toBe('#00ffff')
+    expect(hue._panel).not.toBeNull()
+    hueStage.stage.destroy()
+    hueStage.container.remove()
   })
 
   it('converts between HSV and hex', () => {
@@ -185,25 +161,7 @@ describe('ColorHandle', () => {
     expect(hexToHsv('not-a-color')).toEqual({ h: 0, s: 0, v: 1 })
   })
 
-  it('closes the panel on Escape and resets the active state', () => {
-    const picker = new ColorPicker({ pickerWidth: 180 })
-    const { stage, layer, container } = makeStage()
-    layer.add(picker)
-    stage.draw()
-
-    picker._swatch.fire('click')
-    expect(picker._panel).toBeTruthy()
-
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-
-    expect(picker._panel).toBeNull()
-    expect((picker as unknown as { _active: boolean })._active).toBe(false)
-
-    stage.destroy()
-    container.remove()
-  })
-
-  it('dismisses the panel only when clicking outside it', () => {
+  it('closes on Escape, on outside click, and when a drag releases outside the stage', () => {
     const { stage, layer, container } = makeStage()
     const manager = new ActiveElementManager(stage)
     stage.setAttr(ActiveElementManager.key, manager)
@@ -227,6 +185,31 @@ describe('ColorHandle', () => {
     manager.dispose()
     stage.destroy()
     container.remove()
+
+    // Escape also closes and resets the active state.
+    const esc = new ColorPicker({ pickerWidth: 180 })
+    const escStage = makeStage()
+    escStage.layer.add(esc)
+    escStage.stage.draw()
+    esc._swatch.fire('click')
+    expect(esc._panel).toBeTruthy()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(esc._panel).toBeNull()
+    expect((esc as unknown as { _active: boolean })._active).toBe(false)
+
+    // A pointer move with no button held ends the drag instead of recoloring.
+    const drag = new ColorPicker({ pickerWidth: 180, value: '#ff0000' })
+    escStage.layer.add(drag)
+    escStage.stage.draw()
+    drag._swatch.fire('click')
+    const custom = drag._panel!._custom
+    custom._svField.fire('pointerdown', { evt: {} })
+    expect(custom._dragging).toBe('sv')
+    escStage.stage.fire('pointermove', { evt: { buttons: 0 } })
+    expect(custom._dragging).toBeNull()
+
+    escStage.stage.destroy()
+    escStage.container.remove()
   })
 
   it('renders a rect swatch when shape is rect', () => {
@@ -240,48 +223,22 @@ describe('ColorHandle', () => {
     expect((picker._swatch as Konva.Rect).fill()).toBe('#00ff00')
   })
 
-  it('refreshes the swatch when the value changes externally', () => {
+  it('refreshes the swatch on external change and keeps non-hex values', () => {
     const { node, handle } = makeColorNode('#ff0000')
     const view = new NodeView(node)
 
     handle.setValue('#00ff00')
     view.update()
 
-    const swatch = find<Konva.Group>(
-      view.group,
-      '.content',
-    ).findOne<Konva.Circle>('.swatch')
+    const swatch = find<Konva.Group>(view.group, '.content').findOne<
+      Konva.Circle
+    >('.swatch')
     expect(swatch?.fill()).toBe('#00ff00')
-  })
 
-  it('does not write back a non-hex value while syncing', () => {
-    const { node, handle } = makeColorNode('#ff0000')
     handle.setValue('red')
-    const view = new NodeView(node)
     view.update()
-
     // The value is only normalized for display, never clobbered on the handle.
     expect(handle.getValue()).toBe('red')
-  })
-
-  it('ends the drag when the pointer is released outside the stage', () => {
-    const picker = new ColorPicker({ pickerWidth: 180, value: '#ff0000' })
-    const { stage, layer, container } = makeStage()
-    layer.add(picker)
-    stage.draw()
-
-    picker._swatch.fire('click')
-    const custom = picker._panel!._custom
-
-    custom._svField.fire('pointerdown', { evt: {} })
-    expect(custom._dragging).toBe('sv')
-
-    // A move with no button held ends the drag instead of changing the color.
-    stage.fire('pointermove', { evt: { buttons: 0 } })
-    expect(custom._dragging).toBeNull()
-
-    stage.destroy()
-    container.remove()
   })
 
   it('highlights the active preset while the panel stays open', () => {

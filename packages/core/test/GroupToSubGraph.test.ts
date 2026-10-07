@@ -50,7 +50,7 @@ function groupNodes(ws: Workspace, ...ids: number[]) {
 }
 
 describe('convertGroupToSubGraph', () => {
-  it('keeps internal edges connected so data keeps flowing', () => {
+  it('keeps internal edges connected across conversion and JSON round-trips', () => {
     const ws = createWs()
     const n1 = ws.addNode('Number')
     const n2 = ws.addNode('Number')
@@ -71,31 +71,20 @@ describe('convertGroupToSubGraph', () => {
     // internal edges must still drive data flow
     expect(innerSum.getData('a')).toBe(1)
     expect(innerSum.getData('b')).toBe(1)
-
-    const handleA = innerSum.getHandle('a')!
-    expect(handleA.isConnected).toBe(true)
+    expect(innerSum.getHandle('a')!.isConnected).toBe(true)
 
     // edge index inside the subgraph workspace must be consistent
     const n1Handle = n1.getHandle('value')!
     expect(subGraph.workspace.queryEdges(n1Handle.loc).length).toBe(1)
-  })
 
-  it('round-trips through toJSON/fromJSON with connections intact', () => {
-    const ws = createWs()
-    const n1 = ws.addNode('Number')
-    const sum = ws.addNode('Sum')
-    ws.connect(n1.getHandle('value')!, sum.getHandle('a')!)
-
-    const group = groupNodes(ws, n1.id, sum.id)
-    ws.convertGroupToSubGraph(group.id)
-
+    // and the connections survive a JSON round-trip
     const ws2 = createWs()
     ws2.fromJSON(ws.toJSON())
-
-    const subGraph = ws2.subGraphs[0]!
-    const innerSum = subGraph.workspace.nodes.find((n) => n.name === 'Sum')!
-    expect(innerSum.getData('a')).toBe(1)
-    expect(innerSum.getHandle('a')!.isConnected).toBe(true)
+    const restored = ws2.subGraphs[0]!.workspace.nodes.find(
+      (n) => n.name === 'Sum',
+    )!
+    expect(restored.getData('a')).toBe(1)
+    expect(restored.getHandle('a')!.isConnected).toBe(true)
   })
 })
 
@@ -186,7 +175,7 @@ describe('enterSubGraph/exitSubGraph', () => {
 })
 
 describe('subgraph name node', () => {
-  it('creates a subgraph.name node seeded with the group name', () => {
+  it('creates a subgraph.name node seeded with the group name, across JSON round-trips', () => {
     const ws = createWs()
     const n1 = ws.addNode('Number')
 
@@ -198,57 +187,21 @@ describe('subgraph name node', () => {
     const nameNode = subGraph.workspace.nodes.find(isSubGraphNameNode)!
     expect(nameNode).toBeDefined()
     expect(nameNode.getData('Name')).toBe('My Group')
-  })
-
-  it('renames the parent SubGraphNode when the name node changes inside', () => {
-    const ws = createWs()
-    const n1 = ws.addNode('Number')
-
-    const group = groupNodes(ws, n1.id)
-    group.setName('My Group')
-    ws.convertGroupToSubGraph(group.id)
-
-    const subGraph = ws.subGraphs[0]!
-    const subGraphNode = ws.nodes.find(
-      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
-    )!
-    expect(subGraphNode.name).toBe('My Group')
-
-    ws.enterSubGraph(subGraph.id)
-
-    const nameNode = ws.nodes.find(isSubGraphNameNode)!
-    nameNode.setData('Name', 'Renamed')
-
-    ws.exitSubGraph()
-
-    const rebuilt = ws.nodes.find(
-      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
-    )!
-    expect(rebuilt.name).toBe('Renamed')
-  })
-
-  it('keeps the subgraph name across JSON round-trips', () => {
-    const ws = createWs()
-    const n1 = ws.addNode('Number')
-
-    const group = groupNodes(ws, n1.id)
-    group.setName('My Group')
-    ws.convertGroupToSubGraph(group.id)
 
     const ws2 = createWs()
     ws2.fromJSON(ws.toJSON())
 
-    const subGraph = ws2.subGraphs[0]!
-    const subGraphNode = ws2.nodes.find(
-      (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
+    const restoredGraph = ws2.subGraphs[0]!
+    const restoredName = restoredGraph.workspace.nodes.find(isSubGraphNameNode)!
+    const restoredNode = ws2.nodes.find(
+      (n) => isSubGraphNode(n) && n.subGraphId === restoredGraph.id,
     )!
-    const nameNode = subGraph.workspace.nodes.find(isSubGraphNameNode)!
 
-    expect(nameNode.getData('Name')).toBe('My Group')
-    expect(subGraphNode.name).toBe('My Group')
+    expect(restoredName.getData('Name')).toBe('My Group')
+    expect(restoredNode.name).toBe('My Group')
   })
 
-  it('renames every SubGraphNode sharing the subgraph on exit', () => {
+  it('renames every SubGraphNode sharing the subgraph when the name node changes', () => {
     const ws = createWs()
     const n1 = ws.addNode('Number')
 
@@ -263,6 +216,7 @@ describe('subgraph name node', () => {
       (n) => isSubGraphNode(n) && n.subGraphId === subGraph.id,
     )
     expect(shared).toHaveLength(2)
+    expect(shared.map((n) => n.name)).toEqual(['My Group', 'My Group'])
 
     ws.enterSubGraph(subGraph.id)
 

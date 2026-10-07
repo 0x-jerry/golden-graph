@@ -131,17 +131,6 @@ async function createWs() {
 }
 
 describe('WorkerExecutorBackend', () => {
-  it('serves the backend-defined node providers as JSON', async () => {
-    const { backend } = createLoopback()
-
-    const providers = await backend.getNodeProviders()
-
-    const schemas = providers.flatMap((p) => Object.values(p.nodes))
-
-    expect(schemas.map((s) => s.type)).toEqual(['Source', 'Step', 'Failing'])
-    expect(schemas[0]).toEqual(definitions[0]!.schema)
-  })
-
   it('registers fetched schemas so nodes can be added and rendered', async () => {
     const ws = await createWs()
 
@@ -210,7 +199,7 @@ describe('WorkerExecutorBackend', () => {
     expect(n.getData('out')).toBe(4)
   })
 
-  it('processes dependencies before dependents and writes results back', async () => {
+  it('processes dependencies in order, writes results back and emits progress', async () => {
     calls.length = 0
     const ws = await createWs()
 
@@ -220,20 +209,6 @@ describe('WorkerExecutorBackend', () => {
 
     ws.connect(s.getHandle('out')!, p1.getHandle('in')!)
     ws.connect(p1.getHandle('out')!, p2.getHandle('in')!)
-
-    await ws.execute()
-
-    expect(calls).toEqual(['Source', 'Step(2)', 'Step(3)'])
-    expect(p1.getData('out')).toBe(2)
-    expect(p2.getData('out')).toBe(3)
-  })
-
-  it('emits executor progress and handle updates on the main workspace', async () => {
-    const ws = await createWs()
-
-    const s = ws.addNode('Source')
-    const p = ws.addNode('Step')
-    ws.connect(s.getHandle('out')!, p.getHandle('in')!)
 
     const progress: number[] = []
     ws.events.on('executor:changed', (state) => {
@@ -249,9 +224,12 @@ describe('WorkerExecutorBackend', () => {
 
     await ws.execute()
 
+    expect(calls).toEqual(['Source', 'Step(2)', 'Step(3)'])
+    expect(p1.getData('out')).toBe(2)
+    expect(p2.getData('out')).toBe(3)
     expect(progress).toContain(s.id)
-    expect(progress).toContain(p.id)
-    expect(updated).toContain(`${p.id}:out`)
+    expect(progress).toContain(p1.id)
+    expect(updated).toContain(`${p1.id}:out`)
 
     expect(ws.executorState.isProcessing).toBe(false)
     expect(ws.executorState.currentNodeId).toBe(-1)
@@ -279,24 +257,14 @@ describe('WorkerExecutorBackend', () => {
     expect(p.getData('out')).toBe(11)
   })
 
-  it('rejects and resets state after a failing node', async () => {
-    const ws = await createWs()
-
-    const s = ws.addNode('Source')
-    const f = ws.addNode('Failing')
-    ws.connect(s.getHandle('out')!, f.getHandle('in')!)
-
-    await expect(ws.execute()).rejects.toThrow()
-
-    expect(ws.executorState.isProcessing).toBe(false)
-    expect(ws.executorState.currentNodeId).toBe(-1)
-    expect(ws.disabled).toBe(false)
-  })
-
   it('speaks JSON-RPC 2.0: version marker, namespaced methods, id echo', async () => {
     const { backend, hostReceived, clientReceived } = createLoopback()
 
-    await backend.getNodeProviders()
+    const providers = await backend.getNodeProviders()
+
+    const schemas = providers.flatMap((p) => Object.values(p.nodes))
+    expect(schemas.map((s) => s.type)).toEqual(['Source', 'Step', 'Failing'])
+    expect(schemas[0]).toEqual(definitions[0]!.schema)
 
     const request = hostReceived[0]! as {
       jsonrpc: string
@@ -378,7 +346,7 @@ describe('WorkerExecutorBackend', () => {
     ).toBe(false)
   })
 
-  it('reports run failures as a -32000 JSON-RPC error', async () => {
+  it('rejects a failing node, resets state and reports a -32000 JSON-RPC error', async () => {
     const { backend, clientReceived } = createLoopback()
     const ws = new Workspace({ executorBackend: backend })
     await ws.loadNodeProvidersFromBackend()
@@ -389,6 +357,10 @@ describe('WorkerExecutorBackend', () => {
 
     await expect(ws.execute()).rejects.toThrow('boom')
 
+    expect(ws.executorState.isProcessing).toBe(false)
+    expect(ws.executorState.currentNodeId).toBe(-1)
+    expect(ws.disabled).toBe(false)
+
     const responses = clientReceived.filter((message) => 'id' in (message as object))
     const errorResponse = responses[responses.length - 1]! as {
       error: { code: number; message: string }
@@ -397,7 +369,7 @@ describe('WorkerExecutorBackend', () => {
     expect(errorResponse.error.message).toBe('boom')
   })
 
-  it('cancels an in-flight run over the wire with a -32001 Cancelled error', async () => {
+  it('cancels an in-flight run over the wire and releases the backend', async () => {
     calls.length = 0
     const { backend, hostReceived } = createLoopback()
     const ws = new Workspace({ executorBackend: backend })
@@ -427,25 +399,7 @@ describe('WorkerExecutorBackend', () => {
           (message as { method?: string }).method === 'goldenGraph/cancel',
       ),
     ).toBe(true)
-
     expect(ws.executorState.isProcessing).toBe(false)
-  })
-
-  it('releases the backend for a new run after cancellation', async () => {
-    calls.length = 0
-    const { backend } = createLoopback()
-    const ws = new Workspace({ executorBackend: backend })
-    await ws.loadNodeProvidersFromBackend()
-
-    const s = ws.addNode('Source')
-    const p = ws.addNode('Step')
-    ws.connect(s.getHandle('out')!, p.getHandle('in')!)
-
-    ws.setDebug(true)
-    const run = ws.execute()
-    await sleep(5)
-    backend.cancel()
-    await expect(run).rejects.toThrow('cancelled')
 
     // a cancelled run does not wedge the backend — the next run executes
     calls.length = 0

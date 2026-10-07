@@ -67,7 +67,7 @@ function makeRenderer(ws: Workspace) {
 }
 
 describe('handle tooltip', () => {
-  it('positions the tooltip at the handle row, not the node origin', () => {
+  it('positions the tooltip at the handle row for left and right handles', () => {
     vi.useFakeTimers()
     try {
       const ws = new Workspace()
@@ -76,57 +76,37 @@ describe('handle tooltip', () => {
       node.moveTo(100, 100)
       const renderer = makeRenderer(ws)
       try {
-        const out = getHandleView(node.getHandle('out')!)!
-        const joint = out._joint!.getAbsolutePosition()
+        const show = (key: 'in' | 'out') => {
+          const view = getHandleView(node.getHandle(key)!)!
+          const abs = view._joint!.getAbsolutePosition()
 
-        // First show creates the element while jsdom reports size 0; hide it,
-        // mock real dimensions, then re-show to exercise the alignment math.
-        out.group.fire('mouseover')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
-        mockTooltipSize(150, 30)
-        out.group.fire('mouseleave')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
+          // First show creates the element while jsdom reports size 0; hide it,
+          // mock real dimensions, then re-show to exercise the alignment math.
+          view.group.fire('mouseover')
+          vi.advanceTimersByTime(TOOLTIP_DELAY)
+          mockTooltipSize(150, 30)
+          view.group.fire('mouseleave')
+          vi.advanceTimersByTime(TOOLTIP_DELAY)
 
-        out.group.fire('mouseover')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
-        const el = tooltipEl()!
+          view.group.fire('mouseover')
+          vi.advanceTimersByTime(TOOLTIP_DELAY)
+          return { abs, el: tooltipEl()! }
+        }
+
         // Right handle: tooltip grows leftward from the joint (right edge at
         // the joint), sitting over the handle instead of off the node's side.
-        expect(parseFloat(el.style.left)).toBeCloseTo(10 + joint.x - 150, 0)
-        expect(parseFloat(el.style.top)).toBeLessThan(20 + joint.y)
-      } finally {
-        renderer.dispose()
-      }
-    } finally {
-      disposeTooltip()
-      vi.useRealTimers()
-    }
-  })
+        const right = show('out')
+        expect(parseFloat(right.el.style.left)).toBeCloseTo(
+          10 + right.abs.x - 150,
+          0,
+        )
+        expect(parseFloat(right.el.style.top)).toBeLessThan(20 + right.abs.y)
+        disposeTooltip()
 
-  it('grows a left handle tooltip rightward from the joint', () => {
-    vi.useFakeTimers()
-    try {
-      const ws = new Workspace()
-      ws.registerNodeSchema(describedSchema)
-      const node = ws.addNode('Described')
-      node.moveTo(100, 100)
-      const renderer = makeRenderer(ws)
-      try {
-        const view = getHandleView(node.getHandle('in')!)!
-        const abs = view._joint!.getAbsolutePosition()
-
-        view.group.fire('mouseover')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
-        mockTooltipSize(150, 30)
-        view.group.fire('mouseleave')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
-
-        view.group.fire('mouseover')
-        vi.advanceTimersByTime(TOOLTIP_DELAY)
-        const el = tooltipEl()!
         // Left handle: left edge at the joint, extending right over the handle.
-        expect(parseFloat(el.style.left)).toBeCloseTo(10 + abs.x, 0)
-        expect(parseFloat(el.style.top)).toBeLessThan(20 + abs.y)
+        const left = show('in')
+        expect(parseFloat(left.el.style.left)).toBeCloseTo(10 + left.abs.x, 0)
+        expect(parseFloat(left.el.style.top)).toBeLessThan(20 + left.abs.y)
       } finally {
         renderer.dispose()
       }
@@ -136,7 +116,7 @@ describe('handle tooltip', () => {
     }
   })
 
-  it('shows after the hover delay and hides after the leave delay', () => {
+  it('shows/hides on the hover delay and skips handles without a description', () => {
     vi.useFakeTimers()
     try {
       const ws = new Workspace()
@@ -160,17 +140,10 @@ describe('handle tooltip', () => {
       } finally {
         renderer.dispose()
       }
-    } finally {
       disposeTooltip()
-      vi.useRealTimers()
-    }
-  })
 
-  it('does not create a tooltip for handles without a description', () => {
-    vi.useFakeTimers()
-    try {
-      const ws = new Workspace()
-      ws.registerNodeSchema({
+      const plain = new Workspace()
+      plain.registerNodeSchema({
         type: 'Plain',
         name: 'Plain',
         handles: [
@@ -183,16 +156,15 @@ describe('handle tooltip', () => {
           },
         ],
       })
-      ws.addNode('Plain')
-      const renderer = makeRenderer(ws)
+      plain.addNode('Plain')
+      const plainRenderer = makeRenderer(plain)
       try {
-        const view = getHandleView(ws.nodes[0]!.getHandle('v')!)!
-
-        view.group.fire('mouseover')
+        const plainView = getHandleView(plain.nodes[0]!.getHandle('v')!)!
+        plainView.group.fire('mouseover')
         vi.advanceTimersByTime(TOOLTIP_DELAY)
         expect(tooltipEl()).toBeNull()
       } finally {
-        renderer.dispose()
+        plainRenderer.dispose()
       }
     } finally {
       disposeTooltip()

@@ -72,7 +72,7 @@ describe('ContextMenuBuilder (Add Node)', () => {
 })
 
 describe('collectAddableNodes', () => {
-  it('groups nodes into providers by provider name', () => {
+  it('groups nodes into providers and exposes the derived type for adding', () => {
     const ws = createWorkspaceWithProviders()
     const groups = collectAddableNodes(ws)
 
@@ -80,16 +80,23 @@ describe('collectAddableNodes', () => {
     expect(groups[0]!.nodes.map((n) => n.name)).toEqual(['Number'])
     expect(groups[1]!.nodes.map((n) => n.name)).toEqual(['Math - Op'])
     expect(groups[1]!.nodes[0]!.type).toBe('Math.Op')
+
+    const mathOp = groups.find((g) => g.providerName === 'Math')!.nodes[0]!
+    ws.addNode(mathOp.type)
+
+    expect(ws.nodes.length).toBe(1)
+    expect(ws.nodes[0]!.type).toBe('Math.Op')
   })
 
-  it('hides the internal subgraph provider (no visible nodes)', () => {
+  it('hides the internal subgraph provider and the sub-graph group when empty', () => {
     const ws = createWorkspaceWithProviders()
     const groups = collectAddableNodes(ws)
 
     expect(groups.map((g) => g.providerName)).not.toContain('SubGraph')
+    expect(groups.some((g) => g.providerId === '__subgraph__')).toBe(false)
   })
 
-  it('exposes the subgraph interface nodes inside a subgraph', () => {
+  it('lists the subgraph interface inside, including a deleted name node', () => {
     const ws = createWorkspaceWithProviders()
 
     const node = ws.addNode('Number')
@@ -117,54 +124,23 @@ describe('collectAddableNodes', () => {
       'subgraph.output',
     ])
 
-    ws.exitSubGraph()
+    // Once deleted, the name node is listed again.
+    const nameNode = ws.nodes.find((n) => n.type === 'subgraph.name')!
+    ws.removeNodeByIds(nameNode.id)
+    expect(
+      collectAddableNodes(ws)
+        .find((g) => g.providerId === 'subgraph')
+        ?.nodes.map((n) => n.name),
+    ).toEqual(['Input Handle', 'Output Handle', 'Graph Node Info'])
 
+    ws.exitSubGraph()
     // Outside the subgraph the interface provider stays hidden.
     expect(
       collectAddableNodes(ws).some((g) => g.providerId === 'subgraph'),
     ).toBe(false)
   })
 
-  it('lists the name node again once it is deleted', () => {
-    const ws = createWorkspaceWithProviders()
-
-    const node = ws.addNode('Number')
-    const group = new Group()
-    group.id = ws.nextId()
-    group.setWorkspace(ws)
-    group.nodes.push(node.id)
-    ws._groups.push(group)
-    ws.convertGroupToSubGraph(group.id)
-
-    ws.enterSubGraph(ws.subGraphs[0]!.id)
-
-    const nameNode = ws.nodes.find((n) => n.type === 'subgraph.name')!
-    ws.removeNodeByIds(nameNode.id)
-
-    const subGraphGroup = collectAddableNodes(ws).find(
-      (g) => g.providerId === 'subgraph',
-    )
-    expect(subGraphGroup?.nodes.map((n) => n.name)).toEqual([
-      'Input Handle',
-      'Output Handle',
-      'Graph Node Info',
-    ])
-  })
-
-  it('provides a type that adds a node of the derived type', () => {
-    const ws = createWorkspaceWithProviders()
-    const mathOp = collectAddableNodes(ws).find(
-      (g) => g.providerName === 'Math',
-    )!.nodes[0]!
-
-    ws.addNode(mathOp.type)
-
-    const nodes = ws.nodes
-    expect(nodes.length).toBe(1)
-    expect(nodes[0]!.type).toBe('Math.Op')
-  })
-
-  it('lists existing subgraphs as addable sub-graph nodes', () => {
+  it('lists existing subgraphs as addable sub-graph nodes, but not while inside one', () => {
     const ws = createWorkspaceWithProviders()
     const subGraph = addSubGraph(ws)
 
@@ -185,29 +161,15 @@ describe('collectAddableNodes', () => {
         subGraphId: subGraph.id,
       },
     ])
-  })
 
-  it('hides the subgraph group when there are no subgraphs', () => {
-    const ws = createWorkspaceWithProviders()
-
-    expect(
-      collectAddableNodes(ws).some((g) => g.providerId === '__subgraph__'),
-    ).toBe(false)
-  })
-
-  it('does not list parent subgraphs while inside a subgraph', () => {
-    const ws = createWorkspaceWithProviders()
-    addSubGraph(ws)
-
-    ws.enterSubGraph(ws.subGraphs[0]!.id)
+    ws.enterSubGraph(subGraph.id)
     expect(ws.isActiveSubGraph).toBe(true)
-
     expect(
       collectAddableNodes(ws).some((g) => g.providerId === '__subgraph__'),
     ).toBe(false)
   })
 
-  it('adds a SubGraphNode from a subgraph option', () => {
+  it('adds a SubGraphNode, keeping the name in sync when the name node is missing', () => {
     const ws = createWorkspaceWithProviders()
     const subGraph = addSubGraph(ws)
     const option = collectAddableNodes(ws).find(
@@ -224,25 +186,22 @@ describe('collectAddableNodes', () => {
     expect(added.pos).toEqual({ x: 42, y: 24 })
     expect(added.name).toBe(option.name)
     expect(ws.nodes).toContain(added)
-  })
 
-  it('keeps the inserted name in sync when the name node is missing', () => {
-    const ws = createWorkspaceWithProviders()
-    const subGraph = addSubGraph(ws)
-
-    const nameNode = subGraph.workspace.nodes.find(
+    // Without a name node, the option falls back to the id-based name.
+    const ws2 = createWorkspaceWithProviders()
+    const subGraph2 = addSubGraph(ws2)
+    const nameNode = subGraph2.workspace.nodes.find(
       (n) => n.type === 'subgraph.name',
     )
-    subGraph.workspace.removeNodeByIds(nameNode!.id)
+    subGraph2.workspace.removeNodeByIds(nameNode!.id)
 
-    const option = collectAddableNodes(ws).find(
+    const option2 = collectAddableNodes(ws2).find(
       (g) => g.providerName === 'Sub Graph',
     )!.nodes[0]!
-    expect(option.name).toBe(`SubGraph #${subGraph.id}`)
+    expect(option2.name).toBe(`SubGraph #${subGraph2.id}`)
 
-    const added = addNodeFromOption(ws, option)
-
-    expect(added.name).toBe(`SubGraph #${subGraph.id}`)
+    const added2 = addNodeFromOption(ws2, option2)
+    expect(added2.name).toBe(`SubGraph #${subGraph2.id}`)
   })
 
   it('adds a normal node from a plain option', () => {

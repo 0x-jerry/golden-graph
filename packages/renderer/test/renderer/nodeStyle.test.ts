@@ -37,7 +37,7 @@ function drawnCalls(shape: Konva.Shape): string[] {
 }
 
 describe('node body style', () => {
-  it('insets a full-bleed header by the body stroke and inherits its top corners', () => {
+  it('insets the full-bleed header and applies inset/corner overrides', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a', { type: 'number' })
 
@@ -55,13 +55,9 @@ describe('node body style', () => {
       LAYOUT.HEADER_HEIGHT - NODE_BODY_STROKE_WIDTH * 2,
     )
     expect(header.cornerRadius()).toEqual([12, 12, 0, 0])
-  })
 
-  it('insets the header band further and drops the inherited corners when asked', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a', { type: 'number' })
-
-    const view = new NodeView(
+    // A custom inset pulls the band further in and drops the inherited corners.
+    const insetView = new NodeView(
       node,
       theme({
         metrics: {
@@ -71,32 +67,16 @@ describe('node body style', () => {
         },
       }),
     )
-    const header = find<Konva.Rect>(view.group, '.header')
-
+    const insetHeader = find<Konva.Rect>(insetView.group, '.header')
     const inset = 4 + NODE_BODY_STROKE_WIDTH
-    expect(header.x()).toBe(inset)
-    expect(header.y()).toBe(inset)
-    expect(header.width()).toBe(200 - inset * 2)
-    expect(header.height()).toBe(LAYOUT.HEADER_HEIGHT - inset * 2)
-    expect(header.cornerRadius()).toBe(6)
+    expect(insetHeader.x()).toBe(inset)
+    expect(insetHeader.y()).toBe(inset)
+    expect(insetHeader.width()).toBe(200 - inset * 2)
+    expect(insetHeader.height()).toBe(LAYOUT.HEADER_HEIGHT - inset * 2)
+    expect(insetHeader.cornerRadius()).toBe(6)
   })
 
-  it('ignores the header inset while collapsed (the node IS the band)', () => {
-    const node = makeNode(1, 'N')
-    addHandle(node, 'a', { type: 'number' })
-
-    const view = new NodeView(node, theme({ metrics: { headerInset: 4 } }))
-    node.setCollapsed(true)
-    view.update()
-
-    const header = find<Konva.Rect>(view.group, '.header')
-    expect(header.x()).toBe(NODE_BODY_STROKE_WIDTH)
-    expect(header.height()).toBe(
-      LAYOUT.HEADER_HEIGHT - NODE_BODY_STROKE_WIDTH * 2,
-    )
-  })
-
-  it('rounds a collapsed band on all corners', () => {
+  it('ignores the header inset while collapsed and rounds all corners', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a', { type: 'number' })
 
@@ -105,12 +85,13 @@ describe('node body style', () => {
     // only the top two.
     const view = new NodeView(
       node,
-      theme({ metrics: { nodeCornerRadius: 14 } }),
+      theme({ metrics: { headerInset: 4, nodeCornerRadius: 14 } }),
     )
     node.setCollapsed(true)
     view.update()
 
     const header = find<Konva.Rect>(view.group, '.header')
+    expect(header.x()).toBe(NODE_BODY_STROKE_WIDTH)
     expect(header.height()).toBe(
       LAYOUT.HEADER_HEIGHT - NODE_BODY_STROKE_WIDTH * 2,
     )
@@ -205,7 +186,7 @@ describe('node decorations', () => {
 })
 
 describe('joint style', () => {
-  it('hollows the joint and takes its shape from the theme', () => {
+  it('takes the joint shape/ring from the theme and stays filled by default', () => {
     const node = makeNode(1, 'A')
     addHandle(node, 'out', { position: HandlePosition.Right, type: '' })
 
@@ -228,17 +209,11 @@ describe('joint style', () => {
     // The shape is swapped in place — no view rebuild.
     view.applyTheme(theme({ metrics: { jointShape: 'circle' } }))
     expect(drawnCalls(joint).join(' ')).toContain('arc(')
-  })
 
-  it('keeps the joint filled by default', () => {
-    const node = makeNode(1, 'A')
-    addHandle(node, 'out', { position: HandlePosition.Right, type: '' })
-
-    const view = new NodeView(node)
-    const joint = view._handleViews.get('out')!._joint!
-
-    expect(joint.fill()).toBe(DEFAULT_THEME.colors.jointDefault)
-    expect(joint.strokeWidth()).toBe(1)
+    // The shipped default keeps the joint filled with a hairline stroke.
+    const defaultJoint = new NodeView(node)._handleViews.get('out')!._joint!
+    expect(defaultJoint.fill()).toBe(DEFAULT_THEME.colors.jointDefault)
+    expect(defaultJoint.strokeWidth()).toBe(1)
   })
 })
 
@@ -304,29 +279,7 @@ describe('edges', () => {
     return c
   }
 
-  it('dashes edges from the theme and hot-swaps in place', () => {
-    const ws = createWorkspace()
-    const a = ws.addNode('Number')
-    const b = ws.addNode('Sum')
-    a.moveTo(10, 10)
-    b.moveTo(300, 10)
-    ws.connect(a.getHandle('value')!, b.getHandle('a')!)
-
-    const renderer = new KonvaGraphRenderer(makeContainer(), ws, {
-      theme: { metrics: { edgeDash: [8, 4] } },
-    })
-    try {
-      const line = renderer.stage.findOne<Konva.Line>('.edge-line')!
-      expect(line.dash()).toEqual([8, 4])
-
-      renderer.setTheme({ metrics: { edgeDash: [] } })
-      expect(line.dash()).toEqual([])
-    } finally {
-      renderer.dispose()
-    }
-  })
-
-  it('dashes edges and group outlines with the shipped default', () => {
+  it('dashes edges and group outlines from the theme and hot-swaps in place', () => {
     const ws = createWorkspace()
     const a = ws.addNode('Number')
     const b = ws.addNode('Sum')
@@ -338,10 +291,16 @@ describe('edges', () => {
     const renderer = new KonvaGraphRenderer(makeContainer(), ws)
     try {
       const line = renderer.stage.findOne<Konva.Line>('.edge-line')!
+      // Shipped default applies to both edges and group outlines.
       expect(line.dash()).toEqual(DEFAULT_THEME.metrics.edgeDash)
-
       const bodies = renderer.stage.find<Konva.Rect>('.body')
       expect(bodies[0]!.dash()).toEqual(DEFAULT_THEME.metrics.edgeDash)
+
+      renderer.setTheme({ metrics: { edgeDash: [8, 4] } })
+      expect(line.dash()).toEqual([8, 4])
+
+      renderer.setTheme({ metrics: { edgeDash: [] } })
+      expect(line.dash()).toEqual([])
     } finally {
       renderer.dispose()
     }
