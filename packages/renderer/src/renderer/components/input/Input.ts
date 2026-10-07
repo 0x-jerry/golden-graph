@@ -55,6 +55,7 @@ export class Input extends FormElement {
     const totalW = this._model.textWidth(this._model.value)
     const maxScroll = Math.max(0, totalW + 2 * PADDING - this._iw)
     if (maxScroll <= 0) return
+    e.cancelBubble = true
     e.evt.preventDefault()
     this._scrollX = Math.max(
       0,

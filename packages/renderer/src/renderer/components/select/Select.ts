@@ -99,6 +99,8 @@ export class Select extends FormElement {
       x: PADDING,
       y: textY,
       width: textW,
+      wrap: 'none',
+      ellipsis: true,
       listening: false,
     })
     this.add(this._textNode)
@@ -111,6 +113,8 @@ export class Select extends FormElement {
       x: PADDING,
       y: textY,
       width: textW,
+      wrap: 'none',
+      ellipsis: true,
       visible: !matched,
       listening: false,
     })

@@ -128,6 +128,8 @@ export class Dropdown extends Konva.Group {
         x: PADDING,
         y: ty,
         width: this._width - PADDING * 2,
+        wrap: 'none',
+        ellipsis: true,
         listening: false,
       })
       itemsGroup.add(text)
@@ -157,6 +159,9 @@ export class Dropdown extends Konva.Group {
     })
 
     this.on('wheel', (e) => {
+      // Keep the canvas from zooming: the event bubbles up to the stage-level
+      // wheel handler otherwise.
+      e.cancelBubble = true
       e.evt.preventDefault()
       this.scrollBy(e.evt.deltaY > 0 ? 1 : -1)
     })
