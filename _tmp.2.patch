@@ -1,0 +1,85 @@
+diff --git a/packages/playground/src/executor.worker.ts b/packages/playground/src/executor.worker.ts
+index 007a00a..afcd5e0 100644
+--- a/packages/playground/src/executor.worker.ts
++++ b/packages/playground/src/executor.worker.ts
+@@ -1,5 +1,5 @@
+ import { ExecutorWorkerHost } from '@0x-jerry/golden-graph-backend'
+-import { tslNodeProviders } from './nodes/tsl'
++import { nodeProviders } from './nodes'
+ 
+ const host = new ExecutorWorkerHost()
+-host.addProviders(tslNodeProviders)
++host.addProviders(nodeProviders)
+diff --git a/packages/playground/src/nodes/tsl/demo.ts b/packages/playground/src/nodes/debug/demo.ts
+similarity index 96%
+rename from packages/playground/src/nodes/tsl/demo.ts
+rename to packages/playground/src/nodes/debug/demo.ts
+index c0e530e..26f27c8 100644
+--- a/packages/playground/src/nodes/tsl/demo.ts
++++ b/packages/playground/src/nodes/debug/demo.ts
+@@ -1,6 +1,6 @@
+ import { HandlePosition } from '@0x-jerry/golden-graph'
+ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
+-import { toTslCode } from './code'
++import { toTslCode } from '../tsl/code'
+ 
+ const OPTIONS = Array.from({ length: 24 }, (_, i) => ({
+   value: `vec3(${(i / 24).toFixed(3)}, ${((i % 6) / 6).toFixed(3)}, ${((i % 4) / 4).toFixed(3)})`,
+diff --git a/packages/playground/src/nodes/debug/index.ts b/packages/playground/src/nodes/debug/index.ts
+new file mode 100644
+index 0000000..633fbe6
+--- /dev/null
++++ b/packages/playground/src/nodes/debug/index.ts
+@@ -0,0 +1,13 @@
++import type { INodeProvider } from '@0x-jerry/golden-graph'
++import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
++import { selectDemoDefinition } from './demo'
++
++export const debugNodeProviders: INodeProvider<INodeDefinition>[] = [
++  {
++    id: 'DEBUG',
++    name: 'DEBUG',
++    nodes: {
++      Select: selectDemoDefinition,
++    },
++  },
++]
+diff --git a/packages/playground/src/nodes/index.ts b/packages/playground/src/nodes/index.ts
+new file mode 100644
+index 0000000..cbcf732
+--- /dev/null
++++ b/packages/playground/src/nodes/index.ts
+@@ -0,0 +1,9 @@
++import type { INodeProvider } from '@0x-jerry/golden-graph'
++import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
++import { debugNodeProviders } from './debug'
++import { tslNodeProviders } from './tsl'
++
++export const nodeProviders: INodeProvider<INodeDefinition>[] = [
++  ...tslNodeProviders,
++  ...debugNodeProviders,
++]
+diff --git a/packages/playground/src/nodes/tsl/index.ts b/packages/playground/src/nodes/tsl/index.ts
+index f3faddf..9fb615a 100644
+--- a/packages/playground/src/nodes/tsl/index.ts
++++ b/packages/playground/src/nodes/tsl/index.ts
+@@ -1,7 +1,6 @@
+ import type { INodeProvider } from '@0x-jerry/golden-graph'
+ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
+ import * as color from './color'
+-import { selectDemoDefinition } from './demo'
+ import {
+   colorDefinition,
+   floatDefinition,
+@@ -88,11 +87,4 @@ export const tslNodeProviders: INodeProvider<INodeDefinition>[] = [
+       Output: outputDefinition,
+     },
+   },
+-  {
+-    id: 'DEBUG',
+-    name: 'DEBUG',
+-    nodes: {
+-      Select: selectDemoDefinition,
+-    },
+-  },
+ ]

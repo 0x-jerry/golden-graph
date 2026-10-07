@@ -1,6 +1,7 @@
 import type { INodeProvider } from '@0x-jerry/golden-graph'
 import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 import * as color from './color'
+import { selectDemoDefinition } from './demo'
 import {
   colorDefinition,
   floatDefinition,
@@ -85,6 +86,13 @@ export const tslNodeProviders: INodeProvider<INodeDefinition>[] = [
     name: 'TSL / Output',
     nodes: {
       Output: outputDefinition,
+    },
+  },
+  {
+    id: 'DEBUG',
+    name: 'DEBUG',
+    nodes: {
+      Select: selectDemoDefinition,
     },
   },
 ]
