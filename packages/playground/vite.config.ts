@@ -6,6 +6,10 @@ export default defineConfig({
   base: './',
   plugins: [vue(), Icons({ compiler: 'vue3' })],
   optimizeDeps: {
-    include: ['three/webgpu', 'three/tsl'],
+    include: [
+      'three/webgpu',
+      'three/tsl',
+      'three/addons/controls/OrbitControls.js',
+    ],
   },
 })

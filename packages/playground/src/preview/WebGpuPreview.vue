@@ -9,41 +9,47 @@ import {
   watch,
 } from 'vue'
 import { createPreview } from './createPreview'
-import type { Preview, PreviewShape } from './createPreview'
+import type { Preview } from './createPreview'
+import {
+  DEFAULT_SCENE_ID,
+  DEFAULT_SHAPE,
+  SCENES,
+  SHAPES,
+  readSceneId,
+} from './scene-meta'
+import type { PreviewShape, SceneId } from './scene-meta'
 
 export interface WebGpuPreviewProps {
-  code: string | null
+  source: string | null
+}
+
+export interface WebGpuPreviewEmits {
+  /** The scene decides where the source lands, so the graph follows it. */
+  'scene-change': [sceneId: SceneId]
 }
 
 type PreviewStatus = 'starting' | 'ready' | 'unsupported' | 'error'
 
 const props = defineProps<WebGpuPreviewProps>()
-
-const SHAPES: { value: PreviewShape; label: string }[] = [
-  { value: 'plane', label: 'Plane' },
-  { value: 'sphere', label: 'Sphere' },
-  { value: 'torus', label: 'Torus knot' },
-]
+const emit = defineEmits<WebGpuPreviewEmits>()
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const stage = useTemplateRef<HTMLElement>('stage')
-const { copy, copied } = useClipboard({ source: () => props.code ?? '' })
 
 const state = reactive({
   status: 'starting' as PreviewStatus,
   message: '',
-  shape: 'plane' as PreviewShape,
+  notices: [] as string[],
+  sceneId: DEFAULT_SCENE_ID as SceneId,
+  shape: DEFAULT_SHAPE as PreviewShape,
 })
 
-const message = computed(() => {
-  if (state.message) {
-    return state.message
-  }
-
-  return state.status === 'starting' ? 'Starting WebGPU…' : ''
-})
+const showShape = computed(() => state.sceneId === 'material')
+const sourceText = computed(() => props.source ?? '')
+const { copy, copied } = useClipboard({ source: () => sourceText.value })
 
 let preview: Preview | null = null
+let appliedSource: string | null | undefined
 
 onMounted(async () => {
   if (!('gpu' in navigator)) {
@@ -56,7 +62,7 @@ onMounted(async () => {
     preview = await createPreview(canvas.value!)
     state.status = 'ready'
     syncSize()
-    applyCode()
+    applySource()
   } catch (error) {
     fail(error)
   }
@@ -64,7 +70,9 @@ onMounted(async () => {
 
 useResizeObserver(stage, syncSize)
 
-watch(() => props.code, applyCode)
+// `source` is owned by the workspace, so there is nothing local to call on
+// change; the last value keeps unchanged re-runs from recompiling TSL.
+watch(() => props.source, applySource)
 
 onBeforeUnmount(() => {
   preview?.dispose()
@@ -79,30 +87,53 @@ function syncSize() {
   }
 }
 
-function applyCode() {
-  if (!preview) {
+function applySource() {
+  if (!preview || props.source === appliedSource) {
     return
   }
 
-  if (!props.code) {
-    state.message = 'Wire a TSL / Output node to preview the pipeline'
-    return
-  }
+  appliedSource = props.source
 
   try {
-    preview.setShader(props.code)
-    state.status = 'ready'
-    state.message = ''
+    state.notices = preview.apply(props.source)
   } catch (error) {
     fail(error)
+    return
   }
+
+  if (props.source) {
+    state.status = 'ready'
+    state.message = ''
+  } else {
+    state.notices = ['Wire a TSL / Output node to preview the pipeline']
+  }
+}
+
+function onSceneChange(event: Event) {
+  const sceneId = readSceneId((event.target as HTMLSelectElement).value)
+  state.sceneId = sceneId
+
+  // Drop the old source first: it belonged to the previous scene's graph,
+  // which the app is about to rebuild.
+  preview?.setScene(sceneId)
+  appliedSource = undefined
+
+  emit('scene-change', sceneId)
 }
 
 function onShapeChange(event: Event) {
   const shape = (event.target as HTMLSelectElement).value as PreviewShape
-
   state.shape = shape
-  preview?.setShape(shape)
+
+  if (!preview) {
+    return
+  }
+
+  try {
+    state.notices = preview.setShape(shape)
+  } catch (error) {
+    fail(error)
+  }
 }
 
 function fail(error: unknown) {
@@ -115,21 +146,42 @@ function fail(error: unknown) {
   <aside class="preview">
     <header class="preview-header">
       <span class="preview-title">three.js · WebGPU</span>
-      <select
-        class="preview-shape"
-        :value="state.shape"
-        :disabled="state.status !== 'ready'"
-        @change="onShapeChange"
-      >
-        <option v-for="shape in SHAPES" :key="shape.value" :value="shape.value">
-          {{ shape.label }}
-        </option>
-      </select>
+      <div class="preview-controls">
+        <select
+          class="preview-select"
+          :value="state.sceneId"
+          :disabled="state.status !== 'ready'"
+          title="Scene"
+          @change="onSceneChange"
+        >
+          <option v-for="scene in SCENES" :key="scene.id" :value="scene.id">
+            {{ scene.label }}
+          </option>
+        </select>
+
+        <select
+          v-if="showShape"
+          class="preview-select"
+          :value="state.shape"
+          :disabled="state.status !== 'ready'"
+          title="Shape"
+          @change="onShapeChange"
+        >
+          <option v-for="shape in SHAPES" :key="shape.value" :value="shape.value">
+            {{ shape.label }}
+          </option>
+        </select>
+      </div>
     </header>
 
     <div ref="stage" class="preview-stage">
       <canvas ref="canvas" class="preview-canvas"></canvas>
-      <p v-if="message" class="preview-message">{{ message }}</p>
+      <p v-if="state.message" class="preview-message">{{ state.message }}</p>
+      <ul v-else-if="state.notices.length" class="preview-notices">
+        <li v-for="(notice, index) in state.notices" :key="index">
+          {{ notice }}
+        </li>
+      </ul>
     </div>
 
     <div class="preview-code">
@@ -140,7 +192,7 @@ function fail(error: unknown) {
         </button>
       </div>
       <pre class="preview-source">{{
-        props.code ?? '— no TSL / Output node —'
+        props.source ?? '— no TSL / Output node —'
       }}</pre>
     </div>
   </aside>
@@ -171,10 +223,18 @@ function fail(error: unknown) {
 .preview-title {
   font-size: 12px;
   color: #c9cbd4;
+  white-space: nowrap;
 }
 
-.preview-shape {
+.preview-controls {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.preview-select {
   height: 24px;
+  max-width: 132px;
   padding: 0 6px;
   font-size: 12px;
   color: inherit;
@@ -195,16 +255,23 @@ function fail(error: unknown) {
   height: 100%;
 }
 
-.preview-message {
+.preview-message,
+.preview-notices {
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
+  margin: 0;
   padding: 6px 10px;
   font-size: 11px;
   line-height: 1.4;
   color: #ffcc99;
   background: rgba(28, 18, 6, 0.86);
+  pointer-events: none;
+}
+
+.preview-notices {
+  padding-left: 24px;
 }
 
 .preview-code {

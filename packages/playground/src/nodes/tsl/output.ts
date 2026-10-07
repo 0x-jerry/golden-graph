@@ -8,11 +8,12 @@ export const TSL_OUTPUT_NODE_TYPE = 'TSL.Output'
 export const outputDefinition: INodeDefinition = {
   schema: {
     name: 'Output',
-    description: 'Assigns the wired source to the material colorNode',
+    description:
+      'Sends the wired source to the preview: the model material on the material scene, the render pipeline on the pipeline scene',
     handles: [
       {
         key: 'input',
-        name: 'Color',
+        name: 'Source',
         position: HandlePosition.Left,
         accepts: TSL_NUMERIC,
         value: 'vec3(0.0)',
@@ -21,13 +22,19 @@ export const outputDefinition: INodeDefinition = {
   },
 }
 
-/** TSL source wired into the top-level Output node, if one exists. */
+/** Source of the first top-level Output node, if it has one. */
 export function readTslSource(ws: Workspace): string | null {
-  const node = ws.nodes.find((item) => item.type === TSL_OUTPUT_NODE_TYPE)
-  if (!node) {
-    return null
+  for (const node of ws.nodes) {
+    if (node.type !== TSL_OUTPUT_NODE_TYPE) {
+      continue
+    }
+
+    const source = node.getData('input')
+
+    if (typeof source === 'string' && source.trim()) {
+      return source
+    }
   }
 
-  const source = node.getData('input')
-  return typeof source === 'string' ? source : null
+  return null
 }

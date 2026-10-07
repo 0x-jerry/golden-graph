@@ -6,6 +6,7 @@ import {
   floatDefinition,
   normalDefinition,
   positionDefinition,
+  scenePassDefinition,
   timeDefinition,
   uvCenteredDefinition,
   uvDefinition,
@@ -29,6 +30,7 @@ export const tslNodeProviders: INodeProvider<INodeDefinition>[] = [
       Normal: normalDefinition,
       Float: floatDefinition,
       Color: colorDefinition,
+      ScenePass: scenePassDefinition,
     },
   },
   {

@@ -36,6 +36,7 @@ Dependency direction: `core` → `protocol`, `backend` → `core`+`protocol`, `r
 - **Executor protocol** → `packages/protocol/docs/protocol.md` (messages, snapshot shapes, diff cache, debug, `MAX_ITERATIONS`, lifecycle). Wire types in `packages/protocol/src/ExecutorBackend.ts`.
 - **`INodeDefinition` / `NodeExecutionContext`** → `packages/backend/src/WorkflowExecutor.ts` (doc comments at the types).
 - **Adding a node** → model `packages/playground/src/nodes/math/Op.ts`; register in `packages/playground/src/nodes/index.ts`.
+- **Playground preview** → `packages/playground/src/preview/`: `scenes.ts` holds the two built-in scene factories and each scene's `output` destination, `scene-meta.ts` the scene/shape vocabulary, `apply.ts` the single-source → destination assignment. `src/examples.ts` holds the per-scene default graphs; a preview scene switch rebuilds the workspace with that scene's example (`TSL.Output` has no options — the active scene decides whether its source lands on the model material or on `RenderPipeline.outputNode`).
 - **Auto-layout** → `packages/renderer/src/layout/` (`engine.ts` pure pipeline, `index.ts` `autoLayout`, `types.ts` options). Exposed via `ContextMenuBuilder.ts`; subgraph auto-layout in `KonvaGraphRenderer.ts`.
 - **Renderer internals** → `packages/renderer/src/renderer/`:
   - `EntityView.ts` + `NodeView.ts`/`EdgeView.ts`/`GroupView.ts`/`HandleView.ts` (views own render state)

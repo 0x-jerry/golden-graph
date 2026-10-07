@@ -11,9 +11,16 @@ const IDENTIFIER = /(?<![.\w$])([A-Za-z_$][\w$]*)/g
 /**
  * Turn generated TSL source into a real TSL node. The source comes from the
  * node definitions in `nodes/tsl`, never from user input, and only identifiers
- * that exist in three's TSL namespace are put in scope.
+ * that exist in three's TSL namespace — plus the caller-provided `scope` — are
+ * put in scope.
+ *
+ * `scope` carries the runtime objects the preview owns (`scene`, `camera`), so
+ * generated source may reference `pass(scene, camera)` for pipeline effects.
  */
-export function compileTslExpression(source: string): unknown {
+export function compileTslExpression(
+  source: string,
+  scope: Record<string, unknown> = {},
+): unknown {
   const trimmed = source.trim()
 
   if (!trimmed) {
@@ -24,10 +31,11 @@ export function compileTslExpression(source: string): unknown {
     throw new Error(`Unsupported characters in TSL source: ${trimmed}`)
   }
 
+  const library = { ...tslLibrary, ...scope }
   const names = [
     ...new Set([...trimmed.matchAll(IDENTIFIER)].map((match) => match[1]!)),
   ]
-  const unknown = names.filter((name) => !(name in tslLibrary))
+  const unknown = names.filter((name) => !(name in library))
 
   if (unknown.length) {
     throw new Error(`Unknown TSL identifier(s): ${unknown.join(', ')}`)
@@ -37,5 +45,5 @@ export function compileTslExpression(source: string): unknown {
     `return ({ ${names.join(', ')} }) => (${trimmed})`,
   ) as () => (library: Record<string, unknown>) => unknown
 
-  return factory()(tslLibrary)
+  return factory()(library)
 }

@@ -4,7 +4,9 @@ import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
 import { KonvaRenderer } from '@0x-jerry/golden-graph-renderer'
 import type { DeepPartial, GraphTheme } from '@0x-jerry/golden-graph-renderer'
 import { setup as _setup } from './editor'
+import { buildSceneExample } from './examples'
 import { readTslSource } from './nodes/tsl'
+import type { SceneId } from './preview/scene-meta'
 import WebGpuPreview from './preview/WebGpuPreview.vue'
 
 const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
@@ -136,7 +138,7 @@ async function setup(ws: Workspace) {
       console.error('Workspace execution failed:', error)
     } finally {
       isExecuting = false
-      refreshShader(ws)
+      refreshSource(ws)
     }
 
     if (isPending) {
@@ -144,16 +146,16 @@ async function setup(ws: Workspace) {
     }
   }
 
-  refreshShader(ws)
+  refreshSource(ws)
   void execute()
 }
 
 /**
  * Read the source the executor generated into the Output node. Inside a
- * subgraph the top-level Output is not in the active workspace, so the
- * preview keeps the last compiled shader.
+ * subgraph the top-level Output is not in the active workspace, so the preview
+ * keeps the last compiled source.
  */
-function refreshShader(ws: Workspace) {
+function refreshSource(ws: Workspace) {
   if (ws.isActiveSubGraph) {
     return
   }
@@ -173,13 +175,17 @@ function save() {
 }
 
 /**
- * Replace the whole workspace content with `data`. The incoming data is
- * always top-level, so any active subgraph must be exited first — `clear()`
- * intentionally leaves `_workspaceDataStack` untouched, and a stale snapshot
- * would corrupt the next `save()` (its `exitSubGraph()` pops a stack entry
- * that no longer matches the workspace).
+ * Replace the whole workspace content with whatever `build` adds. Any active
+ * subgraph must be exited first — `clear()` intentionally leaves
+ * `_workspaceDataStack` untouched, and a stale snapshot would corrupt the next
+ * `save()` (its `exitSubGraph()` pops a stack entry that no longer matches the
+ * workspace).
+ *
+ * The `clear()` + `nextTick()` ordering matters: the renderer has to drop the
+ * old node views before new ids are added, and the graph must be complete
+ * before the run scheduled by its own events takes a snapshot.
  */
-async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
+async function resetGraph(build: (ws: Workspace) => void) {
   const ws = workspace.value
   if (!ws) {
     return
@@ -193,12 +199,21 @@ async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
     ws.clear()
 
     await nextTick()
-    ws.fromJSON(data)
+    build(ws)
   } catch (error) {
-    console.error('Failed to load workspace:', error)
+    console.error('Failed to reset workspace:', error)
   }
 
-  refreshShader(ws)
+  refreshSource(ws)
+}
+
+async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
+  await resetGraph((ws) => ws.fromJSON(data))
+}
+
+/** A scene switch swaps the graph for that scene's default example. */
+async function loadSceneExample(sceneId: SceneId) {
+  await resetGraph((ws) => buildSceneExample(ws, sceneId))
 }
 
 async function load() {
@@ -217,7 +232,7 @@ function clear() {
   }
 
   ws.clear()
-  refreshShader(ws)
+  refreshSource(ws)
 }
 
 async function run() {
@@ -236,7 +251,7 @@ async function run() {
 
     console.error('Workspace execution failed:', error)
   } finally {
-    refreshShader(ws)
+    refreshSource(ws)
   }
 }
 
@@ -285,7 +300,10 @@ async function loadFromJSON() {
         <KonvaRenderer ref="renderer" :setup="setup" :theme="theme" />
       </div>
 
-      <WebGpuPreview :code="shaderSource" />
+      <WebGpuPreview
+        :source="shaderSource"
+        @scene-change="loadSceneExample"
+      />
     </div>
   </div>
 </template>

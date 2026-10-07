@@ -100,3 +100,21 @@ export const colorDefinition = sourceNode(
     value: '#6366f1',
   },
 )
+
+/**
+ * The scene rendered to a texture node. Pipeline effects compose onto this —
+ * without a pass there is no frame for `Render pipeline · Output` to post
+ * process. `scene` and `camera` are provided to the TSL compiler as extra
+ * scope by the preview.
+ */
+export const scenePassDefinition = sourceNode(
+  'Scene Pass',
+  'pass(scene, camera) — the rendered frame, for render pipeline effects',
+  {
+    key: 'out',
+    name: 'Frame',
+    position: HandlePosition.Right,
+    accepts: 'vec4',
+    value: 'pass(scene, camera)',
+  },
+)
