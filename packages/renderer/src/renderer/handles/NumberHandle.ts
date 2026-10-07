@@ -8,13 +8,20 @@ import type { GraphTheme } from '../../theme'
 
 const INPUT_HEIGHT = 18
 
+export interface NodeHandleOptions {
+  /** Amount ArrowUp/ArrowDown add or subtract. Defaults to `1`. */
+  step?: number
+}
+
 class NumberModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
   _input: Input
+  _step: number
 
   constructor(handle: NodeHandle, theme: GraphTheme) {
     super()
     this._handle = handle
+    this._step = readStep(handle)
 
     this._input = new Input(
       {
@@ -26,10 +33,17 @@ class NumberModule extends Konva.Group implements NodeHandleModule {
           const num = v === '' ? NaN : Number(v)
           handle.setValue(Number.isNaN(num) ? undefined : num)
         },
+        onStep: (delta) => this._stepBy(delta),
       },
       theme,
     )
     this.add(this._input)
+  }
+
+  _stepBy(delta: number) {
+    const current = Number(this._input.getValue())
+    const base = Number.isNaN(current) ? 0 : current
+    this._input.setValue(String(stepValue(base, this._step, delta)))
   }
 
   update(): void {
@@ -53,4 +67,20 @@ export const numberHandleFactory: NodeHandleFactory = {
 
 function numberFilter(v: string): string {
   return v.replace(/[^0-9.-]/g, '')
+}
+
+function readStep(handle: NodeHandle): number {
+  const step = Number(handle.getOptions<NodeHandleOptions>().step ?? 1)
+  return Number.isFinite(step) && step > 0 ? step : 1
+}
+
+/** Rounds to the widest precision of the operands, so `0.1 + 0.1` is `0.2`. */
+function stepValue(current: number, step: number, times: number): number {
+  const digits = Math.max(decimalPlaces(current), decimalPlaces(step))
+  const next = current + step * times
+  return digits > 0 ? Number(next.toFixed(digits)) : next
+}
+
+function decimalPlaces(n: number): number {
+  return String(n).split('.')[1]?.length ?? 0
 }

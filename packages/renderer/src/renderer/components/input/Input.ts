@@ -23,6 +23,8 @@ export interface InputConfig extends BaseFormConfig {
   placeholder?: string
   onChange?: (value: string) => void
   beforeChange?: (value: string) => string
+  /** Step the value on ArrowUp/ArrowDown; receives `1` / `-1`. */
+  onStep?: (delta: number) => void
   /** Fired once an edit session ends (commit, cancel, blur or destroy). */
   onStopEdit?: () => void
 }
@@ -95,6 +97,7 @@ export class Input extends FormElement {
       cornerRadius = 2,
       onChange,
       beforeChange,
+      onStep,
       onStopEdit,
       ...rest
     } = config
@@ -127,6 +130,7 @@ export class Input extends FormElement {
       commit: () => this._stopEdit(true),
       cancel: () => this._stopEdit(false),
       clearHidden: () => this._hidden.clear(),
+      step: onStep,
     }
 
     const textY = (inputHeight - this._fs) / 2

@@ -394,7 +394,7 @@ interface INodeHandleConfig {
   description?: string         // shown in a tooltip on hover
   position?: HandlePosition    // Left = input, Right = output, None = layout-only row
   value?: unknown              // initial value
-  options?: Record<string, any> // render props (select choices in options.options)
+  options?: Record<string, any> // render props
 }
 ```
 

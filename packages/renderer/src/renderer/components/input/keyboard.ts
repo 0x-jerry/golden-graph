@@ -6,6 +6,11 @@ export interface InputKeyEnv {
   commit(): void
   cancel(): void
   clearHidden(): void
+  /**
+   * Opt-in numeric stepping: ArrowUp/ArrowDown call it with `1` / `-1`.
+   * Consumers scale by their own step size; without it the arrows stay inert.
+   */
+  step?(delta: number): void
 }
 
 export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: InputKeyEnv): void {
@@ -21,6 +26,12 @@ export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: Inpu
   if (e.key === 'Escape') {
     e.preventDefault()
     env.cancel()
+    return
+  }
+
+  if (env.step && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault()
+    env.step(e.key === 'ArrowUp' ? 1 : -1)
     return
   }
 
