@@ -48,7 +48,12 @@ export function buildTextLayout(options: TextLayoutOptions): TextLayout {
       const clamped = Math.max(0, Math.min(text.length, offset))
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!
-        if (clamped <= line.end) {
+        const next = lines[i + 1]
+        // At a soft wrap the next line starts where this one ends, so the
+        // boundary offset belongs to the next line. A hard break (newline) or
+        // a dropped space leaves a gap and keeps the offset on this line.
+        const softWrap = next !== undefined && next.start === line.end
+        if (clamped < line.end || (clamped === line.end && !softWrap)) {
           return { line: i, x: measure(line.text.slice(0, clamped - line.start)) }
         }
       }

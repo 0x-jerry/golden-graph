@@ -61,14 +61,20 @@ export class Textarea extends FormElement {
 
   _stageUpFn = () => {
     this._dragging = false
+    this._detachDrag()
+    if (this._active) {
+      this._hidden.focus()
+    }
+  }
+
+  _detachDrag() {
     const stage = this.getStage()
     if (stage) {
       stage.off('mousemove touchmove', this._stageMoveFn)
       stage.off('mouseup touchend', this._stageUpFn)
     }
-    if (this._active) {
-      this._hidden.focus()
-    }
+    window.removeEventListener('mouseup', this._stageUpFn)
+    window.removeEventListener('touchend', this._stageUpFn)
   }
 
   constructor(config: TextareaConfig, theme?: GraphTheme) {
@@ -198,6 +204,10 @@ export class Textarea extends FormElement {
         stage.on('mousemove touchmove', this._stageMoveFn)
         stage.on('mouseup touchend', this._stageUpFn)
       }
+      // A release outside the canvas never reaches the stage; listen on the
+      // window so the drag always ends.
+      window.addEventListener('mouseup', this._stageUpFn)
+      window.addEventListener('touchend', this._stageUpFn)
     })
     this._scrollArea.on('tap', (e) => {
       e.cancelBubble = true
@@ -472,6 +482,7 @@ export class Textarea extends FormElement {
   destroy(): this {
     this._stopEdit(false)
     this._hidden.detach()
+    this._detachDrag()
     return super.destroy()
   }
 

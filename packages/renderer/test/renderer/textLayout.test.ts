@@ -39,6 +39,18 @@ describe('buildTextLayout offset mapping', () => {
     expect(l.pointAt(4)).toEqual({ line: 1, x: 10 })
   })
 
+  it('puts a soft-wrap boundary offset on the next line', () => {
+    const l = layout('abcdef', 30)
+    expect(l.pointAt(3)).toEqual({ line: 1, x: 0 })
+    expect(l.pointAt(6)).toEqual({ line: 1, x: 30 })
+  })
+
+  it('keeps gap offsets (newline) on the preceding line', () => {
+    const l = layout('a\nb', 100)
+    expect(l.pointAt(1)).toEqual({ line: 0, x: 10 })
+    expect(l.pointAt(2)).toEqual({ line: 1, x: 0 })
+  })
+
   it('maps a point back to the nearest offset', () => {
     const l = layout('abcdef', 30)
     expect(l.offsetAt(0, 0)).toBe(0)

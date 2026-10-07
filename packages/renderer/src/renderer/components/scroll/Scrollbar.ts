@@ -200,9 +200,14 @@ export class Scrollbar extends Konva.Group {
     this._grabOffset = this._pointerY() - this._thumbYFor(this._scrollTop)
     this.show()
     const stage = this.getStage()
-    if (!stage) return
-    stage.on('mousemove touchmove', this._onMove)
-    stage.on('mouseup touchend', this._onUp)
+    if (stage) {
+      stage.on('mousemove touchmove', this._onMove)
+      stage.on('mouseup touchend', this._onUp)
+    }
+    // A release outside the canvas never reaches the stage, which would leave
+    // the drag stuck on; listen on the window so it always ends.
+    window.addEventListener('mouseup', this._onUp)
+    window.addEventListener('touchend', this._onUp)
   }
 
   _onMove = (): void => {
@@ -224,6 +229,8 @@ export class Scrollbar extends Konva.Group {
       stage.off('mousemove touchmove', this._onMove)
       stage.off('mouseup touchend', this._onUp)
     }
+    window.removeEventListener('mouseup', this._onUp)
+    window.removeEventListener('touchend', this._onUp)
   }
 
   _clearTimer(): void {

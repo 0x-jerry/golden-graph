@@ -112,6 +112,15 @@ describe('Textarea scrolling', () => {
     press('Escape')
     expect(ta._scrollArea.scrollTop).toBe(30)
   })
+
+  it('ends the caret drag on a window mouseup', () => {
+    const ta = makeTextarea('a\nb')
+    ta._scrollArea.fire('mousedown', { evt: {} }, true)
+    expect(ta._dragging).toBe(true)
+
+    window.dispatchEvent(new MouseEvent('mouseup'))
+    expect(ta._dragging).toBe(false)
+  })
 })
 
 describe('Textarea committed value', () => {

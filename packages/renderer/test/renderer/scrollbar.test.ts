@@ -70,3 +70,17 @@ describe('Scrollbar auto-hide', () => {
     stage.destroy()
   })
 })
+
+describe('Scrollbar drag lifecycle', () => {
+  it('ends the drag on a window mouseup (released outside the canvas)', () => {
+    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
+    bar.sync(0, 40, 10)
+
+    bar._startDrag()
+    expect(bar.dragging).toBe(true)
+
+    window.dispatchEvent(new MouseEvent('mouseup'))
+    expect(bar.dragging).toBe(false)
+    bar.destroy()
+  })
+})
