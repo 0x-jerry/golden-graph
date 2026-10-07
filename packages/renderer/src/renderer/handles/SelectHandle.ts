@@ -56,6 +56,6 @@ export const selectHandleFactory: NodeHandleFactory = {
       new SelectModule(handle, theme ?? DEFAULT_THEME),
 }
 
-function readOptions(handle: NodeHandle): (SelectOption | string)[] {
+function readOptions(handle: NodeHandle): SelectOptionInput[] {
   return handle.getOptions<NodeHandleOptions>().options ?? []
 }

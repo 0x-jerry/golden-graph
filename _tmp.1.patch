@@ -1,0 +1,1350 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 6533e4f..70bd9fd 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -36,6 +36,7 @@ Dependency direction: `core` → `protocol`, `backend` → `core`+`protocol`, `r
+ - **Executor protocol** → `packages/protocol/docs/protocol.md` (messages, snapshot shapes, diff cache, debug, `MAX_ITERATIONS`, lifecycle). Wire types in `packages/protocol/src/ExecutorBackend.ts`.
+ - **`INodeDefinition` / `NodeExecutionContext`** → `packages/backend/src/WorkflowExecutor.ts` (doc comments at the types).
+ - **Adding a node** → model `packages/playground/src/nodes/math/Op.ts`; register in `packages/playground/src/nodes/index.ts`.
++- **Playground preview** → `packages/playground/src/preview/`: `scenes.ts` holds the two built-in scene factories and each scene's `output` destination, `scene-meta.ts` the scene/shape vocabulary, `apply.ts` the single-source → destination assignment. `src/examples.ts` holds the per-scene default graphs; a preview scene switch rebuilds the workspace with that scene's example (`TSL.Output` has no options — the active scene decides whether its source lands on the model material or on `RenderPipeline.outputNode`).
+ - **Auto-layout** → `packages/renderer/src/layout/` (`engine.ts` pure pipeline, `index.ts` `autoLayout`, `types.ts` options). Exposed via `ContextMenuBuilder.ts`; subgraph auto-layout in `KonvaGraphRenderer.ts`.
+ - **Renderer internals** → `packages/renderer/src/renderer/`:
+   - `EntityView.ts` + `NodeView.ts`/`EdgeView.ts`/`GroupView.ts`/`HandleView.ts` (views own render state)
+diff --git a/packages/playground/src/App.vue b/packages/playground/src/App.vue
+index f689b90..5af8cbf 100644
+--- a/packages/playground/src/App.vue
++++ b/packages/playground/src/App.vue
+@@ -4,7 +4,9 @@ import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
+ import { KonvaRenderer } from '@0x-jerry/golden-graph-renderer'
+ import type { DeepPartial, GraphTheme } from '@0x-jerry/golden-graph-renderer'
+ import { setup as _setup } from './editor'
++import { buildSceneExample } from './examples'
+ import { readTslSource } from './nodes/tsl'
++import type { SceneId } from './preview/scene-meta'
+ import WebGpuPreview from './preview/WebGpuPreview.vue'
+ 
+ const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
+@@ -136,7 +138,7 @@ async function setup(ws: Workspace) {
+       console.error('Workspace execution failed:', error)
+     } finally {
+       isExecuting = false
+-      refreshShader(ws)
++      refreshSource(ws)
+     }
+ 
+     if (isPending) {
+@@ -144,16 +146,16 @@ async function setup(ws: Workspace) {
+     }
+   }
+ 
+-  refreshShader(ws)
++  refreshSource(ws)
+   void execute()
+ }
+ 
+ /**
+  * Read the source the executor generated into the Output node. Inside a
+- * subgraph the top-level Output is not in the active workspace, so the
+- * preview keeps the last compiled shader.
++ * subgraph the top-level Output is not in the active workspace, so the preview
++ * keeps the last compiled source.
+  */
+-function refreshShader(ws: Workspace) {
++function refreshSource(ws: Workspace) {
+   if (ws.isActiveSubGraph) {
+     return
+   }
+@@ -173,13 +175,17 @@ function save() {
+ }
+ 
+ /**
+- * Replace the whole workspace content with `data`. The incoming data is
+- * always top-level, so any active subgraph must be exited first — `clear()`
+- * intentionally leaves `_workspaceDataStack` untouched, and a stale snapshot
+- * would corrupt the next `save()` (its `exitSubGraph()` pops a stack entry
+- * that no longer matches the workspace).
++ * Replace the whole workspace content with whatever `build` adds. Any active
++ * subgraph must be exited first — `clear()` intentionally leaves
++ * `_workspaceDataStack` untouched, and a stale snapshot would corrupt the next
++ * `save()` (its `exitSubGraph()` pops a stack entry that no longer matches the
++ * workspace).
++ *
++ * The `clear()` + `nextTick()` ordering matters: the renderer has to drop the
++ * old node views before new ids are added, and the graph must be complete
++ * before the run scheduled by its own events takes a snapshot.
+  */
+-async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
++async function resetGraph(build: (ws: Workspace) => void) {
+   const ws = workspace.value
+   if (!ws) {
+     return
+@@ -193,12 +199,21 @@ async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
+     ws.clear()
+ 
+     await nextTick()
+-    ws.fromJSON(data)
++    build(ws)
+   } catch (error) {
+-    console.error('Failed to load workspace:', error)
++    console.error('Failed to reset workspace:', error)
+   }
+ 
+-  refreshShader(ws)
++  refreshSource(ws)
++}
++
++async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
++  await resetGraph((ws) => ws.fromJSON(data))
++}
++
++/** A scene switch swaps the graph for that scene's default example. */
++async function loadSceneExample(sceneId: SceneId) {
++  await resetGraph((ws) => buildSceneExample(ws, sceneId))
+ }
+ 
+ async function load() {
+@@ -217,7 +232,7 @@ function clear() {
+   }
+ 
+   ws.clear()
+-  refreshShader(ws)
++  refreshSource(ws)
+ }
+ 
+ async function run() {
+@@ -236,7 +251,7 @@ async function run() {
+ 
+     console.error('Workspace execution failed:', error)
+   } finally {
+-    refreshShader(ws)
++    refreshSource(ws)
+   }
+ }
+ 
+@@ -285,7 +300,10 @@ async function loadFromJSON() {
+         <KonvaRenderer ref="renderer" :setup="setup" :theme="theme" />
+       </div>
+ 
+-      <WebGpuPreview :code="shaderSource" />
++      <WebGpuPreview
++        :source="shaderSource"
++        @scene-change="loadSceneExample"
++      />
+     </div>
+   </div>
+ </template>
+diff --git a/packages/playground/src/editor.ts b/packages/playground/src/editor.ts
+index 56b7875..6a7cc1e 100644
+--- a/packages/playground/src/editor.ts
++++ b/packages/playground/src/editor.ts
+@@ -1,7 +1,7 @@
+-import type { Node, Workspace } from '@0x-jerry/golden-graph'
++import type { Workspace } from '@0x-jerry/golden-graph'
+ import { WorkerExecutorBackend } from '@0x-jerry/golden-graph-backend'
+-import { autoLayout } from '@0x-jerry/golden-graph-renderer'
+-import { TSL_OUTPUT_NODE_TYPE } from './nodes/tsl'
++import { buildSceneExample } from './examples'
++import { DEFAULT_SCENE_ID } from './preview/scene-meta'
+ 
+ export async function setup(workspace: Workspace) {
+   const worker = new Worker(new URL('./executor.worker.ts', import.meta.url), {
+@@ -11,84 +11,8 @@ export async function setup(workspace: Workspace) {
+ 
+   await workspace.loadNodeProvidersFromBackend()
+ 
+-  // A flowing nebula: fractal noise + a radial term drive a cosine palette.
+-  const uv = workspace.addNode('TSL.Input.UvCentered')
+-  const scale = workspace.addNode('TSL.Input.Float', { data: { out: 1.2 } })
+-  const frequency = workspace.addNode('TSL.Math.Multiply')
+-  const time = workspace.addNode('TSL.Input.Time')
+-  const speed = workspace.addNode('TSL.Input.Float', { data: { out: 0.12 } })
+-  const flow = workspace.addNode('TSL.Math.Multiply')
+-  const noise = workspace.addNode('TSL.Procedural.Noise', {
+-    data: { octaves: '2' },
+-  })
+-  const contrast = workspace.addNode('TSL.Input.Float', { data: { out: 0.55 } })
+-  const field = workspace.addNode('TSL.Math.Multiply')
+-  const radius = workspace.addNode('TSL.Vector.Length')
+-  const falloff = workspace.addNode('TSL.Input.Float', { data: { out: 0.35 } })
+-  const radial = workspace.addNode('TSL.Math.Multiply')
+-  const coordinate = workspace.addNode('TSL.Math.Add')
+-  const palette = workspace.addNode('TSL.Color.Palette', {
+-    data: { a: '#16162e', b: '#9999b3', c: '#ffffff', d: '#0055aa' },
+-  })
+-  const output = workspace.addNode(TSL_OUTPUT_NODE_TYPE)
+-
+-  connect(workspace, uv, 'out', frequency, 'a')
+-  connect(workspace, scale, 'out', frequency, 'b')
+-  connect(workspace, time, 'out', flow, 'a')
+-  connect(workspace, speed, 'out', flow, 'b')
+-  connect(workspace, frequency, 'out', noise, 'p')
+-  connect(workspace, flow, 'out', noise, 'z')
+-  connect(workspace, noise, 'out', field, 'a')
+-  connect(workspace, contrast, 'out', field, 'b')
+-  connect(workspace, uv, 'out', radius, 'v')
+-  connect(workspace, radius, 'out', radial, 'a')
+-  connect(workspace, falloff, 'out', radial, 'b')
+-  connect(workspace, field, 'out', coordinate, 'a')
+-  connect(workspace, radial, 'out', coordinate, 'b')
+-  connect(workspace, coordinate, 'out', palette, 't')
+-  connect(workspace, palette, 'out', output, 'input')
+-
+-  workspace.addGroup([
+-    uv.id,
+-    scale.id,
+-    time.id,
+-    speed.id,
+-    contrast.id,
+-    falloff.id,
+-  ])
+-  workspace.groups[workspace.groups.length - 1]?.setName('Controls')
+-
+-  const { rect } = autoLayout(workspace)
+-  fitView(workspace, rect)
++  // The preview starts on the same scene, so the graph and the scene agree.
++  buildSceneExample(workspace, DEFAULT_SCENE_ID)
+ 
+   return workspace
+ }
+-
+-function connect(
+-  workspace: Workspace,
+-  from: Node,
+-  fromKey: string,
+-  to: Node,
+-  toKey: string,
+-) {
+-  workspace.connect(from.getHandle(fromKey)!, to.getHandle(toKey)!)
+-}
+-
+-/**
+- * `autoLayout` centers the graph on the viewport center, so zooming about that
+- * same point keeps it centered. The viewport size is twice its center — the
+- * stage origin is the top-left corner.
+- */
+-function fitView(workspace: Workspace, rect: { width: number; height: number }) {
+-  const center = workspace.renderer?.getViewportCenter?.()
+-
+-  if (!center || !rect.width || !rect.height) {
+-    return
+-  }
+-
+-  const width = (center.x * 2 - 96) / rect.width
+-  const height = (center.y * 2 - 96) / rect.height
+-  const fit = Math.min(1, Math.min(width, height))
+-
+-  workspace.coord.zoomAt(center, Math.max(0.5, fit))
+-}
+diff --git a/packages/playground/src/examples.ts b/packages/playground/src/examples.ts
+new file mode 100644
+index 0000000..8d54d2a
+--- /dev/null
++++ b/packages/playground/src/examples.ts
+@@ -0,0 +1,130 @@
++import type { Node, Workspace } from '@0x-jerry/golden-graph'
++import { autoLayout } from '@0x-jerry/golden-graph-renderer'
++import { TSL_OUTPUT_NODE_TYPE } from './nodes/tsl'
++import type { SceneId } from './preview/scene-meta'
++
++type ExampleBuilder = (ws: Workspace) => void
++
++const EXAMPLES: Record<SceneId, ExampleBuilder> = {
++  material: buildMaterialExample,
++  pipeline: buildPipelineExample,
++}
++
++/**
++ * Fill the (already cleared) workspace with the default graph for `sceneId`.
++ * The active preview scene picks where that graph's Output lands, so each
++ * scene ships the example that makes sense for it.
++ */
++export function buildSceneExample(ws: Workspace, sceneId: SceneId) {
++  EXAMPLES[sceneId](ws)
++
++  const { rect } = autoLayout(ws)
++  fitView(ws, rect)
++}
++
++/** A flowing nebula: fractal noise + a radial term drive a cosine palette. */
++function buildMaterialExample(ws: Workspace) {
++  const uv = ws.addNode('TSL.Input.UvCentered')
++  const scale = ws.addNode('TSL.Input.Float', { data: { out: 1.2 } })
++  const frequency = ws.addNode('TSL.Math.Multiply')
++  const time = ws.addNode('TSL.Input.Time')
++  const speed = ws.addNode('TSL.Input.Float', { data: { out: 0.12 } })
++  const flow = ws.addNode('TSL.Math.Multiply')
++  const noise = ws.addNode('TSL.Procedural.Noise', {
++    data: { octaves: '2' },
++  })
++  const contrast = ws.addNode('TSL.Input.Float', { data: { out: 0.55 } })
++  const field = ws.addNode('TSL.Math.Multiply')
++  const radius = ws.addNode('TSL.Vector.Length')
++  const falloff = ws.addNode('TSL.Input.Float', { data: { out: 0.35 } })
++  const radial = ws.addNode('TSL.Math.Multiply')
++  const coordinate = ws.addNode('TSL.Math.Add')
++  const palette = ws.addNode('TSL.Color.Palette', {
++    data: { a: '#16162e', b: '#9999b3', c: '#ffffff', d: '#0055aa' },
++  })
++  const output = ws.addNode(TSL_OUTPUT_NODE_TYPE)
++
++  connect(ws, uv, 'out', frequency, 'a')
++  connect(ws, scale, 'out', frequency, 'b')
++  connect(ws, time, 'out', flow, 'a')
++  connect(ws, speed, 'out', flow, 'b')
++  connect(ws, frequency, 'out', noise, 'p')
++  connect(ws, flow, 'out', noise, 'z')
++  connect(ws, noise, 'out', field, 'a')
++  connect(ws, contrast, 'out', field, 'b')
++  connect(ws, uv, 'out', radius, 'v')
++  connect(ws, radius, 'out', radial, 'a')
++  connect(ws, falloff, 'out', radial, 'b')
++  connect(ws, field, 'out', coordinate, 'a')
++  connect(ws, radial, 'out', coordinate, 'b')
++  connect(ws, coordinate, 'out', palette, 't')
++  connect(ws, palette, 'out', output, 'input')
++
++  ws.addGroup([
++    uv.id,
++    scale.id,
++    time.id,
++    speed.id,
++    contrast.id,
++    falloff.id,
++  ])
++  ws.groups[ws.groups.length - 1]?.setName('Controls')
++}
++
++/**
++ * Full-frame grade for the render pipeline: the scene pass tinted from a warm
++ * centre to a cool rim by the centred-UV radius.
++ */
++function buildPipelineExample(ws: Workspace) {
++  const frame = ws.addNode('TSL.Input.ScenePass')
++  const rgb = ws.addNode('TSL.Vector.Swizzle', { data: { component: 'rgb' } })
++  const uv = ws.addNode('TSL.Input.UvCentered')
++  const radius = ws.addNode('TSL.Vector.Length')
++  const falloff = ws.addNode('TSL.Color.Smoothstep', {
++    data: { e0: 1.35, e1: 0.25 },
++  })
++  const rim = ws.addNode('TSL.Input.Color', { data: { out: '#3d4b7a' } })
++  const centre = ws.addNode('TSL.Input.Color', { data: { out: '#fff3dd' } })
++  const tint = ws.addNode('TSL.Color.Mix')
++  const graded = ws.addNode('TSL.Math.Multiply')
++  const output = ws.addNode(TSL_OUTPUT_NODE_TYPE)
++
++  connect(ws, frame, 'out', rgb, 'in')
++  connect(ws, uv, 'out', radius, 'v')
++  connect(ws, radius, 'out', falloff, 'x')
++  connect(ws, rim, 'out', tint, 'a')
++  connect(ws, centre, 'out', tint, 'b')
++  connect(ws, falloff, 'out', tint, 't')
++  connect(ws, rgb, 'out', graded, 'a')
++  connect(ws, tint, 'out', graded, 'b')
++  connect(ws, graded, 'out', output, 'input')
++}
++
++function connect(
++  ws: Workspace,
++  from: Node,
++  fromKey: string,
++  to: Node,
++  toKey: string,
++) {
++  ws.connect(from.getHandle(fromKey)!, to.getHandle(toKey)!)
++}
++
++/**
++ * `autoLayout` centers the graph on the viewport center, so zooming about that
++ * same point keeps it centered. The viewport size is twice its center — the
++ * stage origin is the top-left corner.
++ */
++function fitView(ws: Workspace, rect: { width: number; height: number }) {
++  const center = ws.renderer?.getViewportCenter?.()
++
++  if (!center || !rect.width || !rect.height) {
++    return
++  }
++
++  const width = (center.x * 2 - 96) / rect.width
++  const height = (center.y * 2 - 96) / rect.height
++  const fit = Math.min(1, Math.min(width, height))
++
++  ws.coord.zoomAt(center, Math.max(0.5, fit))
++}
+diff --git a/packages/playground/src/nodes/tsl/index.ts b/packages/playground/src/nodes/tsl/index.ts
+index 80c9cad..9fb615a 100644
+--- a/packages/playground/src/nodes/tsl/index.ts
++++ b/packages/playground/src/nodes/tsl/index.ts
+@@ -6,6 +6,7 @@ import {
+   floatDefinition,
+   normalDefinition,
+   positionDefinition,
++  scenePassDefinition,
+   timeDefinition,
+   uvCenteredDefinition,
+   uvDefinition,
+@@ -29,6 +30,7 @@ export const tslNodeProviders: INodeProvider<INodeDefinition>[] = [
+       Normal: normalDefinition,
+       Float: floatDefinition,
+       Color: colorDefinition,
++      ScenePass: scenePassDefinition,
+     },
+   },
+   {
+diff --git a/packages/playground/src/nodes/tsl/inputs.ts b/packages/playground/src/nodes/tsl/inputs.ts
+index 3b05188..b96a679 100644
+--- a/packages/playground/src/nodes/tsl/inputs.ts
++++ b/packages/playground/src/nodes/tsl/inputs.ts
+@@ -100,3 +100,21 @@ export const colorDefinition = sourceNode(
+     value: '#6366f1',
+   },
+ )
++
++/**
++ * The scene rendered to a texture node. Pipeline effects compose onto this —
++ * without a pass there is no frame for `Render pipeline · Output` to post
++ * process. `scene` and `camera` are provided to the TSL compiler as extra
++ * scope by the preview.
++ */
++export const scenePassDefinition = sourceNode(
++  'Scene Pass',
++  'pass(scene, camera) — the rendered frame, for render pipeline effects',
++  {
++    key: 'out',
++    name: 'Frame',
++    position: HandlePosition.Right,
++    accepts: 'vec4',
++    value: 'pass(scene, camera)',
++  },
++)
+diff --git a/packages/playground/src/nodes/tsl/output.ts b/packages/playground/src/nodes/tsl/output.ts
+index 7f80ebe..193f7cc 100644
+--- a/packages/playground/src/nodes/tsl/output.ts
++++ b/packages/playground/src/nodes/tsl/output.ts
+@@ -8,11 +8,12 @@ export const TSL_OUTPUT_NODE_TYPE = 'TSL.Output'
+ export const outputDefinition: INodeDefinition = {
+   schema: {
+     name: 'Output',
+-    description: 'Assigns the wired source to the material colorNode',
++    description:
++      'Sends the wired source to the preview: the model material on the material scene, the render pipeline on the pipeline scene',
+     handles: [
+       {
+         key: 'input',
+-        name: 'Color',
++        name: 'Source',
+         position: HandlePosition.Left,
+         accepts: TSL_NUMERIC,
+         value: 'vec3(0.0)',
+@@ -21,13 +22,19 @@ export const outputDefinition: INodeDefinition = {
+   },
+ }
+ 
+-/** TSL source wired into the top-level Output node, if one exists. */
++/** Source of the first top-level Output node, if it has one. */
+ export function readTslSource(ws: Workspace): string | null {
+-  const node = ws.nodes.find((item) => item.type === TSL_OUTPUT_NODE_TYPE)
+-  if (!node) {
+-    return null
++  for (const node of ws.nodes) {
++    if (node.type !== TSL_OUTPUT_NODE_TYPE) {
++      continue
++    }
++
++    const source = node.getData('input')
++
++    if (typeof source === 'string' && source.trim()) {
++      return source
++    }
+   }
+ 
+-  const source = node.getData('input')
+-  return typeof source === 'string' ? source : null
++  return null
+ }
+diff --git a/packages/playground/src/preview/WebGpuPreview.vue b/packages/playground/src/preview/WebGpuPreview.vue
+index 266d543..fb08876 100644
+--- a/packages/playground/src/preview/WebGpuPreview.vue
++++ b/packages/playground/src/preview/WebGpuPreview.vue
+@@ -9,41 +9,47 @@ import {
+   watch,
+ } from 'vue'
+ import { createPreview } from './createPreview'
+-import type { Preview, PreviewShape } from './createPreview'
++import type { Preview } from './createPreview'
++import {
++  DEFAULT_SCENE_ID,
++  DEFAULT_SHAPE,
++  SCENES,
++  SHAPES,
++  readSceneId,
++} from './scene-meta'
++import type { PreviewShape, SceneId } from './scene-meta'
+ 
+ export interface WebGpuPreviewProps {
+-  code: string | null
++  source: string | null
++}
++
++export interface WebGpuPreviewEmits {
++  /** The scene decides where the source lands, so the graph follows it. */
++  'scene-change': [sceneId: SceneId]
+ }
+ 
+ type PreviewStatus = 'starting' | 'ready' | 'unsupported' | 'error'
+ 
+ const props = defineProps<WebGpuPreviewProps>()
+-
+-const SHAPES: { value: PreviewShape; label: string }[] = [
+-  { value: 'plane', label: 'Plane' },
+-  { value: 'sphere', label: 'Sphere' },
+-  { value: 'torus', label: 'Torus knot' },
+-]
++const emit = defineEmits<WebGpuPreviewEmits>()
+ 
+ const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
+ const stage = useTemplateRef<HTMLElement>('stage')
+-const { copy, copied } = useClipboard({ source: () => props.code ?? '' })
+ 
+ const state = reactive({
+   status: 'starting' as PreviewStatus,
+   message: '',
+-  shape: 'plane' as PreviewShape,
++  notices: [] as string[],
++  sceneId: DEFAULT_SCENE_ID as SceneId,
++  shape: DEFAULT_SHAPE as PreviewShape,
+ })
+ 
+-const message = computed(() => {
+-  if (state.message) {
+-    return state.message
+-  }
+-
+-  return state.status === 'starting' ? 'Starting WebGPU…' : ''
+-})
++const showShape = computed(() => state.sceneId === 'material')
++const sourceText = computed(() => props.source ?? '')
++const { copy, copied } = useClipboard({ source: () => sourceText.value })
+ 
+ let preview: Preview | null = null
++let appliedSource: string | null | undefined
+ 
+ onMounted(async () => {
+   if (!('gpu' in navigator)) {
+@@ -56,7 +62,7 @@ onMounted(async () => {
+     preview = await createPreview(canvas.value!)
+     state.status = 'ready'
+     syncSize()
+-    applyCode()
++    applySource()
+   } catch (error) {
+     fail(error)
+   }
+@@ -64,7 +70,9 @@ onMounted(async () => {
+ 
+ useResizeObserver(stage, syncSize)
+ 
+-watch(() => props.code, applyCode)
++// `source` is owned by the workspace, so there is nothing local to call on
++// change; the last value keeps unchanged re-runs from recompiling TSL.
++watch(() => props.source, applySource)
+ 
+ onBeforeUnmount(() => {
+   preview?.dispose()
+@@ -79,30 +87,53 @@ function syncSize() {
+   }
+ }
+ 
+-function applyCode() {
+-  if (!preview) {
++function applySource() {
++  if (!preview || props.source === appliedSource) {
+     return
+   }
+ 
+-  if (!props.code) {
+-    state.message = 'Wire a TSL / Output node to preview the pipeline'
++  appliedSource = props.source
++
++  try {
++    state.notices = preview.apply(props.source)
++  } catch (error) {
++    fail(error)
+     return
+   }
+ 
+-  try {
+-    preview.setShader(props.code)
++  if (props.source) {
+     state.status = 'ready'
+     state.message = ''
+-  } catch (error) {
+-    fail(error)
++  } else {
++    state.notices = ['Wire a TSL / Output node to preview the pipeline']
+   }
+ }
+ 
++function onSceneChange(event: Event) {
++  const sceneId = readSceneId((event.target as HTMLSelectElement).value)
++  state.sceneId = sceneId
++
++  // Drop the old source first: it belonged to the previous scene's graph,
++  // which the app is about to rebuild.
++  preview?.setScene(sceneId)
++  appliedSource = undefined
++
++  emit('scene-change', sceneId)
++}
++
+ function onShapeChange(event: Event) {
+   const shape = (event.target as HTMLSelectElement).value as PreviewShape
+-
+   state.shape = shape
+-  preview?.setShape(shape)
++
++  if (!preview) {
++    return
++  }
++
++  try {
++    state.notices = preview.setShape(shape)
++  } catch (error) {
++    fail(error)
++  }
+ }
+ 
+ function fail(error: unknown) {
+@@ -115,21 +146,42 @@ function fail(error: unknown) {
+   <aside class="preview">
+     <header class="preview-header">
+       <span class="preview-title">three.js · WebGPU</span>
+-      <select
+-        class="preview-shape"
+-        :value="state.shape"
+-        :disabled="state.status !== 'ready'"
+-        @change="onShapeChange"
+-      >
+-        <option v-for="shape in SHAPES" :key="shape.value" :value="shape.value">
+-          {{ shape.label }}
+-        </option>
+-      </select>
++      <div class="preview-controls">
++        <select
++          class="preview-select"
++          :value="state.sceneId"
++          :disabled="state.status !== 'ready'"
++          title="Scene"
++          @change="onSceneChange"
++        >
++          <option v-for="scene in SCENES" :key="scene.id" :value="scene.id">
++            {{ scene.label }}
++          </option>
++        </select>
++
++        <select
++          v-if="showShape"
++          class="preview-select"
++          :value="state.shape"
++          :disabled="state.status !== 'ready'"
++          title="Shape"
++          @change="onShapeChange"
++        >
++          <option v-for="shape in SHAPES" :key="shape.value" :value="shape.value">
++            {{ shape.label }}
++          </option>
++        </select>
++      </div>
+     </header>
+ 
+     <div ref="stage" class="preview-stage">
+       <canvas ref="canvas" class="preview-canvas"></canvas>
+-      <p v-if="message" class="preview-message">{{ message }}</p>
++      <p v-if="state.message" class="preview-message">{{ state.message }}</p>
++      <ul v-else-if="state.notices.length" class="preview-notices">
++        <li v-for="(notice, index) in state.notices" :key="index">
++          {{ notice }}
++        </li>
++      </ul>
+     </div>
+ 
+     <div class="preview-code">
+@@ -140,7 +192,7 @@ function fail(error: unknown) {
+         </button>
+       </div>
+       <pre class="preview-source">{{
+-        props.code ?? '— no TSL / Output node —'
++        props.source ?? '— no TSL / Output node —'
+       }}</pre>
+     </div>
+   </aside>
+@@ -171,10 +223,18 @@ function fail(error: unknown) {
+ .preview-title {
+   font-size: 12px;
+   color: #c9cbd4;
++  white-space: nowrap;
+ }
+ 
+-.preview-shape {
++.preview-controls {
++  display: flex;
++  gap: 6px;
++  min-width: 0;
++}
++
++.preview-select {
+   height: 24px;
++  max-width: 132px;
+   padding: 0 6px;
+   font-size: 12px;
+   color: inherit;
+@@ -195,16 +255,23 @@ function fail(error: unknown) {
+   height: 100%;
+ }
+ 
+-.preview-message {
++.preview-message,
++.preview-notices {
+   position: absolute;
+   right: 0;
+   bottom: 0;
+   left: 0;
++  margin: 0;
+   padding: 6px 10px;
+   font-size: 11px;
+   line-height: 1.4;
+   color: #ffcc99;
+   background: rgba(28, 18, 6, 0.86);
++  pointer-events: none;
++}
++
++.preview-notices {
++  padding-left: 24px;
+ }
+ 
+ .preview-code {
+diff --git a/packages/playground/src/preview/apply.ts b/packages/playground/src/preview/apply.ts
+new file mode 100644
+index 0000000..d2c940d
+--- /dev/null
++++ b/packages/playground/src/preview/apply.ts
+@@ -0,0 +1,105 @@
++import type * as THREE from 'three/webgpu'
++import { vec4 } from 'three/tsl'
++import { compileTslExpression } from './compile'
++import type { SceneOutput } from './scenes'
++
++export interface ApplyContext {
++  scene: THREE.Scene
++  camera: THREE.Camera
++  pipeline: THREE.RenderPipeline
++  /** The active scene's destination for the graph's source. */
++  output: SceneOutput
++}
++
++/** The applied source, able to put its destination back the way it was. */
++export interface AppliedOutput {
++  restore(): void
++}
++
++export interface ApplyResult {
++  applied: AppliedOutput[]
++  messages: string[]
++  /** Whether a render pipeline output is in play, i.e. how to render a frame. */
++  usesPipeline: boolean
++}
++
++/**
++ * Compile the graph's source and assign it to the active scene's destination.
++ * Failures come back as messages instead of thrown: a broken Output must not
++ * stop the scene from rendering.
++ *
++ * Callers must restore `applied` before applying again — the destination is
++ * always assigned from scratch so a removed or changed source leaves nothing
++ * behind.
++ */
++export function applyOutput(
++  ctx: ApplyContext,
++  source: string | null,
++): ApplyResult {
++  const applied: AppliedOutput[] = []
++  const messages: string[] = []
++
++  if (!source) {
++    return { applied, messages, usesPipeline: false }
++  }
++
++  let node: unknown
++
++  try {
++    node = compileTslExpression(source, {
++      scene: ctx.scene,
++      camera: ctx.camera,
++    })
++  } catch (error) {
++    return { applied, messages: [errorText(error)], usesPipeline: false }
++  }
++
++  if (ctx.output.kind === 'pipeline') {
++    const previous = ctx.pipeline.outputNode
++
++    // `pass(scene, camera)` and friends need the runtime scene/camera, and the
++    // graph may hand back a plain value (e.g. a bare float) — `vec4` is a
++    // no-op on a node that already produces a vec4.
++    ctx.pipeline.outputNode = asVec4(node)
++    ctx.pipeline.needsUpdate = true
++
++    applied.push({
++      restore() {
++        ctx.pipeline.outputNode = previous
++        ctx.pipeline.needsUpdate = true
++        disposeNode(node)
++      },
++    })
++
++    return { applied, messages, usesPipeline: true }
++  }
++
++  const { material } = ctx.output
++  const previous = material.colorNode
++
++  material.colorNode = node as typeof material.colorNode
++  material.needsUpdate = true
++
++  applied.push({
++    restore() {
++      material.colorNode = previous
++      material.needsUpdate = true
++      disposeNode(node)
++    },
++  })
++
++  return { applied, messages, usesPipeline: false }
++}
++
++function asVec4(value: unknown): THREE.Node {
++  return vec4(value as never) as unknown as THREE.Node
++}
++
++function disposeNode(value: unknown) {
++  const node = value as { dispose?: () => void } | null
++  node?.dispose?.()
++}
++
++function errorText(error: unknown): string {
++  return error instanceof Error ? error.message : String(error)
++}
+diff --git a/packages/playground/src/preview/compile.ts b/packages/playground/src/preview/compile.ts
+index 224eb12..cf96f9f 100644
+--- a/packages/playground/src/preview/compile.ts
++++ b/packages/playground/src/preview/compile.ts
+@@ -11,9 +11,16 @@ const IDENTIFIER = /(?<![.\w$])([A-Za-z_$][\w$]*)/g
+ /**
+  * Turn generated TSL source into a real TSL node. The source comes from the
+  * node definitions in `nodes/tsl`, never from user input, and only identifiers
+- * that exist in three's TSL namespace are put in scope.
++ * that exist in three's TSL namespace — plus the caller-provided `scope` — are
++ * put in scope.
++ *
++ * `scope` carries the runtime objects the preview owns (`scene`, `camera`), so
++ * generated source may reference `pass(scene, camera)` for pipeline effects.
+  */
+-export function compileTslExpression(source: string): unknown {
++export function compileTslExpression(
++  source: string,
++  scope: Record<string, unknown> = {},
++): unknown {
+   const trimmed = source.trim()
+ 
+   if (!trimmed) {
+@@ -24,10 +31,11 @@ export function compileTslExpression(source: string): unknown {
+     throw new Error(`Unsupported characters in TSL source: ${trimmed}`)
+   }
+ 
++  const library = { ...tslLibrary, ...scope }
+   const names = [
+     ...new Set([...trimmed.matchAll(IDENTIFIER)].map((match) => match[1]!)),
+   ]
+-  const unknown = names.filter((name) => !(name in tslLibrary))
++  const unknown = names.filter((name) => !(name in library))
+ 
+   if (unknown.length) {
+     throw new Error(`Unknown TSL identifier(s): ${unknown.join(', ')}`)
+@@ -37,5 +45,5 @@ export function compileTslExpression(source: string): unknown {
+     `return ({ ${names.join(', ')} }) => (${trimmed})`,
+   ) as () => (library: Record<string, unknown>) => unknown
+ 
+-  return factory()(tslLibrary)
++  return factory()(library)
+ }
+diff --git a/packages/playground/src/preview/createPreview.ts b/packages/playground/src/preview/createPreview.ts
+index c4d9082..ccb118f 100644
+--- a/packages/playground/src/preview/createPreview.ts
++++ b/packages/playground/src/preview/createPreview.ts
+@@ -1,17 +1,40 @@
+ import * as THREE from 'three/webgpu'
+-import { compileTslExpression } from './compile'
+-
+-export type PreviewShape = 'plane' | 'sphere' | 'torus'
++import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
++import { applyOutput } from './apply'
++import type { AppliedOutput } from './apply'
++import { DEFAULT_SCENE_ID, DEFAULT_SHAPE, readSceneId } from './scene-meta'
++import type { PreviewShape, SceneId } from './scene-meta'
++import {
++  createMaterialScene,
++  createPipelineScene,
++  disposeSceneInstance,
++} from './scenes'
++import type { SceneInstance } from './scenes'
+ 
+ export interface Preview {
+-  setShader(source: string): void
+-  setShape(shape: PreviewShape): void
++  /**
++   * Swap scenes: the previous instance and its orbit controls are disposed and
++   * the applied source is dropped. The graph rebuilds right after and the new
++   * source arrives through `apply`.
++   */
++  setScene(sceneId: SceneId): void
++  setShape(shape: PreviewShape): string[]
++  /** Assign the graph's source to the active scene's destination. */
++  apply(source: string | null): string[]
+   resize(width: number, height: number): void
+   dispose(): void
+ }
+ 
++interface Viewport {
++  width: number
++  height: number
++}
++
+ /**
+- * WebGPU-only preview: one mesh whose material color is the graph's source.
++ * WebGPU-only preview: one WebGPU renderer and orbit-controlled camera driving
++ * whichever built-in scene is active. The scene decides whether the graph's
++ * source lands on its model material or on the render pipeline.
++ *
+  * There is no WebGL fallback — `WebGPURenderer` throws when WebGPU is missing.
+  */
+ export async function createPreview(
+@@ -21,38 +44,122 @@ export async function createPreview(
+   await renderer.init()
+   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+ 
+-  const scene = new THREE.Scene()
+-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
+-  const material = new THREE.MeshBasicNodeMaterial()
++  const pipeline = new THREE.RenderPipeline(renderer)
++  const viewport: Viewport = { width: 0, height: 0 }
++
++  const state = {
++    sceneId: DEFAULT_SCENE_ID,
++    shape: DEFAULT_SHAPE,
++    source: null as string | null,
++    applied: [] as AppliedOutput[],
++    usesPipeline: false,
++  }
++
++  let instance = createMaterialScene(state.shape)
++  let controls = createControls(instance)
++  let lastTime = 0
++
++  renderer.setAnimationLoop((time) => {
++    const delta = lastTime ? Math.min((time - lastTime) / 1000, 0.1) : 0
++    lastTime = time
++
++    // Damping only advances inside `update`, so it has to run every frame.
++    controls.update(delta)
++    instance.update?.(time / 1000, delta)
++
++    if (state.usesPipeline) {
++      pipeline.render()
++    } else {
++      renderer.render(instance.scene, instance.camera)
++    }
++  })
++
++  function createControls(target: SceneInstance) {
++    const orbit = new OrbitControls(target.camera, renderer.domElement)
++    orbit.enableDamping = true
++    orbit.dampingFactor = 0.08
++    orbit.target.copy(target.cameraTarget ?? new THREE.Vector3())
++    orbit.update()
++
++    return orbit
++  }
++
++  /** Undo the assignment so the next apply starts from the scene's own state. */
++  function releaseOutput() {
++    for (const item of state.applied) {
++      item.restore()
++    }
+ 
+-  let shape: PreviewShape = 'plane'
+-  let geometry = createGeometry(shape)
+-  const mesh = new THREE.Mesh(geometry, material)
++    state.applied = []
++    state.usesPipeline = false
++  }
++
++  function applyCurrent(): string[] {
++    releaseOutput()
++
++    const result = applyOutput(
++      {
++        scene: instance.scene,
++        camera: instance.camera,
++        pipeline,
++        output: instance.output,
++      },
++      state.source,
++    )
++
++    state.applied = result.applied
++    state.usesPipeline = result.usesPipeline
+ 
+-  scene.add(mesh)
+-  frameCamera(camera, shape)
++    return result.messages
++  }
++
++  function syncSize() {
++    if (!viewport.width || !viewport.height) {
++      return
++    }
+ 
+-  renderer.setAnimationLoop(() => renderer.render(scene, camera))
++    renderer.setSize(viewport.width, viewport.height, false)
++    instance.camera.aspect = viewport.width / viewport.height
++    instance.camera.updateProjectionMatrix()
++  }
+ 
+   return {
+-    setShader(source) {
+-      material.colorNode = compileTslExpression(source) as NonNullable<
+-        typeof material.colorNode
+-      >
+-      material.needsUpdate = true
+-    },
++    setScene(sceneId) {
++      const next = readSceneId(sceneId)
+ 
+-    setShape(next) {
+-      if (next === shape) {
++      if (next === state.sceneId) {
+         return
+       }
+ 
+-      const previous = geometry
+-      shape = next
+-      geometry = createGeometry(next)
+-      mesh.geometry = geometry
+-      previous.dispose()
+-      frameCamera(camera, next)
++      releaseOutput()
++      controls.dispose()
++      disposeSceneInstance(instance)
++
++      state.sceneId = next
++      instance =
++        next === 'pipeline'
++          ? createPipelineScene()
++          : createMaterialScene(state.shape)
++      controls = createControls(instance)
++      syncSize()
++    },
++
++    setShape(shape) {
++      state.shape = shape
++
++      // Only the material scene offers shapes; the pipeline scene ignores it
++      // and picks the latest shape up if the user switches back.
++      if (state.sceneId !== 'material') {
++        return []
++      }
++
++      instance.setShape?.(shape)
++      return applyCurrent()
++    },
++
++    apply(source) {
++      state.source = source
++      return applyCurrent()
+     },
+ 
+     resize(width, height) {
+@@ -60,33 +167,18 @@ export async function createPreview(
+         return
+       }
+ 
+-      renderer.setSize(width, height, false)
+-      camera.aspect = width / height
+-      camera.updateProjectionMatrix()
++      viewport.width = width
++      viewport.height = height
++      syncSize()
+     },
+ 
+     dispose() {
+       renderer.setAnimationLoop(null)
++      releaseOutput()
++      controls.dispose()
++      disposeSceneInstance(instance)
++      pipeline.dispose()
+       void renderer.dispose()
+-      geometry.dispose()
+-      material.dispose()
+     },
+   }
+ }
+-
+-function createGeometry(shape: PreviewShape): THREE.BufferGeometry {
+-  if (shape === 'sphere') {
+-    return new THREE.SphereGeometry(1, 64, 32)
+-  }
+-
+-  if (shape === 'torus') {
+-    return new THREE.TorusKnotGeometry(0.7, 0.28, 160, 32)
+-  }
+-
+-  return new THREE.PlaneGeometry(2, 2)
+-}
+-
+-function frameCamera(camera: THREE.PerspectiveCamera, shape: PreviewShape) {
+-  camera.position.set(0, 0, shape === 'plane' ? 2.4 : 3.4)
+-  camera.lookAt(0, 0, 0)
+-}
+diff --git a/packages/playground/src/preview/scene-meta.ts b/packages/playground/src/preview/scene-meta.ts
+new file mode 100644
+index 0000000..4790103
+--- /dev/null
++++ b/packages/playground/src/preview/scene-meta.ts
+@@ -0,0 +1,33 @@
++/**
++ * Scene and shape vocabulary shared by the preview and the example graphs.
++ * The active scene is what decides where a `TSL.Output` source lands, so this
++ * is also the key the graph examples are looked up by.
++ */
++
++export type SceneId = 'material' | 'pipeline'
++
++export interface SceneMeta {
++  id: SceneId
++  label: string
++}
++
++export const SCENES: SceneMeta[] = [
++  { id: 'material', label: 'Material preview' },
++  { id: 'pipeline', label: 'Render pipeline' },
++]
++
++export const DEFAULT_SCENE_ID: SceneId = 'material'
++
++export function readSceneId(value: unknown): SceneId {
++  return value === 'pipeline' ? 'pipeline' : DEFAULT_SCENE_ID
++}
++
++export type PreviewShape = 'plane' | 'sphere' | 'torus'
++
++export const SHAPES: { value: PreviewShape; label: string }[] = [
++  { value: 'plane', label: 'Plane' },
++  { value: 'sphere', label: 'Sphere' },
++  { value: 'torus', label: 'Torus knot' },
++]
++
++export const DEFAULT_SHAPE: PreviewShape = 'plane'
+diff --git a/packages/playground/src/preview/scenes.ts b/packages/playground/src/preview/scenes.ts
+new file mode 100644
+index 0000000..9e68884
+--- /dev/null
++++ b/packages/playground/src/preview/scenes.ts
+@@ -0,0 +1,172 @@
++import * as THREE from 'three/webgpu'
++import { DEFAULT_SHAPE } from './scene-meta'
++import type { PreviewShape } from './scene-meta'
++
++/** Where the active scene sends the graph's Output source. */
++export type SceneOutput =
++  | { kind: 'material'; material: THREE.NodeMaterial }
++  | { kind: 'pipeline' }
++
++/**
++ * A preview scene. The scene decides where the graph's Output lands through
++ * `output` — the model material for the material scene, the render pipeline
++ * for the pipeline scene.
++ */
++export interface SceneInstance {
++  scene: THREE.Scene
++  camera: THREE.PerspectiveCamera
++  output: SceneOutput
++  /** Orbit focus; defaults to the origin. */
++  cameraTarget?: THREE.Vector3
++  /** Only the material scene has a shape. */
++  setShape?(shape: PreviewShape): void
++  update?(elapsed: number, delta: number): void
++  /** Extra resources living outside the scene graph. */
++  dispose?(): void
++}
++
++/**
++ * Single-object scene for previewing material output: one mesh whose node
++ * material receives the graph's TSL source, framed to fill the viewport.
++ */
++export function createMaterialScene(
++  shape: PreviewShape = DEFAULT_SHAPE,
++): SceneInstance {
++  const scene = new THREE.Scene()
++  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
++  const material = new THREE.MeshBasicNodeMaterial()
++
++  let current = shape
++  let geometry = createShapeGeometry(current)
++
++  const mesh = new THREE.Mesh(geometry, material)
++  scene.add(mesh)
++  frameShape(camera, current)
++
++  return {
++    scene,
++    camera,
++    output: { kind: 'material', material },
++
++    setShape(next) {
++      if (next === current) {
++        return
++      }
++
++      const previous = geometry
++      current = next
++      geometry = createShapeGeometry(next)
++      mesh.geometry = geometry
++      previous.dispose()
++      frameShape(camera, next)
++    },
++  }
++}
++
++/**
++ * A small lit scene for previewing render pipeline output: several node
++ * materials, a light rig, and a slowly rotating hero mesh so a full-frame
++ * effect has something to work with.
++ */
++export function createPipelineScene(): SceneInstance {
++  const scene = new THREE.Scene()
++  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
++  frameCamera(camera, 4.8)
++
++  const knot = new THREE.Mesh(
++    new THREE.TorusKnotGeometry(0.68, 0.22, 180, 32),
++    new THREE.MeshStandardNodeMaterial({
++      color: '#8b94ff',
++      roughness: 0.35,
++      metalness: 0.1,
++    }),
++  )
++  knot.position.set(-0.95, 0.5, 0)
++
++  const sphere = new THREE.Mesh(
++    new THREE.SphereGeometry(0.6, 64, 32),
++    new THREE.MeshStandardNodeMaterial({ color: '#ffb066', roughness: 0.45 }),
++  )
++  sphere.position.set(0.95, 0.42, 0.15)
++
++  const ground = new THREE.Mesh(
++    new THREE.PlaneGeometry(7, 7),
++    new THREE.MeshStandardNodeMaterial({ color: '#20232e', roughness: 0.95 }),
++  )
++  ground.rotation.x = -Math.PI / 2
++  ground.position.y = -0.9
++
++  const key = new THREE.DirectionalLight('#ffffff', 2.4)
++  key.position.set(2.6, 3.2, 2.4)
++
++  scene.add(
++    knot,
++    sphere,
++    ground,
++    new THREE.HemisphereLight('#cbd5ff', '#12141c', 1.1),
++    key,
++  )
++
++  return {
++    scene,
++    camera,
++    output: { kind: 'pipeline' },
++    cameraTarget: new THREE.Vector3(0, 0.1, 0),
++
++    update(elapsed) {
++      knot.rotation.y = elapsed * 0.35
++      knot.rotation.x = elapsed * 0.12
++    },
++  }
++}
++
++/** Releases everything a scene owns: geometries, materials and their maps. */
++export function disposeSceneInstance(instance: SceneInstance) {
++  instance.scene.traverse((item) => {
++    const mesh = item as Partial<THREE.Mesh>
++
++    mesh.geometry?.dispose()
++
++    const material = mesh.material
++    if (Array.isArray(material)) {
++      material.forEach(disposeMaterial)
++    } else if (material) {
++      disposeMaterial(material)
++    }
++  })
++
++  instance.dispose?.()
++}
++
++function frameCamera(camera: THREE.PerspectiveCamera, distance: number) {
++  camera.position.set(0, 0, distance)
++  camera.lookAt(0, 0, 0)
++}
++
++function frameShape(camera: THREE.PerspectiveCamera, shape: PreviewShape) {
++  frameCamera(camera, shape === 'plane' ? 2.4 : 3.4)
++}
++
++function createShapeGeometry(shape: PreviewShape): THREE.BufferGeometry {
++  if (shape === 'sphere') {
++    return new THREE.SphereGeometry(1, 64, 32)
++  }
++
++  if (shape === 'torus') {
++    return new THREE.TorusKnotGeometry(0.7, 0.28, 160, 32)
++  }
++
++  return new THREE.PlaneGeometry(2, 2)
++}
++
++function disposeMaterial(material: THREE.Material) {
++  for (const value of Object.values(material)) {
++    const texture = value as Partial<THREE.Texture> | null
++
++    if (texture && typeof texture === 'object' && texture.isTexture) {
++      texture.dispose?.()
++    }
++  }
++
++  material.dispose()
++}
+diff --git a/packages/playground/vite.config.ts b/packages/playground/vite.config.ts
+index 96c3ad9..b554aa3 100644
+--- a/packages/playground/vite.config.ts
++++ b/packages/playground/vite.config.ts
+@@ -6,6 +6,10 @@ export default defineConfig({
+   base: './',
+   plugins: [vue(), Icons({ compiler: 'vue3' })],
+   optimizeDeps: {
+-    include: ['three/webgpu', 'three/tsl'],
++    include: [
++      'three/webgpu',
++      'three/tsl',
++      'three/addons/controls/OrbitControls.js',
++    ],
+   },
+ })
