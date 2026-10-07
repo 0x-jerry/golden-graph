@@ -5,4 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: './',
   plugins: [vue(), Icons({ compiler: 'vue3' })],
+  optimizeDeps: {
+    include: ['three/webgpu', 'three/tsl'],
+  },
 })

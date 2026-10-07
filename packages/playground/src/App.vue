@@ -4,10 +4,12 @@ import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
 import { KonvaRenderer } from '@0x-jerry/golden-graph-renderer'
 import type { DeepPartial, GraphTheme } from '@0x-jerry/golden-graph-renderer'
 import { setup as _setup } from './editor'
+import { readTslSource } from './nodes/tsl'
+import WebGpuPreview from './preview/WebGpuPreview.vue'
 
 const instance = useTemplateRef<InstanceType<typeof KonvaRenderer>>('renderer')
 
-const cacheKey = 'graph-save-data'
+const cacheKey = 'tsl-graph-save-data'
 
 /**
  * Blender-style dark palette. Layered over `DEFAULT_THEME`, so every token
@@ -61,11 +63,15 @@ const uiState = reactive({
   debug: false,
 })
 
+const shaderSource = ref<string | null>(null)
+
 const workspace = computed(() => instance.value?.workspace)
 
 async function setup(ws: Workspace) {
   await _setup(ws)
-  ws.setDebug(true)
+
+  // Debug pacing (100ms per node) would delay every live preview update.
+  ws.setDebug(false)
 
   ws.events.on('executor:changed', (state) => {
     uiState.isProcessing = state.isProcessing
@@ -130,12 +136,29 @@ async function setup(ws: Workspace) {
       console.error('Workspace execution failed:', error)
     } finally {
       isExecuting = false
+      refreshShader(ws)
     }
 
     if (isPending) {
       void execute()
     }
   }
+
+  refreshShader(ws)
+  void execute()
+}
+
+/**
+ * Read the source the executor generated into the Output node. Inside a
+ * subgraph the top-level Output is not in the active workspace, so the
+ * preview keeps the last compiled shader.
+ */
+function refreshShader(ws: Workspace) {
+  if (ws.isActiveSubGraph) {
+    return
+  }
+
+  shaderSource.value = readTslSource(ws)
 }
 
 function save() {
@@ -174,6 +197,8 @@ async function replaceGraph(data: Parameters<Workspace['fromJSON']>[0]) {
   } catch (error) {
     console.error('Failed to load workspace:', error)
   }
+
+  refreshShader(ws)
 }
 
 async function load() {
@@ -186,7 +211,13 @@ async function load() {
 }
 
 function clear() {
-  workspace.value?.clear()
+  const ws = workspace.value
+  if (!ws) {
+    return
+  }
+
+  ws.clear()
+  refreshShader(ws)
 }
 
 async function run() {
@@ -204,6 +235,8 @@ async function run() {
     }
 
     console.error('Workspace execution failed:', error)
+  } finally {
+    refreshShader(ws)
   }
 }
 
@@ -247,8 +280,12 @@ async function loadFromJSON() {
       </select>
     </div>
 
-    <div class="graph-render-content">
-      <KonvaRenderer ref="renderer" :setup="setup" :theme="theme" />
+    <div class="body">
+      <div class="graph-render-content">
+        <KonvaRenderer ref="renderer" :setup="setup" :theme="theme" />
+      </div>
+
+      <WebGpuPreview :code="shaderSource" />
     </div>
   </div>
 </template>
@@ -273,8 +310,15 @@ async function loadFromJSON() {
   gap: 8px;
 }
 
-.graph-render-content {
+.body {
+  display: flex;
   flex: 1;
   height: 0;
+}
+
+.graph-render-content {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
 }
 </style>

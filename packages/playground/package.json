@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@iconify-json/carbon": "^1.2.27",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "less": "^4.9.1",
     "typescript": "npm:typescript-native-bridge@6.0.3-bridge.16.tsgo.7.0.2",
@@ -22,6 +23,8 @@
     "vue": "^3.5.42",
     "@0x-jerry/golden-graph": "workspace:*",
     "@0x-jerry/golden-graph-backend": "workspace:*",
-    "@0x-jerry/golden-graph-renderer": "workspace:*"
+    "@0x-jerry/golden-graph-renderer": "workspace:*",
+    "@vueuse/core": "^14.4.0",
+    "three": "^0.186.1"
   }
 }
