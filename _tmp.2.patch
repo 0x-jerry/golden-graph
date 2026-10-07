@@ -1,0 +1,2234 @@
+diff --git a/packages/playground/src/nodes/debug/demo.ts b/packages/playground/src/nodes/debug/demo.ts
+index 26f27c8..7544c1f 100644
+--- a/packages/playground/src/nodes/debug/demo.ts
++++ b/packages/playground/src/nodes/debug/demo.ts
+@@ -16,15 +16,15 @@ export const selectDemoDefinition: INodeDefinition = {
+     description: '24 long options — scroll the list, watch labels clip',
+     handles: [
+       {
+-        key: 'stop',
+-        name: 'Stop',
++        key: 'options',
++        name: 'Options',
+         value: DEFAULT,
+         type: 'select',
+         options: { options: OPTIONS },
+       },
+       {
+-        key: 'out',
+-        name: 'Color',
++        key: 'value',
++        name: 'Value',
+         position: HandlePosition.Right,
+         accepts: ['vec3', 'vec4'],
+         value: DEFAULT,
+@@ -32,6 +32,55 @@ export const selectDemoDefinition: INodeDefinition = {
+     ],
+   },
+   execute: (ctx) => {
+-    ctx.setData('out', toTslCode(ctx.getData('stop')))
++    ctx.setData('value', toTslCode(ctx.getData('options')))
++  },
++}
++
++const TEXT = [
++  'A multiline textarea soft-wraps long lines and scrolls vertically.',
++  'Enter adds a newline; Escape or clicking away commits.',
++  'The box is a fixed three lines tall, so taller content scrolls.',
++  'Hover the box to reveal the scrollbar and drag its thumb.',
++].join('\n')
++
++/** Debug node for exercising the multiline textarea widget. */
++export const textareaDemoDefinition: INodeDefinition = {
++  schema: {
++    name: 'Textarea',
++    description: 'Multiline textarea + value output',
++    handles: [
++      {
++        key: 'text',
++        name: 'Text',
++        value: TEXT,
++        type: 'textarea',
++      },
++      {
++        key: 'value',
++        name: 'Value',
++        position: HandlePosition.Right,
++        value: TEXT,
++      },
++    ],
++  },
++  execute: (ctx) => {
++    ctx.setData('value', String(ctx.getData('text') ?? ''))
++  },
++}
++
++/** Debug node for exercising the read-only, scrollable display handle. */
++export const displayDemoDefinition: INodeDefinition = {
++  schema: {
++    name: 'Display',
++    description: 'Read-only scrollable text input',
++    handles: [
++      {
++        key: 'value',
++        name: 'Value',
++        position: HandlePosition.Left,
++        type: 'display',
++        value: `${TEXT}\n${TEXT}`,
++      },
++    ],
+   },
+ }
+diff --git a/packages/playground/src/nodes/debug/index.ts b/packages/playground/src/nodes/debug/index.ts
+index 633fbe6..d7702b9 100644
+--- a/packages/playground/src/nodes/debug/index.ts
++++ b/packages/playground/src/nodes/debug/index.ts
+@@ -1,6 +1,10 @@
+ import type { INodeProvider } from '@0x-jerry/golden-graph'
+ import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
+-import { selectDemoDefinition } from './demo'
++import {
++  displayDemoDefinition,
++  selectDemoDefinition,
++  textareaDemoDefinition,
++} from './demo'
+ 
+ export const debugNodeProviders: INodeProvider<INodeDefinition>[] = [
+   {
+@@ -8,6 +12,8 @@ export const debugNodeProviders: INodeProvider<INodeDefinition>[] = [
+     name: 'DEBUG',
+     nodes: {
+       Select: selectDemoDefinition,
++      Textarea: textareaDemoDefinition,
++      Display: displayDemoDefinition,
+     },
+   },
+ ]
+diff --git a/packages/renderer/src/renderer/components/input/keyboard.ts b/packages/renderer/src/renderer/components/input/keyboard.ts
+index 3cb31b0..e0e7385 100644
+--- a/packages/renderer/src/renderer/components/input/keyboard.ts
++++ b/packages/renderer/src/renderer/components/input/keyboard.ts
+@@ -11,6 +11,12 @@ export interface InputKeyEnv {
+    * Consumers scale by their own step size; without it the arrows stay inert.
+    */
+   step?(delta: number): void
++  /** Multiline editors: Enter inserts a newline and Up/Down move by line. */
++  multiline?: boolean
++  insertNewline?(): void
++  moveVertical?(delta: number, shift: boolean): void
++  homeLine?(shift: boolean): void
++  endLine?(shift: boolean): void
+ }
+ 
+ export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: InputKeyEnv): void {
+@@ -19,7 +25,13 @@ export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: Inpu
+ 
+   if (e.key === 'Enter') {
+     e.preventDefault()
+-    env.commit()
++    if (env.multiline && env.insertNewline) {
++      env.insertNewline()
++      env.sync()
++      env.blink()
++    } else {
++      env.commit()
++    }
+     return
+   }
+ 
+@@ -35,6 +47,18 @@ export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: Inpu
+     return
+   }
+ 
++  if (
++    env.multiline &&
++    env.moveVertical &&
++    (e.key === 'ArrowUp' || e.key === 'ArrowDown')
++  ) {
++    e.preventDefault()
++    env.moveVertical(e.key === 'ArrowUp' ? -1 : 1, shift)
++    env.sync()
++    env.blink()
++    return
++  }
++
+   if (handleEditingKey(model, e, ctrl, shift, env)) return
+ 
+   if (e.key.length === 1 && !ctrl && !e.altKey) {
+@@ -78,11 +102,13 @@ function handleEditingKey(
+       return done()
+     case 'Home':
+       e.preventDefault()
+-      model.moveTo(0, shift)
++      if (env.multiline && env.homeLine) env.homeLine(shift)
++      else model.moveTo(0, shift)
+       return done()
+     case 'End':
+       e.preventDefault()
+-      model.moveTo(model.value.length, shift)
++      if (env.multiline && env.endLine) env.endLine(shift)
++      else model.moveTo(model.value.length, shift)
+       return done()
+   }
+ 
+diff --git a/packages/renderer/src/renderer/components/scroll/ScrollArea.ts b/packages/renderer/src/renderer/components/scroll/ScrollArea.ts
+new file mode 100644
+index 0000000..5322450
+--- /dev/null
++++ b/packages/renderer/src/renderer/components/scroll/ScrollArea.ts
+@@ -0,0 +1,157 @@
++import Konva from 'konva'
++import { Scrollbar, TRACK_INSET, TRACK_WIDTH } from './Scrollbar'
++import { DEFAULT_THEME } from '../../../theme'
++import type { GraphTheme } from '../../../theme'
++
++const DEFAULT_WHEEL_STEP = 18
++/** `deltaY` a typical mouse-wheel notch reports in pixel delta mode. */
++const WHEEL_NOTCH_PIXELS = 100
++
++/**
++ * Normalize a wheel event to a fraction of one scroll step, clamped to
++ * [-1, 1]. Trackpads emit many small deltas, so scaling by the reported
++ * delta keeps scrolling proportional to the gesture instead of one full step
++ * per event (which made trackpad scrolling race); a mouse notch (~100px)
++ * still maps to exactly one step.
++ */
++export function wheelFraction(e: WheelEvent): number {
++  const pixels =
++    e.deltaMode === 1
++      ? e.deltaY * WHEEL_NOTCH_PIXELS
++      : e.deltaMode === 2
++        ? Math.sign(e.deltaY) * WHEEL_NOTCH_PIXELS
++        : e.deltaY
++  return Math.max(-1, Math.min(1, pixels / WHEEL_NOTCH_PIXELS))
++}
++
++export interface ScrollAreaConfig {
++  width: number
++  height: number
++  theme?: GraphTheme
++  /** Pixels scrolled per wheel notch. */
++  wheelStep?: number
++}
++
++/**
++ * Clipped, vertically scrollable viewport. Hosts a content group (moved by
++ * `-scrollTop`) and an auto-hiding {@link Scrollbar} overlay. Wheel scrolling
++ * only claims the event while the content actually overflows, so a short
++ * scroll area still lets the wheel reach the canvas zoom handler.
++ */
++export class ScrollArea extends Konva.Group {
++  readonly content: Konva.Group
++
++  _hit: Konva.Rect
++  _scrollbar: Scrollbar
++  _w: number
++  _h: number
++  _contentHeight = 0
++  _scrollTop = 0
++  _wheelStep: number
++  _hovered = false
++
++  constructor(config: ScrollAreaConfig) {
++    const theme = config.theme ?? DEFAULT_THEME
++    super()
++    this._w = config.width
++    this._h = config.height
++    this._wheelStep = config.wheelStep ?? DEFAULT_WHEEL_STEP
++
++    this.clipX(0)
++    this.clipY(0)
++    this.clipWidth(config.width)
++    this.clipHeight(config.height)
++
++    // Full-viewport hit shape so hover/auto-hide works across the whole area,
++    // not only where content happens to have a listening node.
++    this._hit = new Konva.Rect({
++      width: config.width,
++      height: config.height,
++      fill: 'transparent',
++    })
++    this.add(this._hit)
++
++    this.content = new Konva.Group()
++    this.add(this.content)
++
++    this._scrollbar = new Scrollbar({
++      trackHeight: config.height - TRACK_INSET * 2,
++      theme,
++      onScroll: (top) => this.scrollTo(top),
++      onDragEnd: () => {
++        if (!this._hovered) this._scrollbar.scheduleHide()
++      },
++    })
++    this._scrollbar.x(config.width - TRACK_WIDTH - TRACK_INSET)
++    this._scrollbar.y(TRACK_INSET)
++    this.add(this._scrollbar)
++
++    this.on('mouseenter', () => {
++      this._hovered = true
++      this._scrollbar.show()
++    })
++    this.on('mouseleave', () => {
++      this._hovered = false
++      this._scrollbar.scheduleHide()
++    })
++    this.on('wheel', (e) => {
++      if (this._contentHeight <= this._h) return
++      e.cancelBubble = true
++      e.evt.preventDefault()
++      this.scrollBy(wheelFraction(e.evt) * this._wheelStep)
++      this.flash()
++    })
++  }
++
++  get scrollTop(): number {
++    return this._scrollTop
++  }
++
++  get scrollbar(): Scrollbar {
++    return this._scrollbar
++  }
++
++  resize(width: number, height: number): void {
++    this._w = width
++    this._h = height
++    this.clipWidth(width)
++    this.clipHeight(height)
++    this._hit.width(width)
++    this._hit.height(height)
++    this._scrollbar.x(width - TRACK_WIDTH - TRACK_INSET)
++    this._scrollbar.y(TRACK_INSET)
++    this._scrollbar.setTrackHeight(height - TRACK_INSET * 2)
++    this.scrollTo(this._scrollTop)
++  }
++
++  setContentHeight(height: number): void {
++    this._contentHeight = height
++    this.scrollTo(this._scrollTop)
++  }
++
++  scrollTo(top: number): void {
++    const max = Math.max(0, this._contentHeight - this._h)
++    const next = Math.max(0, Math.min(max, top))
++    this._scrollTop = next
++    this.content.y(-next)
++    this._scrollbar.sync(next, this._contentHeight, this._h)
++    this.getLayer()?.batchDraw()
++  }
++
++  scrollBy(delta: number): void {
++    this.scrollTo(this._scrollTop + delta)
++  }
++
++  flash(): void {
++    this._scrollbar.flash()
++  }
++
++  applyTheme(theme: GraphTheme): void {
++    this._scrollbar.applyTheme(theme)
++  }
++
++  destroy(): this {
++    this._scrollbar.destroy()
++    return super.destroy()
++  }
++}
+diff --git a/packages/renderer/src/renderer/components/scroll/Scrollbar.ts b/packages/renderer/src/renderer/components/scroll/Scrollbar.ts
+new file mode 100644
+index 0000000..b5939f3
+--- /dev/null
++++ b/packages/renderer/src/renderer/components/scroll/Scrollbar.ts
+@@ -0,0 +1,242 @@
++import Konva from 'konva'
++import { registerStageCursor } from '../../cursor'
++import { DEFAULT_THEME } from '../../../theme'
++import type { GraphTheme } from '../../../theme'
++
++export const TRACK_WIDTH = 4
++export const THUMB_WIDTH = 4
++export const TRACK_INSET = 0
++
++const MIN_THUMB_HEIGHT = 20
++const HIDE_DELAY_MS = 600
++
++export interface ScrollbarConfig {
++  trackHeight: number
++  theme?: GraphTheme
++  onScroll: (scrollTop: number) => void
++  onDragEnd?: () => void
++}
++
++/**
++ * Vertical scrollbar overlay. Unit-agnostic: the host passes content/viewport
++ * sizes in whatever unit it scrolls in (items, pixels) and receives the same
++ * unit back from `onScroll`. Auto-hides on a timer once the host stops
++ * hovering; the host drives `show`/`scheduleHide`/`flash`.
++ */
++export class Scrollbar extends Konva.Group {
++  _track: Konva.Rect
++  _thumb: Konva.Rect
++
++  _trackHeight: number
++  _scrollTop = 0
++  _contentSize = 0
++  _viewportSize = 0
++  _overflow = false
++  _theme: GraphTheme
++  _onScroll: (scrollTop: number) => void
++  _onDragEnd?: () => void
++
++  _hideTimer: ReturnType<typeof setTimeout> | null = null
++  _dragging = false
++  _grabOffset = 0
++
++  constructor(config: ScrollbarConfig) {
++    const theme = config.theme ?? DEFAULT_THEME
++    super()
++    this._trackHeight = config.trackHeight
++    this._theme = theme
++    this._onScroll = config.onScroll
++    this._onDragEnd = config.onDragEnd
++
++    this._track = new Konva.Rect({
++      width: TRACK_WIDTH,
++      height: config.trackHeight,
++      cornerRadius: TRACK_WIDTH / 2,
++      fill: theme.colors.bgHover,
++    })
++    this.add(this._track)
++
++    this._thumb = new Konva.Rect({
++      x: (TRACK_WIDTH - THUMB_WIDTH) / 2,
++      width: THUMB_WIDTH,
++      height: 0,
++      cornerRadius: THUMB_WIDTH / 2,
++      fill: theme.colors.textMuted,
++      opacity: 0.6,
++    })
++    this.add(this._thumb)
++
++    this._track.on('mousedown touchstart', (e) => {
++      e.cancelBubble = true
++      this._pageTo(this._pointerY())
++    })
++    this._track.on('click tap', (e) => {
++      e.cancelBubble = true
++    })
++    this._thumb.on('mousedown touchstart', (e) => {
++      e.cancelBubble = true
++      this._startDrag()
++    })
++    this._thumb.on('click tap', (e) => {
++      e.cancelBubble = true
++    })
++
++    this.visible(false)
++    registerStageCursor(this, 'pointer')
++  }
++
++  get dragging(): boolean {
++    return this._dragging
++  }
++
++  setTrackHeight(height: number): void {
++    this._trackHeight = height
++    this._track.height(height)
++  }
++
++  sync(scrollTop: number, contentSize: number, viewportSize: number): void {
++    this._scrollTop = scrollTop
++    this._contentSize = contentSize
++    this._viewportSize = viewportSize
++
++    const overflow = contentSize > viewportSize && viewportSize > 0
++    this._overflow = overflow
++    if (!overflow) {
++      this.visible(false)
++      this.getLayer()?.batchDraw()
++      return
++    }
++
++    this._thumb.height(this._thumbHeight())
++    this._thumb.y(this._thumbYFor(scrollTop))
++    this.getLayer()?.batchDraw()
++  }
++
++  show(): this {
++    if (!this._overflow) return this
++    this._clearTimer()
++    this.visible(true)
++    this.getLayer()?.batchDraw()
++    return this
++  }
++
++  hide(): this {
++    this._clearTimer()
++    this.visible(false)
++    this.getLayer()?.batchDraw()
++    return this
++  }
++
++  /** Show now, then hide after the delay unless the host keeps it alive. */
++  flash(): void {
++    this.show()
++    this.scheduleHide()
++  }
++
++  scheduleHide(): void {
++    if (this._dragging) return
++    this._clearTimer()
++    this._hideTimer = setTimeout(() => {
++      this._hideTimer = null
++      this.hide()
++    }, HIDE_DELAY_MS)
++  }
++
++  applyTheme(theme: GraphTheme): void {
++    this._theme = theme
++    this._track.fill(theme.colors.bgHover)
++    this._thumb.fill(theme.colors.textMuted)
++    this.getLayer()?.batchDraw()
++  }
++
++  _thumbHeight(): number {
++    const ratio = this._viewportSize / this._contentSize
++    return Math.max(
++      MIN_THUMB_HEIGHT,
++      Math.min(this._trackHeight, this._trackHeight * ratio),
++    )
++  }
++
++  _maxScroll(): number {
++    return Math.max(0, this._contentSize - this._viewportSize)
++  }
++
++  _maxThumbY(): number {
++    return this._trackHeight - this._thumbHeight()
++  }
++
++  _thumbYFor(scrollTop: number): number {
++    const maxThumbY = this._maxThumbY()
++    const maxScroll = this._maxScroll()
++    if (maxThumbY <= 0 || maxScroll <= 0) return 0
++    return (scrollTop / maxScroll) * maxThumbY
++  }
++
++  _scrollFromThumbY(y: number): number {
++    const maxThumbY = this._maxThumbY()
++    const maxScroll = this._maxScroll()
++    if (maxThumbY <= 0 || maxScroll <= 0) return 0
++    const clamped = Math.max(0, Math.min(maxThumbY, y))
++    return Math.round((clamped / maxThumbY) * maxScroll)
++  }
++
++  _pageFromPointerY(y: number): number {
++    const thumbY = this._thumbYFor(this._scrollTop)
++    const dir = y < thumbY ? -1 : 1
++    return this._scrollTop + dir * this._viewportSize
++  }
++
++  _pageTo(y: number): void {
++    this.show()
++    this._onScroll(this._pageFromPointerY(y))
++  }
++
++  _pointerY(): number {
++    return this._track.getRelativePointerPosition()?.y ?? 0
++  }
++
++  _startDrag(): void {
++    this._dragging = true
++    this._grabOffset = this._pointerY() - this._thumbYFor(this._scrollTop)
++    this.show()
++    const stage = this.getStage()
++    if (!stage) return
++    stage.on('mousemove touchmove', this._onMove)
++    stage.on('mouseup touchend', this._onUp)
++  }
++
++  _onMove = (): void => {
++    if (!this._dragging) return
++    const y = this._pointerY() - this._grabOffset
++    this._onScroll(this._scrollFromThumbY(y))
++  }
++
++  _onUp = (): void => {
++    if (!this._dragging) return
++    this._dragging = false
++    this._detachStage()
++    this._onDragEnd?.()
++  }
++
++  _detachStage(): void {
++    const stage = this.getStage()
++    if (stage) {
++      stage.off('mousemove touchmove', this._onMove)
++      stage.off('mouseup touchend', this._onUp)
++    }
++  }
++
++  _clearTimer(): void {
++    if (this._hideTimer !== null) {
++      clearTimeout(this._hideTimer)
++      this._hideTimer = null
++    }
++  }
++
++  destroy(): this {
++    this._clearTimer()
++    this._detachStage()
++    this._dragging = false
++    return super.destroy()
++  }
++}
+diff --git a/packages/renderer/src/renderer/components/scroll/index.ts b/packages/renderer/src/renderer/components/scroll/index.ts
+new file mode 100644
+index 0000000..ade9c8f
+--- /dev/null
++++ b/packages/renderer/src/renderer/components/scroll/index.ts
+@@ -0,0 +1,5 @@
++export { Scrollbar, TRACK_WIDTH, THUMB_WIDTH, TRACK_INSET } from './Scrollbar'
++export type { ScrollbarConfig } from './Scrollbar'
++export { ScrollArea } from './ScrollArea'
++export type { ScrollAreaConfig } from './ScrollArea'
++export { wheelFraction } from './ScrollArea'
+diff --git a/packages/renderer/src/renderer/components/select/Dropdown.ts b/packages/renderer/src/renderer/components/select/Dropdown.ts
+index 6fb3022..d753ae0 100644
+--- a/packages/renderer/src/renderer/components/select/Dropdown.ts
++++ b/packages/renderer/src/renderer/components/select/Dropdown.ts
+@@ -1,6 +1,7 @@
+ import Konva from 'konva'
+ import { registerStageCursor } from '../../cursor'
+ import { PADDING } from '../shared'
++import { Scrollbar, TRACK_INSET, TRACK_WIDTH, wheelFraction } from '../scroll'
+ import type { SelectOption } from './Select'
+ import { DEFAULT_THEME } from '../../../theme'
+ import type { GraphTheme } from '../../../theme'
+@@ -38,6 +39,8 @@ export class Dropdown extends Konva.Group {
+   _theme: GraphTheme
+   _panelBg: Konva.Rect | null = null
+   _texts: Konva.Text[] = []
++  _scrollbar: Scrollbar | null = null
++  _hovered = false
+ 
+   constructor(config: DropdownConfig, theme: GraphTheme = DEFAULT_THEME) {
+     super()
+@@ -163,7 +166,7 @@ export class Dropdown extends Konva.Group {
+       // wheel handler otherwise.
+       e.cancelBubble = true
+       e.evt.preventDefault()
+-      this.scrollBy(e.evt.deltaY > 0 ? 1 : -1)
++      this.scrollBy(wheelFraction(e.evt))
+     })
+ 
+     // Register the panel: the cursor center's ancestor walk finds it from any
+@@ -172,25 +175,66 @@ export class Dropdown extends Konva.Group {
+ 
+     this._itemsGroup = itemsGroup
+ 
++    if (this._maxVisible > 0 && count > this._maxVisible) {
++      const trackHeight = visCount * ITEM_HEIGHT - TRACK_INSET * 2
++      const scrollbar = new Scrollbar({
++        trackHeight,
++        theme: this._theme,
++        onScroll: (top) => this.scrollTo(top),
++        onDragEnd: () => {
++          if (!this._hovered) this._scrollbar?.scheduleHide()
++        },
++      })
++      scrollbar.x(this._width - TRACK_WIDTH - TRACK_INSET)
++      scrollbar.y(1 + TRACK_INSET)
++      this.add(scrollbar)
++      this._scrollbar = scrollbar
++      this._syncScrollbar()
++    }
++
++    this.on('mouseenter', () => {
++      this._hovered = true
++      this._scrollbar?.show()
++    })
++    this.on('mouseleave', () => {
++      this._hovered = false
++      if (!this._scrollbar?.dragging) this._scrollbar?.scheduleHide()
++    })
++
+     if (this._focusedIndex >= 0) {
+       this.setFocus(this._focusedIndex)
+     }
+   }
+ 
+-  scrollBy(delta: number) {
++  scrollTo(top: number): void {
+     const maxScroll = Math.max(0, this._opts.length - this._maxVisible)
+-    const next = Math.max(0, Math.min(maxScroll, this._scrollTop + delta))
++    const next = Math.max(0, Math.min(maxScroll, top))
+     if (next === this._scrollTop) return
+     this._scrollTop = next
+     if (this._itemsGroup) {
+-      this._itemsGroup.y(-this._scrollTop * ITEM_HEIGHT)
++      this._itemsGroup.y(-next * ITEM_HEIGHT)
+     }
++    this._syncScrollbar()
++    this._scrollbar?.flash()
+     this.getLayer()?.batchDraw()
+   }
+ 
++  _syncScrollbar(): void {
++    this._scrollbar?.sync(
++      this._scrollTop,
++      this._opts.length,
++      Math.min(this._opts.length, this._maxVisible),
++    )
++  }
++
++  scrollBy(delta: number) {
++    this.scrollTo(this._scrollTop + delta)
++  }
++
+   setFocus(index: number) {
+     this._focusedIndex = index
+     this._ensureFocusVisible()
++    this._scrollbar?.flash()
+     if (!this._highlight) return
+     if (index >= 0 && index < this._opts.length) {
+       this._highlight.y(index * ITEM_HEIGHT)
+@@ -210,6 +254,7 @@ export class Dropdown extends Konva.Group {
+     if (this._itemsGroup) {
+       this._itemsGroup.y(-this._scrollTop * ITEM_HEIGHT)
+     }
++    this._syncScrollbar()
+   }
+ 
+   applyTheme(theme: GraphTheme): void {
+@@ -219,6 +264,7 @@ export class Dropdown extends Konva.Group {
+     this._panelBg?.fill(theme.colors.bg)
+     this._panelBg?.stroke(theme.colors.border)
+     this._highlight?.fill(theme.colors.selectionFill)
++    this._scrollbar?.applyTheme(theme)
+     for (let i = 0; i < this._texts.length; i++) {
+       const text = this._texts[i]
+       if (!text) continue
+@@ -229,4 +275,10 @@ export class Dropdown extends Konva.Group {
+     }
+     this.getLayer()?.batchDraw()
+   }
++
++  destroy(): this {
++    this._scrollbar?.destroy()
++    this._scrollbar = null
++    return super.destroy()
++  }
+ }
+diff --git a/packages/renderer/src/renderer/components/text/TextLayout.ts b/packages/renderer/src/renderer/components/text/TextLayout.ts
+new file mode 100644
+index 0000000..726cb0b
+--- /dev/null
++++ b/packages/renderer/src/renderer/components/text/TextLayout.ts
+@@ -0,0 +1,129 @@
++export interface TextLine {
++  /** Offset of the line's first character in the source string. */
++  start: number
++  /** Offset just past the line's last character. */
++  end: number
++  text: string
++}
++
++export interface TextLayout {
++  lines: TextLine[]
++  lineHeight: number
++  height: number
++  pointAt(offset: number): { line: number; x: number }
++  offsetAt(x: number, line: number): number
++  lineAtY(y: number): number
++}
++
++export interface TextLayoutOptions {
++  text: string
++  width: number
++  lineHeight: number
++  measure: (text: string) => number
++}
++
++/**
++ * Soft-word-wrap layout over a flat string. Lines carry offsets into the
++ * source so the caret and selection can map between string positions and
++ * box points. Explicit `\n` starts a new paragraph; each paragraph then wraps
++ * greedily on spaces, breaking words longer than the line by character.
++ */
++export function buildTextLayout(options: TextLayoutOptions): TextLayout {
++  const { text, width, lineHeight, measure } = options
++  const lines: TextLine[] = []
++
++  let paraStart = 0
++  for (let i = 0; i <= text.length; i++) {
++    if (i === text.length || text[i] === '\n') {
++      wrapParagraph(text, paraStart, i, width, measure, lines)
++      paraStart = i + 1
++    }
++  }
++
++  return {
++    lines,
++    lineHeight,
++    height: lines.length * lineHeight,
++    pointAt(offset) {
++      const clamped = Math.max(0, Math.min(text.length, offset))
++      for (let i = 0; i < lines.length; i++) {
++        const line = lines[i]!
++        if (clamped <= line.end) {
++          return { line: i, x: measure(line.text.slice(0, clamped - line.start)) }
++        }
++      }
++      const last = lines[lines.length - 1]!
++      return { line: lines.length - 1, x: measure(last.text) }
++    },
++    offsetAt(x, line) {
++      const target = lines[Math.max(0, Math.min(lines.length - 1, line))]
++      if (!target) return 0
++      if (x <= 0) return target.start
++      for (let i = 0; i < target.text.length; i++) {
++        const before = measure(target.text.slice(0, i))
++        const after = measure(target.text.slice(0, i + 1))
++        if (x < (before + after) / 2) return target.start + i
++      }
++      return target.end
++    },
++    lineAtY(y) {
++      return Math.max(
++        0,
++        Math.min(lines.length - 1, Math.floor(y / lineHeight)),
++      )
++    },
++  }
++}
++
++function wrapParagraph(
++  text: string,
++  start: number,
++  end: number,
++  width: number,
++  measure: (text: string) => number,
++  lines: TextLine[],
++): void {
++  if (start >= end) {
++    lines.push({ start, end: start, text: '' })
++    return
++  }
++
++  let lineStart = start
++  let pos = start
++  let lastSpace = -1
++
++  while (pos < end) {
++    const ch = text[pos]!
++    if (ch === ' ') {
++      if (measure(text.slice(lineStart, pos)) <= width) {
++        lastSpace = pos
++      }
++    }
++    if (measure(text.slice(lineStart, pos + 1)) <= width) {
++      pos++
++      continue
++    }
++    // The next character overflows the line: break at the last space, or by
++    // character when a single word is wider than the box.
++    if (lastSpace > lineStart) {
++      lines.push({
++        start: lineStart,
++        end: lastSpace,
++        text: text.slice(lineStart, lastSpace),
++      })
++      lineStart = lastSpace + 1
++    } else {
++      const breakEnd = Math.max(lineStart + 1, pos)
++      lines.push({
++        start: lineStart,
++        end: breakEnd,
++        text: text.slice(lineStart, breakEnd),
++      })
++      lineStart = breakEnd
++    }
++    pos = lineStart
++    lastSpace = -1
++  }
++
++  lines.push({ start: lineStart, end, text: text.slice(lineStart, end) })
++}
+diff --git a/packages/renderer/src/renderer/components/text/Textarea.ts b/packages/renderer/src/renderer/components/text/Textarea.ts
+new file mode 100644
+index 0000000..3195954
+--- /dev/null
++++ b/packages/renderer/src/renderer/components/text/Textarea.ts
+@@ -0,0 +1,502 @@
++import Konva from 'konva'
++import { FormElement } from '../FormElement'
++import { registerStageCursor } from '../../cursor'
++import { PADDING, measureTextWidth, type BaseFormConfig } from '../shared'
++import { TextModel } from '../input/TextModel'
++import { HiddenInput } from '../input/HiddenInput'
++import { handleInputKeyDown, type InputKeyEnv } from '../input/keyboard'
++import { buildTextLayout, type TextLayout } from './TextLayout'
++import { ScrollArea } from '../scroll'
++import { DEFAULT_THEME } from '../../../theme'
++import type { GraphTheme } from '../../../theme'
++
++const CURSOR_WIDTH = 1
++const BLINK_INTERVAL = 530
++export const LINE_HEIGHT_RATIO = 1.4
++
++export interface TextareaConfig extends BaseFormConfig {
++  inputWidth: number
++  inputHeight: number
++  value?: string
++  placeholder?: string
++  onChange?: (value: string) => void
++  onStopEdit?: () => void
++}
++
++/**
++ * Multiline text editor: soft-wrapped lines in a fixed-height, vertically
++ * scrollable box. Enter commits, Shift+Enter inserts a newline. Geometry comes
++ * from {@link TextLayout}; the box and its auto-hiding scrollbar from
++ * {@link ScrollArea}.
++ */
++export class Textarea extends FormElement {
++  _bg: Konva.Rect
++  _scrollArea: ScrollArea
++  _linesText: Konva.Text
++  _placeholderNode: Konva.Text
++  _composingNode: Konva.Text
++  _caret: Konva.Rect
++  _selGroup: Konva.Group
++
++  _model: TextModel
++  _hidden: HiddenInput
++  _keyEnv: InputKeyEnv
++  _layout: TextLayout | null = null
++
++  _iw: number
++  _ih: number
++  _lineHeight: number
++  _onChange?: (value: string) => void
++  _onStopEdit?: () => void
++
++  _dragging = false
++  _blinkTimer: ReturnType<typeof setInterval> | null = null
++
++  _stageMoveFn = () => {
++    if (!this._dragging) return
++    this._model.moveCursorTo(this._offsetFromPointer())
++    this._syncDisplay()
++    this._startBlink()
++  }
++
++  _stageUpFn = () => {
++    this._dragging = false
++    const stage = this.getStage()
++    if (stage) {
++      stage.off('mousemove touchmove', this._stageMoveFn)
++      stage.off('mouseup touchend', this._stageUpFn)
++    }
++    if (this._active) {
++      this._hidden.focus()
++    }
++  }
++
++  constructor(config: TextareaConfig, theme?: GraphTheme) {
++    const t = theme ?? DEFAULT_THEME
++    const {
++      inputWidth,
++      inputHeight,
++      value = '',
++      placeholder = '',
++      strokeWidth = 1,
++      cornerRadius = 2,
++      onChange,
++      onStopEdit,
++      ...rest
++    } = config
++
++    super(rest, t)
++
++    this._iw = inputWidth
++    this._ih = inputHeight
++    this._lineHeight = Math.round(this._fs * LINE_HEIGHT_RATIO)
++    this._onChange = onChange
++    this._onStopEdit = onStopEdit
++
++    this._model = new TextModel({
++      value,
++      measure: (text) => this._measure(text),
++    })
++    this._hidden = new HiddenInput({
++      onInsert: (text) => {
++        this._model.insertText(text)
++        this._syncDisplay()
++        this._startBlink()
++      },
++      onCompose: () => this._syncDisplay(),
++    })
++    this._keyEnv = {
++      sync: () => this._syncDisplay(),
++      blink: () => this._startBlink(),
++      commit: () => this._stopEdit(true),
++      // Multiline: Escape commits (blur commits too); there is no discard.
++      cancel: () => this._stopEdit(true),
++      clearHidden: () => this._hidden.clear(),
++      multiline: true,
++      insertNewline: () => this._insertNewline(),
++      moveVertical: (delta, shift) => this._moveVertical(delta, shift),
++      homeLine: (shift) => this._moveLineEdge('start', shift),
++      endLine: (shift) => this._moveLineEdge('end', shift),
++    }
++
++    const textWidth = Math.max(1, inputWidth - PADDING * 2)
++
++    this._bg = new Konva.Rect({
++      width: inputWidth,
++      height: inputHeight,
++      fill: this._fill,
++      stroke: this._borderColor,
++      strokeWidth,
++      cornerRadius,
++      listening: false,
++    })
++    this.add(this._bg)
++
++    this._scrollArea = new ScrollArea({
++      width: inputWidth,
++      height: inputHeight,
++      theme: t,
++      wheelStep: this._lineHeight,
++    })
++    this.add(this._scrollArea)
++
++    this._selGroup = new Konva.Group({ listening: false })
++    this._scrollArea.content.add(this._selGroup)
++
++    this._linesText = new Konva.Text({
++      fontSize: this._fs,
++      fontFamily: this._ff,
++      fill: t.colors.textPrimary,
++      x: PADDING,
++      y: PADDING,
++      width: textWidth,
++      wrap: 'none',
++      lineHeight: LINE_HEIGHT_RATIO,
++      listening: false,
++    })
++    this._scrollArea.content.add(this._linesText)
++
++    this._placeholderNode = new Konva.Text({
++      text: placeholder,
++      fontSize: this._fs,
++      fontFamily: this._ff,
++      fill: t.colors.textMuted,
++      x: PADDING,
++      y: PADDING,
++      width: textWidth,
++      wrap: 'none',
++      listening: false,
++    })
++    this._scrollArea.content.add(this._placeholderNode)
++
++    this._composingNode = new Konva.Text({
++      fontSize: this._fs,
++      fontFamily: this._ff,
++      fill: t.colors.textMuted,
++      visible: false,
++      listening: false,
++    })
++    this._scrollArea.content.add(this._composingNode)
++
++    this._caret = new Konva.Rect({
++      width: CURSOR_WIDTH,
++      height: this._lineHeight,
++      fill: t.colors.textPrimary,
++      visible: false,
++      listening: false,
++    })
++    this._scrollArea.content.add(this._caret)
++
++    this._scrollArea.on('mousedown touchstart', (e) => {
++      e.cancelBubble = true
++      const pos = this._offsetFromPointer()
++      this._startEdit(pos)
++      this._model.setSelection(pos, pos)
++      this._dragging = true
++      const stage = this.getStage()
++      if (stage) {
++        stage.on('mousemove touchmove', this._stageMoveFn)
++        stage.on('mouseup touchend', this._stageUpFn)
++      }
++    })
++    this._scrollArea.on('tap', (e) => {
++      e.cancelBubble = true
++      this._startEdit(this._offsetFromPointer())
++    })
++    this._scrollArea.on('dblclick', (e) => {
++      e.cancelBubble = true
++      this._startEdit()
++      this._model.setSelection(0, this._model.value.length)
++      this._syncDisplay()
++      this._startBlink()
++    })
++
++    registerStageCursor(this, 'text')
++
++    this._syncDisplay()
++  }
++
++  getValue(): string {
++    return this._model.value
++  }
++
++  setValue(value: string) {
++    if (value === this._model.value) return
++    this._model.reset(value)
++    this._syncDisplay()
++    this._onChange?.(this._model.value)
++  }
++
++  /** Resize the box (e.g. when its node is resized) and re-wrap. */
++  resize(width: number, height: number) {
++    this._iw = width
++    this._ih = height
++    this._bg.width(width)
++    this._bg.height(height)
++    this._scrollArea.resize(width, height)
++    this._syncDisplay()
++  }
++
++  setWidth(width: number) {
++    this.resize(width, this._ih)
++  }
++
++  /** Select the entire value (used when an edit session opens). */
++  selectAll() {
++    this._model.selectAll()
++    this._syncDisplay()
++    this._startBlink()
++  }
++
++  _measure(text: string): number {
++    return measureTextWidth(text, this._fs, this._ff)
++  }
++
++  _offsetFromPointer(): number {
++    const rel = this.getRelativePointerPosition()
++    if (!rel || !this._layout) return this._model.value.length
++    const localY = rel.y - PADDING + this._scrollArea.scrollTop
++    const line = this._layout.lineAtY(localY)
++    return this._layout.offsetAt(rel.x - PADDING, line)
++  }
++
++  _insertNewline() {
++    this._model.insertText('\n')
++    this._syncDisplay()
++    this._startBlink()
++  }
++
++  _moveVertical(delta: number, shift: boolean) {
++    const layout = this._layout
++    if (!layout) return
++    const { line, x } = layout.pointAt(this._model.cursorPos)
++    const target = Math.max(0, Math.min(layout.lines.length - 1, line + delta))
++    if (target === line) return
++    this._model.moveTo(layout.offsetAt(x, target), shift)
++    this._syncDisplay()
++    this._startBlink()
++  }
++
++  _moveLineEdge(edge: 'start' | 'end', shift: boolean) {
++    const layout = this._layout
++    if (!layout) return
++    const { line } = layout.pointAt(this._model.cursorPos)
++    const target = layout.lines[line]
++    if (!target) return
++    this._model.moveTo(edge === 'start' ? target.start : target.end, shift)
++    this._syncDisplay()
++    this._startBlink()
++  }
++
++  _syncDisplay(syncScroll = true) {
++    this._relayout()
++    const layout = this._layout!
++    this._linesText.text(layout.lines.map((l) => l.text).join('\n'))
++    this._placeholderNode.visible(this._model.value.length === 0)
++    this._syncCaret()
++    this._syncSelection()
++    this._syncComposing()
++    if (syncScroll) this._syncScroll()
++    this.getLayer()?.batchDraw()
++  }
++
++  _relayout() {
++    const textWidth = Math.max(1, this._iw - PADDING * 2)
++    this._layout = buildTextLayout({
++      text: this._model.value,
++      width: textWidth,
++      lineHeight: this._lineHeight,
++      measure: (text) => this._measure(text),
++    })
++    this._linesText.width(textWidth)
++    this._linesText.fontSize(this._fs)
++    this._linesText.fontFamily(this._ff)
++    this._placeholderNode.width(textWidth)
++    this._scrollArea.setContentHeight(this._layout.height + PADDING * 2)
++  }
++
++  _syncCaret() {
++    const layout = this._layout
++    if (!layout) return
++    const { line, x } = layout.pointAt(this._model.cursorPos)
++    this._caret.x(PADDING + x)
++    this._caret.y(PADDING + line * this._lineHeight)
++    this._caret.height(this._lineHeight)
++  }
++
++  _syncSelection() {
++    this._selGroup.destroyChildren()
++    const layout = this._layout
++    if (!layout) return
++    const range = this._model.selRange()
++    if (!range) return
++    const [s, e] = range
++    for (let i = 0; i < layout.lines.length; i++) {
++      const line = layout.lines[i]!
++      const from = Math.max(s, line.start)
++      const to = Math.min(e, line.end)
++      if (from >= to && !(line.start === line.end && s <= line.start && e >= line.end)) {
++        continue
++      }
++      const x0 = PADDING + this._measure(line.text.slice(0, from - line.start))
++      const x1 = PADDING + this._measure(line.text.slice(0, to - line.start))
++      this._selGroup.add(
++        new Konva.Rect({
++          x: x0,
++          y: PADDING + i * this._lineHeight,
++          width: Math.max(1, x1 - x0),
++          height: this._lineHeight,
++          fill: this._theme.colors.selectionFill,
++          listening: false,
++        }),
++      )
++    }
++  }
++
++  _syncComposing() {
++    const text = this._hidden.composingText
++    const layout = this._layout
++    if (!text || !layout) {
++      this._composingNode.visible(false)
++      return
++    }
++    const { line, x } = layout.pointAt(this._model.cursorPos)
++    this._composingNode.text(text)
++    this._composingNode.x(PADDING + x)
++    this._composingNode.y(PADDING + line * this._lineHeight)
++    this._composingNode.visible(true)
++  }
++
++  _syncScroll() {
++    // Only chase the caret while editing; a committed box keeps its position.
++    if (!this._active) return
++    const layout = this._layout
++    if (!layout) return
++    const { line } = layout.pointAt(this._model.cursorPos)
++    const caretTop = PADDING + line * this._lineHeight
++    const caretBottom = caretTop + this._lineHeight
++    const top = this._scrollArea.scrollTop
++    if (caretTop < top) {
++      this._scrollArea.scrollTo(caretTop)
++    } else if (caretBottom > top + this._ih) {
++      this._scrollArea.scrollTo(caretBottom - this._ih)
++    }
++  }
++
++  _syncHiddenPos() {
++    const abs = this._caret.getAbsolutePosition()
++    this._hidden.setPosition(abs.x, abs.y)
++  }
++
++  _startBlink() {
++    this._stopBlink()
++    this._caret.visible(true)
++    this._blinkTimer = setInterval(() => {
++      this._caret.visible(!this._caret.visible())
++      this.getLayer()?.batchDraw()
++    }, BLINK_INTERVAL)
++  }
++
++  _stopBlink() {
++    if (this._blinkTimer !== null) {
++      clearInterval(this._blinkTimer)
++      this._blinkTimer = null
++    }
++    this._caret.visible(false)
++  }
++
++  _startEdit(pos?: number) {
++    if (this._active) {
++      if (pos !== undefined) {
++        this._model.setCursor(pos)
++        this._syncDisplay()
++        this._startBlink()
++      }
++      return
++    }
++
++    this._activate()
++    this._model.commit()
++    this._model.setCursor(pos ?? this._model.value.length)
++
++    this._bg.stroke(this._theme.colors.accent)
++
++    const stage = this.getStage()
++    if (stage) {
++      this._hidden.attach(stage.container())
++      this._syncHiddenPos()
++      this._hidden.focus()
++    }
++
++    this._syncDisplay()
++    this._startBlink()
++  }
++
++  _stopEdit(commit: boolean) {
++    if (!this._active) return
++
++    this._stopBlink()
++    this._selGroup.destroyChildren()
++
++    this._bg.stroke(this._borderColor)
++
++    this._hidden.detach()
++    this._composingNode.visible(false)
++
++    if (!commit) {
++      this._model.revert()
++    } else if (this._model.value !== this._model.committed) {
++      this._model.commit()
++      this._onChange?.(this._model.value)
++    }
++
++    this._model.clearSelection()
++    // Keep the committed scroll position: re-syncing here would snap back to
++    // the caret instead of leaving the box where the user left it.
++    this._syncDisplay(false)
++
++    this._unbindEvents()
++    this._active = false
++    this._onStopEdit?.()
++  }
++
++  protected _onKeyDown(e: KeyboardEvent) {
++    if (this._hidden.composing || e.isComposing || e.keyCode === 229) return
++    handleInputKeyDown(this._model, e, this._keyEnv)
++  }
++
++  protected _deactivate() {
++    this._stopEdit(true)
++  }
++
++  destroy(): this {
++    this._stopEdit(false)
++    this._hidden.detach()
++    return super.destroy()
++  }
++
++  applyTheme(theme: GraphTheme): void {
++    super.applyTheme(theme)
++
++    this._lineHeight = Math.round(this._fs * LINE_HEIGHT_RATIO)
++
++    this._bg.fill(this._fillExplicit ? this._fill : theme.colors.bg)
++    this._bg.stroke(this._active ? theme.colors.accent : this._borderColor)
++
++    for (const node of [
++      this._linesText,
++      this._placeholderNode,
++      this._composingNode,
++    ]) {
++      node.fontFamily(theme.fonts.family)
++      node.fontSize(this._fs)
++    }
++    this._linesText.fill(theme.colors.textPrimary)
++    this._placeholderNode.fill(theme.colors.textMuted)
++    this._composingNode.fill(theme.colors.textMuted)
++    this._caret.fill(theme.colors.textPrimary)
++
++    this._scrollArea.applyTheme(theme)
++    this._syncDisplay()
++  }
++}
+diff --git a/packages/renderer/src/renderer/components/text/index.ts b/packages/renderer/src/renderer/components/text/index.ts
+new file mode 100644
+index 0000000..1c32cd7
+--- /dev/null
++++ b/packages/renderer/src/renderer/components/text/index.ts
+@@ -0,0 +1,5 @@
++export { Textarea } from './Textarea'
++export type { TextareaConfig } from './Textarea'
++export { LINE_HEIGHT_RATIO } from './Textarea'
++export { buildTextLayout } from './TextLayout'
++export type { TextLayout, TextLine, TextLayoutOptions } from './TextLayout'
+diff --git a/packages/renderer/src/renderer/handles/DisplayHandle.ts b/packages/renderer/src/renderer/handles/DisplayHandle.ts
+index 6267971..8847621 100644
+--- a/packages/renderer/src/renderer/handles/DisplayHandle.ts
++++ b/packages/renderer/src/renderer/handles/DisplayHandle.ts
+@@ -1,6 +1,8 @@
+ import Konva from 'konva'
+ import type { NodeHandle } from '@0x-jerry/golden-graph'
+-import { LAYOUT, getNodeWidth } from '../constants'
++import { ScrollArea } from '../components/scroll'
++import { getBlockContentMaxHeight } from './layout'
++import { blockContentWidth } from './utils'
+ import type { NodeHandleFactory, NodeHandleModule } from './types'
+ import { DEFAULT_THEME } from '../../theme'
+ import type { GraphTheme } from '../../theme'
+@@ -10,37 +12,56 @@ const TOP_PADDING = 6
+ class DisplayModule extends Konva.Group implements NodeHandleModule {
+   _handle: NodeHandle
+   _text: Konva.Text
++  _scrollArea: ScrollArea
+ 
+   constructor(handle: NodeHandle, theme: GraphTheme) {
+     super()
+     this._handle = handle
+ 
++    const width = blockContentWidth(handle)
++
++    this._scrollArea = new ScrollArea({
++      width,
++      height: getBlockContentMaxHeight(handle.node, handle),
++      theme,
++      wheelStep: theme.fonts.size + 6,
++    })
++    this.add(this._scrollArea)
++
+     const text = new Konva.Text({
+       name: 'value',
+       text: String(handle.getValue() ?? ''),
+       fontSize: theme.fonts.size,
+       fontFamily: theme.fonts.family,
+       fill: theme.colors.textMuted,
+-      width: displayWidth(handle),
++      width,
+       wrap: 'word',
+       y: TOP_PADDING,
++      listening: false,
+     })
+-    this.add(text)
++    this._scrollArea.content.add(text)
+     this._text = text
++    this._sync()
+   }
+ 
+   update(): void {
+-    const text = this.findOne<Konva.Text>('.value')
+-    if (text) {
+-      text.text(String(this._handle.getValue() ?? ''))
+-      text.width(displayWidth(this._handle))
+-    }
++    this._text.text(String(this._handle.getValue() ?? ''))
++    this._sync()
+   }
+ 
++  _sync(): void {
++    const width = blockContentWidth(this._handle)
++    const height = getBlockContentMaxHeight(this._handle.node, this._handle)
++    this._text.width(width)
++    this._scrollArea.resize(width, height)
++    this._scrollArea.setContentHeight(this._text.height() + TOP_PADDING * 2)  }
++
+   applyTheme(theme: GraphTheme): void {
+     this._text.fill(theme.colors.textMuted)
+     this._text.fontFamily(theme.fonts.family)
+     this._text.fontSize(theme.fonts.size)
++    this._scrollArea.applyTheme(theme)
++    this._sync()
+   }
+ }
+ 
+@@ -51,9 +72,5 @@ export const displayHandleFactory: NodeHandleFactory = {
+     joint: { color: '#8b5cf6', shape: 'square' },
+   },
+   create: (handle, _options, theme) =>
+-      new DisplayModule(handle, theme ?? DEFAULT_THEME),
+-}
+-
+-function displayWidth(handle: NodeHandle): number {
+-  return getNodeWidth(handle.node) - LAYOUT.HANDLE_PADDING * 2
++    new DisplayModule(handle, theme ?? DEFAULT_THEME),
+ }
+diff --git a/packages/renderer/src/renderer/handles/TextareaHandle.ts b/packages/renderer/src/renderer/handles/TextareaHandle.ts
+new file mode 100644
+index 0000000..3293b05
+--- /dev/null
++++ b/packages/renderer/src/renderer/handles/TextareaHandle.ts
+@@ -0,0 +1,58 @@
++import Konva from 'konva'
++import type { NodeHandle } from '@0x-jerry/golden-graph'
++import { Textarea, LINE_HEIGHT_RATIO } from '../components/text'
++import { DEFAULT_FONT_SIZE, PADDING } from '../components/shared'
++import { blockContentWidth } from './utils'
++import type { NodeHandleFactory, NodeHandleModule } from './types'
++import { DEFAULT_THEME } from '../../theme'
++import type { GraphTheme } from '../../theme'
++
++const TEXTAREA_LINES = 3
++export const TEXTAREA_MIN_HEIGHT =
++  Math.round(TEXTAREA_LINES * DEFAULT_FONT_SIZE * LINE_HEIGHT_RATIO) +
++  PADDING * 2
++
++class TextareaModule extends Konva.Group implements NodeHandleModule {
++  _handle: NodeHandle
++  _textarea: Textarea
++
++  constructor(handle: NodeHandle, theme: GraphTheme) {
++    super()
++    this._handle = handle
++
++    this._textarea = new Textarea(
++      {
++        inputWidth: blockContentWidth(handle),
++        inputHeight: TEXTAREA_MIN_HEIGHT,
++        value: String(handle.getValue() ?? ''),
++        onChange: (v) => {
++          handle.setValue(v || undefined)
++        },
++      },
++      theme,
++    )
++    this.add(this._textarea)
++  }
++
++  update(): void {
++    if (!this._textarea.active) {
++      this._textarea.setValue(String(this._handle.getValue() ?? ''))
++    }
++    this._textarea.resize(blockContentWidth(this._handle), TEXTAREA_MIN_HEIGHT)
++  }
++
++  applyTheme(theme: GraphTheme): void {
++    this._textarea.applyTheme(theme)
++  }
++}
++
++export const textareaHandleFactory: NodeHandleFactory = {
++  type: 'textarea',
++  config: {
++    layout: 'block',
++    minHeight: TEXTAREA_MIN_HEIGHT,
++    joint: { color: '#0ea5e9', shape: 'square' },
++  },
++  create: (handle, _options, theme) =>
++    new TextareaModule(handle, theme ?? DEFAULT_THEME),
++}
+diff --git a/packages/renderer/src/renderer/handles/index.ts b/packages/renderer/src/renderer/handles/index.ts
+index 1598528..fd52a1f 100644
+--- a/packages/renderer/src/renderer/handles/index.ts
++++ b/packages/renderer/src/renderer/handles/index.ts
+@@ -1,7 +1,8 @@
+-import { HandleComponentRegistry } from '@0x-jerry/golden-graph'
+ import type { NodeHandleFactory } from './types'
++import { registry } from './registry'
+ 
+ import { textHandleFactory } from './TextHandle'
++import { textareaHandleFactory } from './TextareaHandle'
+ import { numberHandleFactory } from './NumberHandle'
+ import { selectHandleFactory } from './SelectHandle'
+ import { displayHandleFactory } from './DisplayHandle'
+@@ -10,6 +11,7 @@ import { colorHandleFactory } from './ColorHandle'
+ 
+ const factories: NodeHandleFactory[] = [
+   textHandleFactory,
++  textareaHandleFactory,
+   numberHandleFactory,
+   selectHandleFactory,
+   displayHandleFactory,
+@@ -17,8 +19,6 @@ const factories: NodeHandleFactory[] = [
+   colorHandleFactory,
+ ]
+ 
+-const registry = new HandleComponentRegistry<NodeHandleFactory>()
+-
+ for (const factory of factories) {
+   registry.register(factory.type, factory)
+ }
+@@ -44,7 +44,7 @@ export function registerHandleFactory(factory: NodeHandleFactory) {
+   factories.push(factory)
+ }
+ 
+-export const getHandleFactory = (type: string) => registry.get(type)
++export { getHandleFactory } from './registry'
+ 
+ /**
+  * Remove shared DOM editors (appended to `document.body`) created by handle
+diff --git a/packages/renderer/src/renderer/handles/layout.ts b/packages/renderer/src/renderer/handles/layout.ts
+index a705aef..d6c8744 100644
+--- a/packages/renderer/src/renderer/handles/layout.ts
++++ b/packages/renderer/src/renderer/handles/layout.ts
+@@ -5,7 +5,7 @@ import {
+   NODE_BODY_PADDING,
+   HANDLE_CONTENT_Y_OFFSET,
+ } from '../constants'
+-import { getHandleFactory } from './index'
++import { getHandleFactory } from './registry'
+ 
+ /** Measured row heights from live `HandleView`s, keyed by handle. */
+ const measuredRows = new WeakMap<NodeHandle, number>()
+diff --git a/packages/renderer/src/renderer/handles/placement.ts b/packages/renderer/src/renderer/handles/placement.ts
+index f06591c..c4118d4 100644
+--- a/packages/renderer/src/renderer/handles/placement.ts
++++ b/packages/renderer/src/renderer/handles/placement.ts
+@@ -7,7 +7,7 @@ import {
+   HANDLE_NAME_GAP,
+   getNodeWidth,
+ } from '../constants'
+-import { getHandleFactory } from './index'
++import { getHandleFactory } from './registry'
+ import { isBlockHandle } from './layout'
+ 
+ /**
+diff --git a/packages/renderer/src/renderer/handles/registry.ts b/packages/renderer/src/renderer/handles/registry.ts
+new file mode 100644
+index 0000000..f4bf254
+--- /dev/null
++++ b/packages/renderer/src/renderer/handles/registry.ts
+@@ -0,0 +1,12 @@
++import { HandleComponentRegistry } from '@0x-jerry/golden-graph'
++import type { NodeHandleFactory } from './types'
++
++/**
++ * Factory registry, kept in its own module so `layout`/`placement` can look
++ * up a handle's factory without importing `handles/index` — which imports the
++ * factories that in turn import `layout` (a cycle that would otherwise leave
++ * a factory `undefined` during module init).
++ */
++export const registry = new HandleComponentRegistry<NodeHandleFactory>()
++
++export const getHandleFactory = (type: string) => registry.get(type)
+diff --git a/packages/renderer/src/renderer/handles/utils.ts b/packages/renderer/src/renderer/handles/utils.ts
+index b0a9099..8e5078b 100644
+--- a/packages/renderer/src/renderer/handles/utils.ts
++++ b/packages/renderer/src/renderer/handles/utils.ts
+@@ -12,3 +12,8 @@ export function availableWidth(handle: NodeHandle): number {
+   const nameGap = nameWidth > 0 ? HANDLE_NAME_GAP : 0
+   return getNodeWidth(handle.node) - HANDLE_CONTENT_X - nameWidth - nameGap - LAYOUT.HANDLE_PADDING
+ }
++
++/** Content width of a block-layout handle: the node's inner width. */
++export function blockContentWidth(handle: NodeHandle): number {
++  return getNodeWidth(handle.node) - LAYOUT.HANDLE_PADDING * 2
++}
+diff --git a/packages/renderer/test/renderer/displayScroll.test.ts b/packages/renderer/test/renderer/displayScroll.test.ts
+new file mode 100644
+index 0000000..eb72f63
+--- /dev/null
++++ b/packages/renderer/test/renderer/displayScroll.test.ts
+@@ -0,0 +1,59 @@
++import { describe, it, expect } from 'vitest'
++import {
++  HandlePosition,
++  Workspace,
++} from '@0x-jerry/golden-graph'
++import type { INodeSchema, NodeHandle } from '@0x-jerry/golden-graph'
++import { displayHandleFactory } from '../../src/renderer/handles/DisplayHandle'
++import type { ScrollArea } from '../../src/renderer/components/scroll'
++
++function makeHandle(value: string): NodeHandle {
++  const schema: INodeSchema = {
++    type: 'Display',
++    name: 'Display',
++    handles: [
++      {
++        key: 'out',
++        name: 'Out',
++        type: 'display',
++        position: HandlePosition.Right,
++        value,
++      },
++    ],
++  }
++  const ws = new Workspace()
++  ws.registerNodeSchema(schema)
++  return ws.addNode('Display').getHandle('out')!
++}
++
++function makeModule(value: string) {
++  const module = displayHandleFactory.create!(
++    makeHandle(value),
++    {},
++    undefined,
++  ) as unknown as { _scrollArea: ScrollArea; update(): void; destroy(): void }
++  module.update()
++  return module
++}
++
++describe('display handle scrolling', () => {
++  it('scrolls long content and shows the overflow', () => {
++    const module = makeModule('long text '.repeat(60))
++    const area = module._scrollArea
++
++    expect(area._contentHeight).toBeGreaterThan(area._h)
++    area.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
++    expect(area.scrollTop).toBeGreaterThan(0)
++    module.destroy()
++  })
++
++  it('does not scroll when the content fits', () => {
++    const module = makeModule('x')
++    const area = module._scrollArea
++
++    expect(area._contentHeight).toBeLessThanOrEqual(area._h)
++    area.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
++    expect(area.scrollTop).toBe(0)
++    module.destroy()
++  })
++})
+diff --git a/packages/renderer/test/renderer/scrollArea.test.ts b/packages/renderer/test/renderer/scrollArea.test.ts
+new file mode 100644
+index 0000000..dfb1446
+--- /dev/null
++++ b/packages/renderer/test/renderer/scrollArea.test.ts
+@@ -0,0 +1,100 @@
++import { describe, it, expect } from 'vitest'
++import { ScrollArea } from '../../src/renderer/components/scroll'
++
++function area(width = 100, height = 50) {
++  return new ScrollArea({ width, height })
++}
++
++describe('ScrollArea scrolling', () => {
++  it('clamps scrollTop to the content bounds', () => {
++    const a = area()
++    a.setContentHeight(200)
++    a.scrollTo(100)
++    expect(a.scrollTop).toBe(100)
++    expect(a.content.y()).toBe(-100)
++
++    a.scrollTo(-5)
++    expect(a.scrollTop).toBe(0)
++
++    a.scrollTo(999)
++    expect(a.scrollTop).toBe(150)
++    a.destroy()
++  })
++
++  it('re-clamps when the box grows', () => {
++    const a = area()
++    a.setContentHeight(200)
++    a.scrollTo(150)
++    a.resize(100, 100)
++    expect(a.scrollTop).toBe(100)
++    a.destroy()
++  })
++
++  it('shows the scrollbar only when the content overflows', () => {
++    const a = area()
++    a.setContentHeight(40)
++    a._scrollbar.sync(a.scrollTop, 40, 50)
++    expect(a._scrollbar.visible()).toBe(false)
++
++    a.setContentHeight(200)
++    a._scrollbar.sync(a.scrollTop, 200, 50)
++    expect(a._scrollbar._thumb.height()).toBeGreaterThan(0)
++    a.destroy()
++  })
++
++  it('scales the wheel step with the reported delta', () => {
++    const a = area()
++    a.setContentHeight(200)
++    a.fire(
++      'wheel',
++      { evt: { preventDefault() {}, deltaY: 10 } },
++      true,
++    )
++    expect(a.scrollTop).toBeGreaterThan(0)
++    expect(a.scrollTop).toBeLessThan(18)
++    a.destroy()
++  })
++
++  it('reveals the scrollbar on hover only when overflowing', () => {
++    const short = area()
++    short.setContentHeight(20)
++    short.fire('mouseenter')
++    expect(short._scrollbar.visible()).toBe(false)
++    short.destroy()
++
++    const tall = area()
++    tall.setContentHeight(200)
++    tall.fire('mouseenter')
++    expect(tall._scrollbar.visible()).toBe(true)
++    tall.destroy()
++  })
++
++  it('scrolls on wheel and flashes the scrollbar', () => {
++    const a = area()
++    a.setContentHeight(200)
++    a.fire(
++      'wheel',
++      { evt: { preventDefault() {}, deltaY: 100 } },
++      true,
++    )
++    expect(a.scrollTop).toBeGreaterThan(0)
++    a.destroy()
++  })
++
++  it('lets the wheel through when the content fits', () => {
++    const a = area()
++    a.setContentHeight(20)
++    let zoomed = false
++    a.on('wheel', () => {
++      zoomed = true
++    })
++    a.fire(
++      'wheel',
++      { evt: { preventDefault() {}, deltaY: 100 } },
++      true,
++    )
++    expect(zoomed).toBe(true)
++    expect(a.scrollTop).toBe(0)
++    a.destroy()
++  })
++})
+diff --git a/packages/renderer/test/renderer/scrollbar.test.ts b/packages/renderer/test/renderer/scrollbar.test.ts
+new file mode 100644
+index 0000000..ad78d54
+--- /dev/null
++++ b/packages/renderer/test/renderer/scrollbar.test.ts
+@@ -0,0 +1,72 @@
++import { afterEach, describe, it, expect, vi } from 'vitest'
++import { Scrollbar } from '../../src/renderer/components/scroll'
++import { makeStage } from '../helpers/stage'
++
++describe('Scrollbar geometry', () => {
++  it('sizes the thumb from the viewport/content ratio', () => {
++    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
++    bar.sync(0, 40, 10)
++    expect(bar._thumb.height()).toBe(25)
++    expect(bar._thumb.y()).toBe(0)
++    bar.destroy()
++  })
++
++  it('round-trips a scroll position through the thumb', () => {
++    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
++    bar.sync(15, 40, 10)
++    const y = bar._thumbYFor(15)
++    expect(bar._scrollFromThumbY(y)).toBe(15)
++    bar.destroy()
++  })
++
++  it('hides itself when the content fits', () => {
++    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
++    bar.sync(0, 5, 10)
++    expect(bar.visible()).toBe(false)
++    bar.show()
++    expect(bar.visible()).toBe(false)
++    bar.destroy()
++  })
++
++  it('pages toward the clicked side of the thumb', () => {
++    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
++    bar.sync(30, 40, 10)
++    expect(bar._pageFromPointerY(0)).toBe(20)
++    expect(bar._pageFromPointerY(99)).toBe(40)
++    bar.destroy()
++  })
++})
++
++describe('Scrollbar auto-hide', () => {
++  afterEach(() => {
++    vi.useRealTimers()
++  })
++
++  it('hides after the delay once flashed', () => {
++    vi.useFakeTimers()
++    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
++    bar.sync(0, 40, 10)
++
++    bar.flash()
++    expect(bar.visible()).toBe(true)
++
++    vi.advanceTimersByTime(600)
++    expect(bar.visible()).toBe(false)
++    bar.destroy()
++  })
++
++  it('does not hide while dragging', () => {
++    vi.useFakeTimers()
++    const { stage, layer } = makeStage()
++    const bar = new Scrollbar({ trackHeight: 100, onScroll: () => {} })
++    layer.add(bar)
++    bar.sync(0, 40, 10)
++
++    bar._dragging = true
++    bar.flash()
++    vi.advanceTimersByTime(600)
++    expect(bar.visible()).toBe(true)
++
++    stage.destroy()
++  })
++})
+diff --git a/packages/renderer/test/renderer/selectScrollbar.test.ts b/packages/renderer/test/renderer/selectScrollbar.test.ts
+new file mode 100644
+index 0000000..bd0857d
+--- /dev/null
++++ b/packages/renderer/test/renderer/selectScrollbar.test.ts
+@@ -0,0 +1,80 @@
++import { afterEach, describe, it, expect, vi } from 'vitest'
++import { Select } from '../../src/renderer/components/select'
++import { makeStage } from '../helpers/stage'
++
++function openSelect(count: number, maxVisibleItems = 4) {
++  const { stage, layer } = makeStage()
++  const select = new Select({
++    selectWidth: 120,
++    options: Array.from({ length: count }, (_, i) => `opt-${i}`),
++    maxVisibleItems,
++  })
++  layer.add(select)
++  select._openDropdown()
++  return { stage, select }
++}
++
++describe('select dropdown scrollbar', () => {
++  afterEach(() => {
++    vi.useRealTimers()
++  })
++
++  it('is absent when the options fit', () => {
++    const { stage, select } = openSelect(3)
++    expect(select._dropdown!._scrollbar).toBe(null)
++    stage.destroy()
++  })
++
++  it('exists but starts hidden when options overflow', () => {
++    const { stage, select } = openSelect(10)
++    const bar = select._dropdown!._scrollbar!
++    expect(bar).toBeTruthy()
++    expect(bar.visible()).toBe(false)
++    expect(bar._thumb.height()).toBeGreaterThan(0)
++    stage.destroy()
++  })
++
++  it('shows on hover and hides after leaving', () => {
++    vi.useFakeTimers()
++    const { stage, select } = openSelect(10)
++    const dropdown = select._dropdown!
++    const bar = dropdown._scrollbar!
++
++    dropdown.fire('mouseenter')
++    expect(bar.visible()).toBe(true)
++
++    dropdown.fire('mouseleave')
++    vi.advanceTimersByTime(600)
++    expect(bar.visible()).toBe(false)
++    stage.destroy()
++  })
++
++  it('scales the wheel step with the reported delta', () => {
++    const { stage, select } = openSelect(10)
++    const dropdown = select._dropdown!
++    dropdown.fire(
++      'wheel',
++      { evt: { preventDefault() {}, deltaY: 10 } },
++      true,
++    )
++    expect(dropdown.scrollTop).toBeGreaterThan(0)
++    expect(dropdown.scrollTop).toBeLessThan(1)
++    stage.destroy()
++  })
++
++  it('moves the thumb with wheel scrolling', () => {
++    const { stage, select } = openSelect(10)
++    const dropdown = select._dropdown!
++    const bar = dropdown._scrollbar!
++
++    const before = bar._thumb.y()
++    dropdown.fire(
++      'wheel',
++      { evt: { preventDefault() {}, deltaY: 100 } },
++      true,
++    )
++    expect(dropdown.scrollTop).toBe(1)
++    expect(bar._thumb.y()).toBeGreaterThan(before)
++    stage.destroy()
++  })
++})
+diff --git a/packages/renderer/test/renderer/textLayout.test.ts b/packages/renderer/test/renderer/textLayout.test.ts
+new file mode 100644
+index 0000000..241312f
+--- /dev/null
++++ b/packages/renderer/test/renderer/textLayout.test.ts
+@@ -0,0 +1,55 @@
++import { describe, it, expect } from 'vitest'
++import { buildTextLayout } from '../../src/renderer/components/text'
++
++const measure = (s: string) => s.length * 10
++
++function layout(text: string, width: number, lineHeight = 20) {
++  return buildTextLayout({ text, width, lineHeight, measure })
++}
++
++describe('buildTextLayout wrapping', () => {
++  it('breaks words longer than the line by character', () => {
++    const l = layout('abcdef', 30)
++    expect(l.lines.map((x) => x.text)).toEqual(['abc', 'def'])
++    expect(l.height).toBe(40)
++  })
++
++  it('wraps greedily on spaces', () => {
++    const l = layout('aa bb cc', 50)
++    expect(l.lines.map((x) => x.text)).toEqual(['aa bb', 'cc'])
++  })
++
++  it('starts a new line at explicit newlines', () => {
++    const l = layout('a\nb', 100)
++    expect(l.lines.map((x) => x.text)).toEqual(['a', 'b'])
++    expect(l.lines[0]).toEqual({ start: 0, end: 1, text: 'a' })
++    expect(l.lines[1]).toEqual({ start: 2, end: 3, text: 'b' })
++  })
++
++  it('emits one empty line for empty text', () => {
++    const l = layout('', 100)
++    expect(l.lines).toEqual([{ start: 0, end: 0, text: '' }])
++  })
++})
++
++describe('buildTextLayout offset mapping', () => {
++  it('maps an offset to a line-local x', () => {
++    const l = layout('abcdef', 30)
++    expect(l.pointAt(1)).toEqual({ line: 0, x: 10 })
++    expect(l.pointAt(4)).toEqual({ line: 1, x: 10 })
++  })
++
++  it('maps a point back to the nearest offset', () => {
++    const l = layout('abcdef', 30)
++    expect(l.offsetAt(0, 0)).toBe(0)
++    expect(l.offsetAt(22, 0)).toBe(2)
++    expect(l.offsetAt(999, 1)).toBe(6)
++  })
++
++  it('clamps line lookups by y', () => {
++    const l = layout('abcdef', 30, 20)
++    expect(l.lineAtY(0)).toBe(0)
++    expect(l.lineAtY(25)).toBe(1)
++    expect(l.lineAtY(999)).toBe(1)
++  })
++})
+diff --git a/packages/renderer/test/renderer/textarea.test.ts b/packages/renderer/test/renderer/textarea.test.ts
+new file mode 100644
+index 0000000..84a938d
+--- /dev/null
++++ b/packages/renderer/test/renderer/textarea.test.ts
+@@ -0,0 +1,135 @@
++import { afterEach, describe, it, expect } from 'vitest'
++import { Textarea } from '../../src/renderer/components/text'
++
++const live: Textarea[] = []
++
++afterEach(() => {
++  for (const ta of live.splice(0)) ta.destroy()
++})
++
++function makeTextarea(value = '') {
++  const ta = new Textarea({ inputWidth: 100, inputHeight: 50, value })
++  live.push(ta)
++  ta._startEdit()
++  return ta
++}
++
++function press(key: string, opts: KeyboardEventInit = {}) {
++  window.dispatchEvent(
++    new KeyboardEvent('keydown', { key, cancelable: true, ...opts }),
++  )
++}
++
++describe('Textarea editing', () => {
++  it('inserts a newline on Enter', () => {
++    const ta = makeTextarea('ab')
++    press('Enter')
++    expect(ta.getValue()).toBe('ab\n')
++    expect(ta.active).toBe(true)
++  })
++
++  it('inserts a newline on Shift+Enter too', () => {
++    const ta = makeTextarea('ab')
++    press('Enter', { shiftKey: true })
++    expect(ta.getValue()).toBe('ab\n')
++  })
++
++  it('commits on Escape', () => {
++    const ta = makeTextarea('ab')
++    ta._model.insertText('c')
++    press('Escape')
++    expect(ta.active).toBe(false)
++    expect(ta.getValue()).toBe('abc')
++  })
++
++  it('commits on blur (deactivate)', () => {
++    const ta = makeTextarea('ab')
++    ta._model.insertText('c')
++    ta.deactivate()
++    expect(ta.getValue()).toBe('abc')
++  })
++
++  it('moves down a line with ArrowDown', () => {
++    const ta = makeTextarea('a\nb')
++    ta._model.setCursor(0)
++    press('ArrowDown')
++    expect(ta._model.cursorPos).toBe(2)
++  })
++
++  it('moves up a line with ArrowUp', () => {
++    const ta = makeTextarea('a\nb')
++    ta._model.setCursor(3)
++    press('ArrowUp')
++    expect(ta._layout!.pointAt(ta._model.cursorPos).line).toBe(0)
++  })
++
++  it('makes Home/End line-relative', () => {
++    const ta = makeTextarea('aa\nbbb')
++    ta._model.setCursor(5)
++    press('Home')
++    expect(ta._model.cursorPos).toBe(3)
++    press('End')
++    expect(ta._model.cursorPos).toBe(6)
++  })
++})
++
++describe('Textarea scrolling', () => {
++  it('grows content past the box and scrolls on wheel', () => {
++    const ta = new Textarea({
++      inputWidth: 60,
++      inputHeight: 30,
++      value: 'word '.repeat(50),
++    })
++    live.push(ta)
++    ta._startEdit()
++
++    const area = ta._scrollArea
++    expect(area._contentHeight).toBeGreaterThan(area._h)
++    area.fire('wheel', { evt: { preventDefault() {}, deltaY: 100 } }, true)
++    expect(area.scrollTop).toBeGreaterThan(0)
++  })
++
++  it('keeps short content inside the box', () => {
++    const ta = new Textarea({
++      inputWidth: 100,
++      inputHeight: 60,
++      value: 'short',
++    })
++    live.push(ta)
++    expect(ta._scrollArea._contentHeight).toBeLessThanOrEqual(60)
++  })
++
++  it('keeps the scroll position on commit', () => {
++    const ta = new Textarea({
++      inputWidth: 60,
++      inputHeight: 30,
++      value: 'word '.repeat(50),
++    })
++    live.push(ta)
++    ta._startEdit()
++    ta._scrollArea.scrollTo(30)
++    expect(ta._scrollArea.scrollTop).toBe(30)
++    press('Escape')
++    expect(ta._scrollArea.scrollTop).toBe(30)
++  })
++})
++
++describe('Textarea committed value', () => {
++  it('fires onChange once on commit and not again on destroy', () => {
++    const changes: string[] = []
++    const ta = new Textarea({
++      inputWidth: 100,
++      inputHeight: 50,
++      value: 'ab',
++      onChange: (v) => changes.push(v),
++    })
++    live.push(ta)
++    ta._startEdit()
++    ta._model.insertText('c')
++    ta.deactivate()
++    expect(changes).toEqual(['abc'])
++    ta.destroy()
++    live.splice(live.indexOf(ta), 1)
++    expect(changes).toEqual(['abc'])
++  })
++})
+diff --git a/packages/renderer/test/renderer/textareaHandle.test.ts b/packages/renderer/test/renderer/textareaHandle.test.ts
+new file mode 100644
+index 0000000..edbf71e
+--- /dev/null
++++ b/packages/renderer/test/renderer/textareaHandle.test.ts
+@@ -0,0 +1,65 @@
++import { describe, it, expect } from 'vitest'
++import {
++  HandlePosition,
++  Workspace,
++} from '@0x-jerry/golden-graph'
++import type { INodeSchema, NodeHandle } from '@0x-jerry/golden-graph'
++import {
++  textareaHandleFactory,
++  TEXTAREA_MIN_HEIGHT,
++} from '../../src/renderer/handles/TextareaHandle'
++import { getHandleRowHeight } from '../../src/renderer/handles/layout'
++import { getHandleFactory } from '../../src/renderer/handles'
++import { addHandle, makeNode } from '../helpers/entities'
++import { LAYOUT } from '../../src/renderer/constants'
++import type { Textarea } from '../../src/renderer/components/text'
++
++function makeHandle(value = ''): NodeHandle {
++  const schema: INodeSchema = {
++    type: 'Textarea',
++    name: 'Textarea',
++    handles: [
++      {
++        key: 'value',
++        name: 'Value',
++        type: 'textarea',
++        position: HandlePosition.Left,
++        value,
++      },
++    ],
++  }
++  const ws = new Workspace()
++  ws.registerNodeSchema(schema)
++  return ws.addNode('Textarea').getHandle('value')!
++}
++
++describe('textarea handle', () => {
++  it('is a block handle with the configured content box', () => {
++    const node = makeNode(1, 'N')
++    addHandle(node, 'a', { type: 'textarea' })
++    expect(getHandleRowHeight(node.getHandle('a')!)).toBe(
++      LAYOUT.HANDLE_ROW_HEIGHT + TEXTAREA_MIN_HEIGHT,
++    )
++  })
++
++  it('exposes the minHeight as its content box', () => {
++    const factory = getHandleFactory('textarea')!
++    expect(factory.config?.layout).toBe('block')
++    expect(factory.config?.minHeight).toBe(TEXTAREA_MIN_HEIGHT)
++  })
++
++  it('writes the edited value back to the handle', () => {
++    const handle = makeHandle('')
++    const module = textareaHandleFactory.create!(
++      handle,
++      {},
++      undefined,
++    ) as unknown as {
++      _textarea: Textarea
++      destroy(): void
++    }
++    module._textarea.setValue('hello')
++    expect(handle.getValue()).toBe('hello')
++    module.destroy()
++  })
++})
