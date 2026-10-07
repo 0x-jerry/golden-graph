@@ -84,6 +84,7 @@ export const floatDefinition = sourceNode(
     type: 'number',
     accepts: 'float',
     value: 1,
+    options: { step: 0.01 },
   },
 )
 
