@@ -11,6 +11,12 @@ export interface InputKeyEnv {
    * Consumers scale by their own step size; without it the arrows stay inert.
    */
   step?(delta: number): void
+  /** Multiline editors: Enter inserts a newline and Up/Down move by line. */
+  multiline?: boolean
+  insertNewline?(): void
+  moveVertical?(delta: number, shift: boolean): void
+  homeLine?(shift: boolean): void
+  endLine?(shift: boolean): void
 }
 
 export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: InputKeyEnv): void {
@@ -19,7 +25,13 @@ export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: Inpu
 
   if (e.key === 'Enter') {
     e.preventDefault()
-    env.commit()
+    if (env.multiline && env.insertNewline) {
+      env.insertNewline()
+      env.sync()
+      env.blink()
+    } else {
+      env.commit()
+    }
     return
   }
 
@@ -32,6 +44,18 @@ export function handleInputKeyDown(model: TextModel, e: KeyboardEvent, env: Inpu
   if (env.step && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
     e.preventDefault()
     env.step(e.key === 'ArrowUp' ? 1 : -1)
+    return
+  }
+
+  if (
+    env.multiline &&
+    env.moveVertical &&
+    (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+  ) {
+    e.preventDefault()
+    env.moveVertical(e.key === 'ArrowUp' ? -1 : 1, shift)
+    env.sync()
+    env.blink()
     return
   }
 
@@ -78,11 +102,13 @@ function handleEditingKey(
       return done()
     case 'Home':
       e.preventDefault()
-      model.moveTo(0, shift)
+      if (env.multiline && env.homeLine) env.homeLine(shift)
+      else model.moveTo(0, shift)
       return done()
     case 'End':
       e.preventDefault()
-      model.moveTo(model.value.length, shift)
+      if (env.multiline && env.endLine) env.endLine(shift)
+      else model.moveTo(model.value.length, shift)
       return done()
   }
 

@@ -1,6 +1,7 @@
 import Konva from 'konva'
 import { registerStageCursor } from '../../cursor'
 import { PADDING } from '../shared'
+import { Scrollbar, TRACK_INSET, TRACK_WIDTH, wheelFraction } from '../scroll'
 import type { SelectOption } from './Select'
 import { DEFAULT_THEME } from '../../../theme'
 import type { GraphTheme } from '../../../theme'
@@ -38,6 +39,8 @@ export class Dropdown extends Konva.Group {
   _theme: GraphTheme
   _panelBg: Konva.Rect | null = null
   _texts: Konva.Text[] = []
+  _scrollbar: Scrollbar | null = null
+  _hovered = false
 
   constructor(config: DropdownConfig, theme: GraphTheme = DEFAULT_THEME) {
     super()
@@ -163,7 +166,7 @@ export class Dropdown extends Konva.Group {
       // wheel handler otherwise.
       e.cancelBubble = true
       e.evt.preventDefault()
-      this.scrollBy(e.evt.deltaY > 0 ? 1 : -1)
+      this.scrollBy(wheelFraction(e.evt))
     })
 
     // Register the panel: the cursor center's ancestor walk finds it from any
@@ -172,25 +175,66 @@ export class Dropdown extends Konva.Group {
 
     this._itemsGroup = itemsGroup
 
+    if (this._maxVisible > 0 && count > this._maxVisible) {
+      const trackHeight = visCount * ITEM_HEIGHT - TRACK_INSET * 2
+      const scrollbar = new Scrollbar({
+        trackHeight,
+        theme: this._theme,
+        onScroll: (top) => this.scrollTo(top),
+        onDragEnd: () => {
+          if (!this._hovered) this._scrollbar?.scheduleHide()
+        },
+      })
+      scrollbar.x(this._width - TRACK_WIDTH - TRACK_INSET)
+      scrollbar.y(1 + TRACK_INSET)
+      this.add(scrollbar)
+      this._scrollbar = scrollbar
+      this._syncScrollbar()
+    }
+
+    this.on('mouseenter', () => {
+      this._hovered = true
+      this._scrollbar?.show()
+    })
+    this.on('mouseleave', () => {
+      this._hovered = false
+      if (!this._scrollbar?.dragging) this._scrollbar?.scheduleHide()
+    })
+
     if (this._focusedIndex >= 0) {
       this.setFocus(this._focusedIndex)
     }
   }
 
-  scrollBy(delta: number) {
+  scrollTo(top: number): void {
     const maxScroll = Math.max(0, this._opts.length - this._maxVisible)
-    const next = Math.max(0, Math.min(maxScroll, this._scrollTop + delta))
+    const next = Math.max(0, Math.min(maxScroll, top))
     if (next === this._scrollTop) return
     this._scrollTop = next
     if (this._itemsGroup) {
-      this._itemsGroup.y(-this._scrollTop * ITEM_HEIGHT)
+      this._itemsGroup.y(-next * ITEM_HEIGHT)
     }
+    this._syncScrollbar()
+    this._scrollbar?.flash()
     this.getLayer()?.batchDraw()
+  }
+
+  _syncScrollbar(): void {
+    this._scrollbar?.sync(
+      this._scrollTop,
+      this._opts.length,
+      Math.min(this._opts.length, this._maxVisible),
+    )
+  }
+
+  scrollBy(delta: number) {
+    this.scrollTo(this._scrollTop + delta)
   }
 
   setFocus(index: number) {
     this._focusedIndex = index
     this._ensureFocusVisible()
+    this._scrollbar?.flash()
     if (!this._highlight) return
     if (index >= 0 && index < this._opts.length) {
       this._highlight.y(index * ITEM_HEIGHT)
@@ -210,6 +254,7 @@ export class Dropdown extends Konva.Group {
     if (this._itemsGroup) {
       this._itemsGroup.y(-this._scrollTop * ITEM_HEIGHT)
     }
+    this._syncScrollbar()
   }
 
   applyTheme(theme: GraphTheme): void {
@@ -219,6 +264,7 @@ export class Dropdown extends Konva.Group {
     this._panelBg?.fill(theme.colors.bg)
     this._panelBg?.stroke(theme.colors.border)
     this._highlight?.fill(theme.colors.selectionFill)
+    this._scrollbar?.applyTheme(theme)
     for (let i = 0; i < this._texts.length; i++) {
       const text = this._texts[i]
       if (!text) continue
@@ -228,5 +274,11 @@ export class Dropdown extends Konva.Group {
       text.y(i * ITEM_HEIGHT + (ITEM_HEIGHT - theme.fonts.size) / 2)
     }
     this.getLayer()?.batchDraw()
+  }
+
+  destroy(): this {
+    this._scrollbar?.destroy()
+    this._scrollbar = null
+    return super.destroy()
   }
 }

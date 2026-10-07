@@ -1,7 +1,8 @@
-import { HandleComponentRegistry } from '@0x-jerry/golden-graph'
 import type { NodeHandleFactory } from './types'
+import { registry } from './registry'
 
 import { textHandleFactory } from './TextHandle'
+import { textareaHandleFactory } from './TextareaHandle'
 import { numberHandleFactory } from './NumberHandle'
 import { selectHandleFactory } from './SelectHandle'
 import { displayHandleFactory } from './DisplayHandle'
@@ -10,14 +11,13 @@ import { colorHandleFactory } from './ColorHandle'
 
 const factories: NodeHandleFactory[] = [
   textHandleFactory,
+  textareaHandleFactory,
   numberHandleFactory,
   selectHandleFactory,
   displayHandleFactory,
   imageHandleFactory,
   colorHandleFactory,
 ]
-
-const registry = new HandleComponentRegistry<NodeHandleFactory>()
 
 for (const factory of factories) {
   registry.register(factory.type, factory)
@@ -44,7 +44,7 @@ export function registerHandleFactory(factory: NodeHandleFactory) {
   factories.push(factory)
 }
 
-export const getHandleFactory = (type: string) => registry.get(type)
+export { getHandleFactory } from './registry'
 
 /**
  * Remove shared DOM editors (appended to `document.body`) created by handle

@@ -1,0 +1,5 @@
+export { Textarea } from './Textarea'
+export type { TextareaConfig } from './Textarea'
+export { LINE_HEIGHT_RATIO } from './Textarea'
+export { buildTextLayout } from './TextLayout'
+export type { TextLayout, TextLine, TextLayoutOptions } from './TextLayout'

@@ -7,7 +7,7 @@ import {
   HANDLE_NAME_GAP,
   getNodeWidth,
 } from '../constants'
-import { getHandleFactory } from './index'
+import { getHandleFactory } from './registry'
 import { isBlockHandle } from './layout'
 
 /**

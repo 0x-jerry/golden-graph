@@ -5,7 +5,7 @@ import {
   NODE_BODY_PADDING,
   HANDLE_CONTENT_Y_OFFSET,
 } from '../constants'
-import { getHandleFactory } from './index'
+import { getHandleFactory } from './registry'
 
 /** Measured row heights from live `HandleView`s, keyed by handle. */
 const measuredRows = new WeakMap<NodeHandle, number>()
