@@ -1,6 +1,6 @@
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
-import { toTslCode } from './code'
+import { toTslCode } from '../tsl/code'
 
 const OPTIONS = Array.from({ length: 24 }, (_, i) => ({
   value: `vec3(${(i / 24).toFixed(3)}, ${((i % 6) / 6).toFixed(3)}, ${((i % 4) / 4).toFixed(3)})`,
