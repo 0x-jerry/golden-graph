@@ -1,14 +1,14 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Select } from '../components/select'
-import type { SelectOption } from '../components/select'
+import type { SelectOptionInput } from '../components/select'
 import { availableWidth } from './utils'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'
 
 export interface NodeHandleOptions {
-  options?: (SelectOption | string)[]
+  options?: SelectOptionInput[]
 }
 
 const INPUT_HEIGHT = 18

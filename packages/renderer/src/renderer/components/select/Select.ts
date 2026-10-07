@@ -15,18 +15,26 @@ export interface SelectOption {
   label: string
 }
 
+/**
+ * A bare `string`/`number` is used as both the option's value and its label.
+ * The select works in strings, so numbers are normalized on the way in.
+ */
+export type SelectOptionInput = SelectOption | string | number
+
 export interface SelectConfig extends BaseFormConfig {
   selectWidth: number
   selectHeight?: number
-  options: (SelectOption | string)[]
+  options: SelectOptionInput[]
   value?: string
   placeholder?: string
   maxVisibleItems?: number
   onChange?: (value: string) => void
 }
 
-function normalizeOptions(opts: (SelectOption | string)[]): SelectOption[] {
-  return opts.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
+function normalizeOptions(opts: SelectOptionInput[]): SelectOption[] {
+  return opts.map((o) =>
+    typeof o === 'object' ? o : { value: String(o), label: String(o) },
+  )
 }
 
 export class Select extends FormElement {
@@ -182,7 +190,7 @@ export class Select extends FormElement {
     this._onChange?.(value)
   }
 
-  setOptions(options: (SelectOption | string)[]) {
+  setOptions(options: SelectOptionInput[]) {
     this._opts = normalizeOptions(options)
     const matched = this._opts.find((o) => o.value === this._val)
     this._textNode.text(matched?.label ?? '')

@@ -39,4 +39,23 @@ describe('handle editors do not write back unchanged values', () => {
 
     select.destroy()
   })
+
+  it('Select shows and selects numeric options', () => {
+    const picked: string[] = []
+    const select = new Select({
+      selectWidth: 120,
+      options: [1, 2, 3],
+      value: '2',
+      onChange: (value) => picked.push(value),
+    })
+
+    // A numeric option list has to match the current value, otherwise the box
+    // renders its placeholder and the items render empty labels.
+    expect(select._textNode.text()).toBe('2')
+
+    select._selectIndex(2)
+    expect(picked).toEqual(['3'])
+
+    select.destroy()
+  })
 })
