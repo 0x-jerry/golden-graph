@@ -75,15 +75,20 @@ export class Input extends FormElement {
   }
 
   _stageUpFn = () => {
+    this._detachStage()
+
+    if (this._active) {
+      this._hidden.focus()
+    }
+  }
+
+  /** Detach the caret-drag listeners; also runs when a session ends. */
+  _detachStage() {
     this._dragging = false
     const stage = this.getStage()
     if (stage) {
       stage.off('mousemove touchmove', this._stageMoveFn)
       stage.off('mouseup touchend', this._stageUpFn)
-    }
-
-    if (this._active) {
-      this._hidden.focus()
     }
   }
 
@@ -413,6 +418,7 @@ export class Input extends FormElement {
     this._bg.stroke(this._borderColor)
 
     this._hidden.detach()
+    this._detachStage()
     this._scrollX = 0
     this._composingNode.visible(false)
 
