@@ -148,18 +148,6 @@ function fail(error: unknown) {
       <span class="preview-title">three.js · WebGPU</span>
       <div class="preview-controls">
         <select
-          class="preview-select"
-          :value="state.sceneId"
-          :disabled="state.status !== 'ready'"
-          title="Scene"
-          @change="onSceneChange"
-        >
-          <option v-for="scene in SCENES" :key="scene.id" :value="scene.id">
-            {{ scene.label }}
-          </option>
-        </select>
-
-        <select
           v-if="showShape"
           class="preview-select"
           :value="state.shape"
@@ -169,6 +157,18 @@ function fail(error: unknown) {
         >
           <option v-for="shape in SHAPES" :key="shape.value" :value="shape.value">
             {{ shape.label }}
+          </option>
+        </select>
+
+        <select
+          class="preview-select"
+          :value="state.sceneId"
+          :disabled="state.status !== 'ready'"
+          title="Scene"
+          @change="onSceneChange"
+        >
+          <option v-for="scene in SCENES" :key="scene.id" :value="scene.id">
+            {{ scene.label }}
           </option>
         </select>
       </div>
