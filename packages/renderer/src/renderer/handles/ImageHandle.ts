@@ -180,8 +180,8 @@ export const imageHandleFactory: NodeHandleFactory = {
     layout: 'block',
     joint: { color: '#f97316', shape: 'diamond' },
   },
-  create: (handle, _options, theme) =>
-    new ImageModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+    new ImageModule(handle, render?.theme ?? DEFAULT_THEME),
 
   /** Remove the shared file input from the DOM when the renderer is disposed. */
   dispose() {

@@ -2,6 +2,14 @@ import Konva from 'konva'
 import { registerStageCursor } from '../../cursor'
 import { DEFAULT_THEME } from '../../../theme'
 import type { GraphTheme } from '../../../theme'
+import {
+  animationDuration,
+  animateProgress,
+  inQuad,
+  outQuad,
+  SCROLLBAR_FADE_MS,
+} from '../../animations'
+import type { Animator } from '../../animations'
 
 export const TRACK_WIDTH = 4
 export const THUMB_WIDTH = 4
@@ -13,6 +21,8 @@ const HIDE_DELAY_MS = 600
 export interface ScrollbarConfig {
   trackHeight: number
   theme?: GraphTheme
+  /** `false` shows/hides instantly instead of fading. */
+  animations?: boolean
   onScroll: (scrollTop: number) => void
   onDragEnd?: () => void
 }
@@ -22,6 +32,9 @@ export interface ScrollbarConfig {
  * sizes in whatever unit it scrolls in (items, pixels) and receives the same
  * unit back from `onScroll`. Auto-hides on a timer once the host stops
  * hovering; the host drives `show`/`scheduleHide`/`flash`.
+ *
+ * Showing and hiding fade the overlay in/out unless animations are disabled
+ * (or the OS asks for reduced motion), in which case both snap.
  */
 export class Scrollbar extends Konva.Group {
   _track: Konva.Rect
@@ -33,18 +46,24 @@ export class Scrollbar extends Konva.Group {
   _viewportSize = 0
   _overflow = false
   _theme: GraphTheme
+  _animations: boolean
   _onScroll: (scrollTop: number) => void
   _onDragEnd?: () => void
 
   _hideTimer: ReturnType<typeof setTimeout> | null = null
   _dragging = false
   _grabOffset = 0
+  /** In-flight fade; `null` when the overlay is at rest. */
+  _fadeAnim: Animator | null = null
+  /** Opacity the in-flight fade is heading to; `null` when at rest. */
+  _fadeTarget: number | null = null
 
   constructor(config: ScrollbarConfig) {
     const theme = config.theme ?? DEFAULT_THEME
     super()
     this._trackHeight = config.trackHeight
     this._theme = theme
+    this._animations = config.animations ?? true
     this._onScroll = config.onScroll
     this._onDragEnd = config.onDragEnd
 
@@ -82,6 +101,8 @@ export class Scrollbar extends Konva.Group {
     })
 
     this.visible(false)
+    this.opacity(0)
+    this.listening(false)
     registerStageCursor(this, 'pointer')
   }
 
@@ -102,8 +123,7 @@ export class Scrollbar extends Konva.Group {
     const overflow = contentSize > viewportSize && viewportSize > 0
     this._overflow = overflow
     if (!overflow) {
-      this.visible(false)
-      this.getLayer()?.batchDraw()
+      this._hideNow()
       return
     }
 
@@ -116,14 +136,19 @@ export class Scrollbar extends Konva.Group {
     if (!this._overflow) return this
     this._clearTimer()
     this.visible(true)
+    this.listening(true)
     this.getLayer()?.batchDraw()
+    this._fadeTo(1)
     return this
   }
 
   hide(): this {
     this._clearTimer()
-    this.visible(false)
-    this.getLayer()?.batchDraw()
+    if (!this.visible()) return this
+    // Stop answering pointer events while fading away, so a click on the
+    // half-transparent track cannot page the content.
+    this.listening(false)
+    this._fadeTo(0)
     return this
   }
 
@@ -240,8 +265,69 @@ export class Scrollbar extends Konva.Group {
     }
   }
 
+  /**
+   * Fade to `target` opacity. Re-asking for the opacity already in flight is a
+   * no-op, so wheel/flash bursts do not restart the fade. A cancelled fade
+   * keeps the current opacity, so an interrupted show/hide continues smoothly
+   * from where it was.
+   */
+  _fadeTo(target: number): void {
+    if (this._fadeTarget === target) return
+    this._fadeAnim?.cancel()
+    this._fadeAnim = null
+
+    const from = this.opacity()
+    if (from === target) {
+      this._fadeTarget = null
+      this._settleFade(target)
+      return
+    }
+
+    this._fadeTarget = target
+    const duration = animationDuration(SCROLLBAR_FADE_MS, this._animations)
+    this._fadeAnim = animateProgress({
+      from,
+      to: target,
+      duration,
+      ease: target === 1 ? outQuad : inQuad,
+      onFrame: (value) => this._applyFade(value),
+      onDone: () => {
+        this._fadeAnim = null
+        this._fadeTarget = null
+        this._settleFade(target)
+      },
+    })
+  }
+
+  /** Reach the fade's end state: only a hidden overlay stops listening. */
+  _settleFade(target: number): void {
+    if (target === 0) {
+      this.visible(false)
+      this.listening(false)
+    }
+    this._applyFade(target)
+  }
+
+  _applyFade(value: number): void {
+    this.opacity(value)
+    this.getLayer()?.batchDraw()
+  }
+
+  /** Snap straight to hidden: content no longer overflows. */
+  _hideNow(): void {
+    this._fadeAnim?.cancel()
+    this._fadeAnim = null
+    this._fadeTarget = null
+    this.visible(false)
+    this.listening(false)
+    this._applyFade(0)
+  }
+
   destroy(): this {
     this._clearTimer()
+    this._fadeAnim?.cancel()
+    this._fadeAnim = null
+    this._fadeTarget = null
     this._detachStage()
     this._dragging = false
     return super.destroy()

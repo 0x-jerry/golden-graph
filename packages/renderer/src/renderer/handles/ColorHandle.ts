@@ -57,8 +57,8 @@ class ColorModule extends Konva.Group implements NodeHandleModule {
 export const colorHandleFactory: NodeHandleFactory = {
   type: 'color',
   config: { joint: { color: '#ec4899', shape: 'circle' } },
-  create: (handle, _options, theme) =>
-      new ColorModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+      new ColorModule(handle, render?.theme ?? DEFAULT_THEME),
 }
 
 function normalizeColor(value: unknown): string {

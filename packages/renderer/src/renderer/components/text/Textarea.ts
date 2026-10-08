@@ -19,6 +19,8 @@ export interface TextareaConfig extends BaseFormConfig {
   inputHeight: number
   value?: string
   placeholder?: string
+  /** Set `false` to show/hide the scrollbar instantly. Defaults to `true`. */
+  animations?: boolean
   onChange?: (value: string) => void
   onStopEdit?: () => void
 }
@@ -86,6 +88,7 @@ export class Textarea extends FormElement {
       placeholder = '',
       strokeWidth = 1,
       cornerRadius = 2,
+      animations = true,
       onChange,
       onStopEdit,
       ...rest
@@ -142,6 +145,7 @@ export class Textarea extends FormElement {
       width: inputWidth,
       height: inputHeight,
       theme: t,
+      animations,
       wheelStep: this._lineHeight,
     })
     this.add(this._scrollArea)

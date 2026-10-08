@@ -1,9 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { ScrollArea } from '../../src/renderer/components/scroll'
 
 function area(width = 100, height = 50) {
   return new ScrollArea({ width, height })
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('ScrollArea scrolling', () => {
   it('clamps scrollTop to content bounds and re-clamps when the box grows', () => {
@@ -63,5 +67,20 @@ describe('ScrollArea scrolling', () => {
     expect(zoomed).toBe(true)
     expect(fits.scrollTop).toBe(0)
     fits.destroy()
+  })
+
+  it('snaps the scrollbar when animations are off', () => {
+    vi.useFakeTimers()
+    const a = new ScrollArea({ width: 100, height: 50, animations: false })
+    a.setContentHeight(200)
+
+    a.flash()
+    expect(a._scrollbar.visible()).toBe(true)
+    expect(a._scrollbar.opacity()).toBe(1)
+
+    vi.advanceTimersByTime(600)
+    expect(a._scrollbar.visible()).toBe(false)
+    expect(a._scrollbar.opacity()).toBe(0)
+    a.destroy()
   })
 })

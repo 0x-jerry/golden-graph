@@ -2,6 +2,7 @@ import KonvaRenderer from './KonvaRenderer.vue'
 
 export { KonvaRenderer }
 export { KonvaGraphRenderer } from './renderer'
+export type { KonvaGraphRendererOptions } from './renderer'
 export { registerHandleFactory, getHandleFactory } from './renderer/handles'
 export type {
   IHandleJointStyle,

@@ -34,6 +34,11 @@ export interface KonvaGraphRendererOptions {
    * `0` disables proximity so only exact pointer hits connect.
    */
   proximityRadius?: number
+  /**
+   * When `false`, animated transitions are disabled: the scrollbar fade and the
+   * select dropdown toggle snap instead. Defaults to `true`.
+   */
+  animations?: boolean
   /** Partial theme merged over the defaults. Hot-swappable via `setTheme`. */
   theme?: DeepPartial<GraphTheme>
 }
@@ -52,6 +57,8 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
   _disposed = false
   _activeElementManager: ActiveElementManager
   _autoLayoutSubGraph: boolean
+  /** Whether views animate their transitions (scrollbar fade, dropdown). */
+  _animations: boolean
   /** Per-renderer theme; hot-swapping re-applies to every live view. */
   _theme: ThemeContext
 
@@ -64,12 +71,18 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     return this._theme.value
   }
 
+  /** Whether animated transitions are enabled for this renderer. */
+  get animations(): boolean {
+    return this._animations
+  }
+
   constructor(
     container: HTMLElement,
     workspace: Workspace,
     options?: KonvaGraphRendererOptions,
   ) {
     this._autoLayoutSubGraph = options?.autoLayoutSubGraph ?? true
+    this._animations = options?.animations ?? true
     this._ws = workspace
     this._theme = new ThemeContext(options?.theme)
 
@@ -84,7 +97,10 @@ export class KonvaGraphRenderer implements IRenderer, IDisposable {
     this._activeElementManager.init()
 
     this._gridLayer = new CoordLayer(workspace.coord, this._theme.value)
-    this._store = new EntityViewStore(workspace, this._theme)
+    this._store = new EntityViewStore(workspace, {
+      theme: this._theme,
+      animations: this._animations,
+    })
 
     this._stage.add(this._gridLayer)
     this._stage.add(this._store.groupLayer)

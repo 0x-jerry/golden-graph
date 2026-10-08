@@ -28,6 +28,8 @@ export interface ScrollAreaConfig {
   width: number
   height: number
   theme?: GraphTheme
+  /** Forwarded to the scrollbar: `false` shows/hides it without fading. */
+  animations?: boolean
   /** Pixels scrolled per wheel notch. */
   wheelStep?: number
 }
@@ -77,6 +79,7 @@ export class ScrollArea extends Konva.Group {
     this._scrollbar = new Scrollbar({
       trackHeight: config.height - TRACK_INSET * 2,
       theme,
+      animations: config.animations,
       onScroll: (top) => this.scrollTo(top),
       onDragEnd: () => {
         if (!this._hovered) this._scrollbar.scheduleHide()

@@ -23,6 +23,16 @@ import { Tooltip } from './tooltip'
 import { DEFAULT_THEME } from '../theme'
 import type { GraphTheme } from '../theme'
 
+/** Options for {@link HandleView}. */
+export interface HandleViewOptions {
+  /** Fired after this handle's row height is re-measured. */
+  onResize?: () => void
+  /** Active theme. Defaults to {@link DEFAULT_THEME}. */
+  theme?: GraphTheme
+  /** Forwarded to the handle factory: `false` makes its widget snap. */
+  animations?: boolean
+}
+
 /**
  * Registry mapping a core handle to its rendered view, used for cross-cutting
  * lookups (e.g. hit-testing / joint highlighting from the InteractionManager).
@@ -65,14 +75,18 @@ export class HandleView {
   _tooltip?: Tooltip
   /** Active theme, re-applied on hot-swap via `applyTheme`. */
   _theme: GraphTheme
+  /** Whether the widget this handle creates should animate. */
+  _animations: boolean
 
-  constructor(
-    handle: NodeHandle,
-    onResize?: () => void,
-    theme: GraphTheme = DEFAULT_THEME,
-  ) {
+  constructor(handle: NodeHandle, options: HandleViewOptions = {}) {
+    const {
+      onResize,
+      theme = DEFAULT_THEME,
+      animations = true,
+    } = options
     this.handle = handle
     this._theme = theme
+    this._animations = animations
     this.key = handle.key
     this._onResize = onResize
     this._factory = getHandleFactory(handle.type) ?? null
@@ -94,7 +108,10 @@ export class HandleView {
 
     const factory = this._factory
     if (factory?.create) {
-      const module = factory.create(handle, handle.getOptions(), theme)
+      const module = factory.create(handle, handle.getOptions(), {
+        theme,
+        animations: this._animations,
+      })
       module.name('content')
       module.y(contentY(handle))
       this._layoutContent(module)

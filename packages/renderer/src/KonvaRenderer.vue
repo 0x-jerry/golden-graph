@@ -15,6 +15,11 @@ export interface KonvaRendererProps {
   showToolbar?: boolean
   showContextMenu?: boolean
   /**
+   * When `false`, animated transitions (scrollbar fade, dropdown toggle) snap
+   * instead. Read once, when the renderer is created.
+   */
+  animations?: boolean
+  /**
    * Partial theme merged over the defaults, replacing any previously applied
    * overrides. Passing a new object hot-swaps the canvas colors/fonts and the
    * `--gr-*` chrome live; omit it (or pass `{}`) for the default light theme.
@@ -25,6 +30,7 @@ export interface KonvaRendererProps {
 const props = withDefaults(defineProps<KonvaRendererProps>(), {
   showToolbar: true,
   showContextMenu: true,
+  animations: true,
 })
 
 const containerRef = useTemplateRef<HTMLElement>('container')
@@ -52,6 +58,7 @@ onMounted(async () => {
   // renderer, and node/edge additions during setup are then rendered live.
   renderer = new KonvaGraphRenderer(el, ws, {
     theme: props.theme,
+    animations: props.animations,
     onContextMenu: (ctx, evt, menus) => {
       ctxMenu.show(evt.clientX, evt.clientY, menus, ctx.pos)
       // Keep the drop position even after the menu closes, so the "Add Node"

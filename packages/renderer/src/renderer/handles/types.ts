@@ -74,6 +74,22 @@ export interface NodeHandleModule extends Konva.Group {
   destroy(): this
 }
 
+/** Renderer state a handle factory receives alongside its own config. */
+export interface NodeHandleRenderOptions {
+  /**
+   * Active theme. Optional for factories that predate theming — the created
+   * module can still re-theme via {@link NodeHandleModule#applyTheme}.
+   */
+  theme?: GraphTheme
+
+  /**
+   * The renderer's `animations` option: `false` means animated transitions
+   * must be skipped (widgets snap). Factories that do not animate may ignore
+   * it; factories that predate it keep animating.
+   */
+  animations?: boolean
+}
+
 /**
  * A registered handle renderer. Factories are singletons in a registry keyed
  * by string `type`; each `create()` call produces a fresh `NodeHandleModule`
@@ -87,16 +103,13 @@ export interface NodeHandleFactory {
   /**
    * Build the content widget for a handle. Optional for types registered purely
    * to style their joint (no value editor). When absent the handle renders
-   * label + joint only.
-   *
-   * The `theme` argument is optional for backward compatibility with external
-   * factories that predate theming; the created module can still re-theme via
-   * {@link NodeHandleModule#applyTheme}.
+   * label + joint only. `render` may be omitted by factories that take neither
+   * theme nor animations.
    */
   create?(
     handle: NodeHandle,
     options: INodeHandleConfigOptions,
-    theme?: GraphTheme,
+    render?: NodeHandleRenderOptions,
   ): NodeHandleModule
 
   /**

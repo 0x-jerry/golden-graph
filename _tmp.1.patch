@@ -1,0 +1,67 @@
+diff --git a/packages/renderer/src/renderer/NodeView.ts b/packages/renderer/src/renderer/NodeView.ts
+index a839f01..ad081d1 100644
+--- a/packages/renderer/src/renderer/NodeView.ts
++++ b/packages/renderer/src/renderer/NodeView.ts
+@@ -389,7 +389,10 @@ export class NodeView extends EntityView<Node> {
+ 
+     this._name.fill(theme.colors.headerText)
+ 
+-    this._resize.visible(active && !collapsed)
++    // The grip stays in the hit graph whenever the node has a body, so a
++    // corner grab works without selecting first; it is never painted.
++    this._resize.visible(!collapsed)
++    this._resize.opacity(0)
+   }
+ 
+   _syncHandles(): void {
+diff --git a/packages/renderer/test/renderer/NodeView.test.ts b/packages/renderer/test/renderer/NodeView.test.ts
+index 9b156c8..b5abde8 100644
+--- a/packages/renderer/test/renderer/NodeView.test.ts
++++ b/packages/renderer/test/renderer/NodeView.test.ts
+@@ -50,7 +50,7 @@ describe('NodeView', () => {
+     expect(getHandleView(in1)).toBeUndefined()
+   })
+ 
+-  it('toggles the active border and shows the resize grip only while selected', () => {
++  it('keeps the resize grip available but never paints it', () => {
+     const node = makeNode(3, 'C')
+     addHandle(node, 'a')
+ 
+@@ -59,14 +59,16 @@ describe('NodeView', () => {
+     const resize = find<Konva.Group>(view.group, '.resize')
+ 
+     expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
+-    expect(resize.visible()).toBe(false)
++    expect(resize.visible()).toBe(true)
++    expect(resize.opacity()).toBe(0)
+ 
+     view.setActive(true)
+     expect(body.stroke()).toBe(DEFAULT_THEME.colors.accent)
+-    expect(resize.visible()).toBe(true)
++    expect(resize.opacity()).toBe(0)
+ 
+     view.setActive(false)
+     expect(body.stroke()).toBe(DEFAULT_THEME.colors.border)
++    expect(resize.opacity()).toBe(0)
+   })
+ 
+   it('highlights the body while executing', () => {
+@@ -253,10 +255,18 @@ describe('NodeView drag cursor', () => {
+     })
+     expect(cursor()).toBe('move')
+ 
++    // The body's bottom-right corner is the always-available resize grip,
++    // transparent but hit-testable on an unselected node.
+     hover({
+       x: bodyRect.x + bodyRect.width - 4,
+       y: bodyRect.y + bodyRect.height - 5,
+     })
++    expect(cursor()).toBe('nwse-resize')
++
++    hover({
++      x: bodyRect.x + bodyRect.width - 40,
++      y: bodyRect.y + bodyRect.height - 5,
++    })
+     expect(cursor()).toBe('')
+ 
+     stage.destroy()

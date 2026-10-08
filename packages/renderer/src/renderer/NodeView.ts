@@ -26,6 +26,14 @@ import { SubGraphTag } from './components/SubGraphTag'
 import { DEFAULT_THEME } from '../theme'
 import type { GraphTheme, NodeCornerRadius } from '../theme'
 
+/** Options for {@link NodeView}. */
+export interface NodeViewOptions {
+  /** Active theme. Defaults to {@link DEFAULT_THEME}. */
+  theme?: GraphTheme
+  /** Forwarded to the handle widgets; `false` makes their transitions snap. */
+  animations?: boolean
+}
+
 export class NodeView extends EntityView<Node> {
   _body: Konva.Rect
   /** Shadow caster behind the body; the body itself never casts one. */
@@ -55,8 +63,11 @@ export class NodeView extends EntityView<Node> {
   _handleViews = new Map<string, HandleView>()
   /** Active theme, re-applied on hot-swap via `applyTheme`. */
   _theme: GraphTheme
+  /** Forwarded to the handle widgets: `false` makes their transitions snap. */
+  _animations: boolean
 
-  constructor(node: Node, theme: GraphTheme = DEFAULT_THEME) {
+  constructor(node: Node, options: NodeViewOptions = {}) {
+    const { theme = DEFAULT_THEME, animations = true } = options
     const width = getNodeWidth(node)
     const height = getNodeHeight(node)
 
@@ -142,6 +153,7 @@ export class NodeView extends EntityView<Node> {
 
     super(node, g)
     this._theme = theme
+    this._animations = animations
     this._body = body
     this._shadow = shadow
     this._header = header
@@ -405,7 +417,11 @@ export class NodeView extends EntityView<Node> {
       }
 
       if (!view) {
-        view = new HandleView(handle, () => this.update(), this._theme)
+        view = new HandleView(handle, {
+          onResize: () => this.update(),
+          theme: this._theme,
+          animations: this._animations,
+        })
         this._handleViews.set(handle.key, view)
         this._handleLayer.add(view.group)
         return

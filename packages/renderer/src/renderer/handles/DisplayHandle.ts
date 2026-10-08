@@ -14,7 +14,7 @@ class DisplayModule extends Konva.Group implements NodeHandleModule {
   _text: Konva.Text
   _scrollArea: ScrollArea
 
-  constructor(handle: NodeHandle, theme: GraphTheme) {
+  constructor(handle: NodeHandle, theme: GraphTheme, animations: boolean) {
     super()
     this._handle = handle
 
@@ -24,6 +24,7 @@ class DisplayModule extends Konva.Group implements NodeHandleModule {
       width,
       height: getBlockContentMaxHeight(handle.node, handle),
       theme,
+      animations,
       wheelStep: theme.fonts.size + 6,
     })
     this.add(this._scrollArea)
@@ -71,6 +72,10 @@ export const displayHandleFactory: NodeHandleFactory = {
     layout: 'block',
     joint: { color: '#8b5cf6', shape: 'square' },
   },
-  create: (handle, _options, theme) =>
-    new DisplayModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+    new DisplayModule(
+      handle,
+      render?.theme ?? DEFAULT_THEME,
+      render?.animations ?? true,
+    ),
 }

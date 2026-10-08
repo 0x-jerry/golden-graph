@@ -17,7 +17,7 @@ class SelectModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
   _select: Select
 
-  constructor(handle: NodeHandle, theme: GraphTheme) {
+  constructor(handle: NodeHandle, theme: GraphTheme, animations: boolean) {
     super()
     this._handle = handle
 
@@ -27,6 +27,7 @@ class SelectModule extends Konva.Group implements NodeHandleModule {
         selectHeight: INPUT_HEIGHT,
         options: readOptions(handle),
         value: String(handle.getValue() ?? ''),
+        animations,
         onChange: (v) => {
           handle.setValue(v)
         },
@@ -52,8 +53,12 @@ class SelectModule extends Konva.Group implements NodeHandleModule {
 export const selectHandleFactory: NodeHandleFactory = {
   type: 'select',
   config: { joint: { color: '#f59e0b', shape: 'diamond' } },
-  create: (handle, _options, theme) =>
-      new SelectModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+    new SelectModule(
+      handle,
+      render?.theme ?? DEFAULT_THEME,
+      render?.animations ?? true,
+    ),
 }
 
 function readOptions(handle: NodeHandle): SelectOptionInput[] {

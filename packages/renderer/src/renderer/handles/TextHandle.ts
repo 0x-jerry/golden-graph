@@ -45,6 +45,6 @@ class TextModule extends Konva.Group implements NodeHandleModule {
 export const textHandleFactory: NodeHandleFactory = {
   type: 'text',
   config: { joint: { color: '#10b981', shape: 'square' } },
-  create: (handle, _options, theme) =>
-      new TextModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+      new TextModule(handle, render?.theme ?? DEFAULT_THEME),
 }

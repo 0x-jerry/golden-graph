@@ -5,6 +5,7 @@ import { DEFAULT_HEIGHT, PADDING, type BaseFormConfig } from '../shared'
 import { Dropdown, ITEM_HEIGHT } from './Dropdown'
 import { DEFAULT_THEME } from '../../../theme'
 import type { GraphTheme } from '../../../theme'
+import { animationDuration, DROPDOWN_TOGGLE_MS } from '../../animations'
 
 const ARROW_SIZE = 6
 const ARROW_PADDING = 6
@@ -28,6 +29,8 @@ export interface SelectConfig extends BaseFormConfig {
   value?: string
   placeholder?: string
   maxVisibleItems?: number
+  /** Set `false` to open/close the popup instantly. Defaults to `true`. */
+  animations?: boolean
   onChange?: (value: string) => void
 }
 
@@ -46,9 +49,12 @@ export class Select extends FormElement {
   _opts: SelectOption[]
   _val: string
   _maxVisible: number
+  _animations: boolean
   _onChange?: (value: string) => void
 
   _dropdown: Dropdown | null = null
+  /** Panel still playing its close transition; destroyed when it settles. */
+  _closingDropdown: Dropdown | null = null
 
   _sw: number
   _sh: number
@@ -64,6 +70,7 @@ export class Select extends FormElement {
       strokeWidth = 1,
       cornerRadius = 2,
       maxVisibleItems = DEFAULT_MAX_VISIBLE,
+      animations = true,
       onChange,
       ...rest
     } = config
@@ -73,6 +80,7 @@ export class Select extends FormElement {
     this._sw = selectWidth
     this._sh = selectHeight
     this._maxVisible = maxVisibleItems
+    this._animations = animations
     this._onChange = onChange
     this._opts = normalizeOptions(options)
     this._val = value
@@ -223,11 +231,14 @@ export class Select extends FormElement {
     }
 
     this._mountDropdown(scrollTop, focusedIndex)
+    this._dropdown?.playOpen(this._duration())
     this.getLayer()?.batchDraw()
   }
 
   _mountDropdown(scrollTop: number, focusedIndex: number) {
-    this._unmountDropdown()
+    // Re-mounting (value/width change while open) replaces the panel outright:
+    // no close transition, the new one takes its place.
+    this._unmountDropdown(true)
 
     const dropdown = new Dropdown(
       {
@@ -235,6 +246,7 @@ export class Select extends FormElement {
         fontSize: this._fs,
         fontFamily: this._ff,
         maxVisible: this._maxVisible,
+        animations: this._animations,
         onSelect: (index) => this._selectIndex(index),
       },
       this._theme,
@@ -261,13 +273,56 @@ export class Select extends FormElement {
     } else {
       this.add(dropdown)
     }
+    // Only now is the panel where it belongs, so the toggle slide can be
+    // measured around this position.
+    dropdown.captureRestPosition()
   }
 
-  _unmountDropdown() {
-    if (this._dropdown) {
-      this._dropdown.destroy()
-      this._dropdown = null
+  /**
+   * Tear the panel down. With animations on, it first plays its close
+   * transition and is destroyed when that settles; `_dropdown` is cleared
+   * immediately either way, so keyboard handling never drives a closing panel.
+   */
+  _unmountDropdown(immediate = false) {
+    const dropdown = this._dropdown
+    this._dropdown = null
+
+    // A panel still closing is replaced outright.
+    this._closingDropdown?.destroy()
+    this._closingDropdown = null
+
+    if (!dropdown) return
+
+    const duration = immediate
+      ? 0
+      : animationDuration(DROPDOWN_TOGGLE_MS, this._animations)
+    if (duration <= 0) {
+      dropdown.destroy()
+      return
     }
+
+    this._closingDropdown = dropdown
+    dropdown.playClose(duration, () => {
+      if (this._closingDropdown === dropdown) {
+        this._closingDropdown = null
+      }
+      dropdown.destroy()
+    })
+  }
+
+  _duration(): number {
+    return animationDuration(DROPDOWN_TOGGLE_MS, this._animations)
+  }
+
+  /**
+   * Destroy the select, finishing immediately any panel the teardown started
+   * closing so no tween outlives it.
+   */
+  destroy(): this {
+    super.destroy()
+    this._closingDropdown?.destroy()
+    this._closingDropdown = null
+    return this
   }
 
   _shouldOpenAbove(): boolean {

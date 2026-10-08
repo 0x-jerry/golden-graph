@@ -56,8 +56,8 @@ class RangeModule extends Konva.Group implements NodeHandleModule {
 export const rangeHandleFactory: NodeHandleFactory = {
   type: 'range',
   config: { joint: { color: '#14b8a6', shape: 'triangle' } },
-  create: (handle, _options, theme) =>
-    new RangeModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+    new RangeModule(handle, render?.theme ?? DEFAULT_THEME),
 }
 
 function readOptions(handle: NodeHandle): NodeHandleOptions {

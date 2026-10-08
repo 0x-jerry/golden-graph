@@ -16,7 +16,7 @@ class TextareaModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
   _textarea: Textarea
 
-  constructor(handle: NodeHandle, theme: GraphTheme) {
+  constructor(handle: NodeHandle, theme: GraphTheme, animations: boolean) {
     super()
     this._handle = handle
 
@@ -25,6 +25,7 @@ class TextareaModule extends Konva.Group implements NodeHandleModule {
         inputWidth: blockContentWidth(handle),
         inputHeight: TEXTAREA_MIN_HEIGHT,
         value: String(handle.getValue() ?? ''),
+        animations,
         onChange: (v) => {
           handle.setValue(v || undefined)
         },
@@ -53,6 +54,10 @@ export const textareaHandleFactory: NodeHandleFactory = {
     minHeight: TEXTAREA_MIN_HEIGHT,
     joint: { color: '#0ea5e9', shape: 'square' },
   },
-  create: (handle, _options, theme) =>
-    new TextareaModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+    new TextareaModule(
+      handle,
+      render?.theme ?? DEFAULT_THEME,
+      render?.animations ?? true,
+    ),
 }

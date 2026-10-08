@@ -41,10 +41,9 @@ describe('node body style', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a', { type: 'number' })
 
-    const view = new NodeView(
-      node,
-      theme({ metrics: { nodeCornerRadius: 12 } }),
-    )
+    const view = new NodeView(node, {
+      theme: theme({ metrics: { nodeCornerRadius: 12 } }),
+    })
     const header = find<Konva.Rect>(view.group, '.header')
 
     // The band stops at the body outline, so the stroke stays visible.
@@ -57,16 +56,15 @@ describe('node body style', () => {
     expect(header.cornerRadius()).toEqual([12, 12, 0, 0])
 
     // A custom inset pulls the band further in and drops the inherited corners.
-    const insetView = new NodeView(
-      node,
-      theme({
+    const insetView = new NodeView(node, {
+      theme: theme({
         metrics: {
           nodeCornerRadius: 12,
           headerInset: 4,
           headerCornerRadius: 6,
         },
       }),
-    )
+    })
     const insetHeader = find<Konva.Rect>(insetView.group, '.header')
     const inset = 4 + NODE_BODY_STROKE_WIDTH
     expect(insetHeader.x()).toBe(inset)
@@ -83,10 +81,9 @@ describe('node body style', () => {
     // Collapsed, the band IS the whole silhouette, so the body radius applies
     // to every corner (a numeric radius covers all four in Konva) instead of
     // only the top two.
-    const view = new NodeView(
-      node,
-      theme({ metrics: { headerInset: 4, nodeCornerRadius: 14 } }),
-    )
+    const view = new NodeView(node, {
+      theme: theme({ metrics: { headerInset: 4, nodeCornerRadius: 14 } }),
+    })
     node.setCollapsed(true)
     view.update()
 
@@ -106,20 +103,18 @@ describe('node decorations', () => {
     addHandle(node, 'b', { type: 'number' })
     addHandle(node, 'c', { type: 'number' })
 
-    const off = new NodeView(
-      node,
-      theme({ colors: { headerDivider: '', rowDivider: '' } }),
-    )
+    const off = new NodeView(node, {
+      theme: theme({ colors: { headerDivider: '', rowDivider: '' } }),
+    })
     expect(find<Konva.Line>(off.group, '.headerDivider').visible()).toBe(false)
     expect(off.group.find('.rowDivider').length).toBe(0)
 
-    const view = new NodeView(
-      node,
-      theme({
+    const view = new NodeView(node, {
+      theme: theme({
         colors: { headerDivider: '#111111', rowDivider: '#222222' },
         metrics: { nodeCornerRadius: 0 },
       }),
-    )
+    })
 
     const header = find<Konva.Line>(view.group, '.headerDivider')
     expect(header.visible()).toBe(true)
@@ -152,13 +147,12 @@ describe('node decorations', () => {
     expect(rows[0]!.stroke()).toBe('#222222')
 
     // A rounded body pulls the separators in so they stay inside the silhouette.
-    const rounded = new NodeView(
-      node,
-      theme({
+    const rounded = new NodeView(node, {
+      theme: theme({
         colors: { headerDivider: '#111111', rowDivider: '#222222' },
         metrics: { nodeCornerRadius: 12 },
       }),
-    )
+    })
     expect(rounded.group.find<Konva.Line>('.rowDivider')[0]!.points()).toEqual([
       6, 58, 194, 58,
     ])
@@ -190,13 +184,12 @@ describe('joint style', () => {
     const node = makeNode(1, 'A')
     addHandle(node, 'out', { position: HandlePosition.Right, type: '' })
 
-    const view = new NodeView(
-      node,
-      theme({
+    const view = new NodeView(node, {
+      theme: theme({
         metrics: { jointShape: 'diamond', jointRingWidth: 2 },
         colors: { jointRing: '#ffffff' },
       }),
-    )
+    })
     const joint = view._handleViews.get('out')!._joint!
 
     expect(joint.fill()).toBe('#ffffff')
@@ -221,10 +214,9 @@ describe('node shadow', () => {
   it('carries a static style shadow and defers to the executor highlight', () => {
     const node = makeNode(1, 'N')
     addHandle(node, 'a', { type: 'number' })
-    const view = new NodeView(
-      node,
-      theme({ colors: { nodeShadow: 'transparent' } }),
-    )
+    const view = new NodeView(node, {
+      theme: theme({ colors: { nodeShadow: 'transparent' } }),
+    })
     const body = find<Konva.Rect>(view.group, '.body')
     const shadow = find<Konva.Rect>(view.group, '.shadow')
 

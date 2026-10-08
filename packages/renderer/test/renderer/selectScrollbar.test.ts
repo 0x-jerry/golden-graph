@@ -1,13 +1,15 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { Select } from '../../src/renderer/components/select'
+import { SCROLLBAR_FADE_MS } from '../../src/renderer/animations'
 import { makeStage } from '../helpers/stage'
 
-function openSelect(count: number, maxVisibleItems = 4) {
+function openSelect(count: number, maxVisibleItems = 4, animations = true) {
   const { stage, layer } = makeStage()
   const select = new Select({
     selectWidth: 120,
     options: Array.from({ length: count }, (_, i) => `opt-${i}`),
     maxVisibleItems,
+    animations,
   })
   layer.add(select)
   select._openDropdown()
@@ -43,6 +45,9 @@ describe('select dropdown scrollbar', () => {
 
     dropdown.fire('mouseleave')
     vi.advanceTimersByTime(600)
+    // The auto-hide timer starts the fade-out; it settles a fade later.
+    expect(bar.visible()).toBe(true)
+    vi.advanceTimersByTime(SCROLLBAR_FADE_MS)
     expect(bar.visible()).toBe(false)
     vi.useRealTimers()
 
@@ -62,6 +67,23 @@ describe('select dropdown scrollbar', () => {
     expect(bigDropdown.scrollTop).toBe(1)
     expect(bigBar._thumb.y()).toBeGreaterThan(before)
     big.stage.destroy()
+    stage.destroy()
+  })
+
+  it('snaps its scrollbar when animations are off', () => {
+    vi.useFakeTimers()
+    const { stage, select } = openSelect(10, 4, false)
+    const dropdown = select._dropdown!
+    const bar = dropdown._scrollbar!
+
+    dropdown.fire('mouseenter')
+    expect(bar.visible()).toBe(true)
+    expect(bar.opacity()).toBe(1)
+
+    dropdown.fire('mouseleave')
+    vi.advanceTimersByTime(600)
+    expect(bar.visible()).toBe(false)
+    expect(bar.opacity()).toBe(0)
     stage.destroy()
   })
 })

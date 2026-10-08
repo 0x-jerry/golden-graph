@@ -62,8 +62,8 @@ class NumberModule extends Konva.Group implements NodeHandleModule {
 export const numberHandleFactory: NodeHandleFactory = {
   type: 'number',
   config: { joint: { color: '#6366f1', shape: 'circle' } },
-  create: (handle, _options, theme) =>
-      new NumberModule(handle, theme ?? DEFAULT_THEME),
+  create: (handle, _options, render) =>
+      new NumberModule(handle, render?.theme ?? DEFAULT_THEME),
 }
 
 function readStep(handle: NodeHandle): number {

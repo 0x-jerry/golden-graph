@@ -10,6 +10,14 @@ import { ThemeContext } from '../theme'
 import type { GraphTheme } from '../theme'
 import { getNodeHeight } from './nodeMetrics'
 
+/** Options for {@link EntityViewStore}. */
+export interface EntityViewStoreOptions {
+  /** Theme context shared with every view. */
+  theme?: ThemeContext
+  /** `false` disables animated transitions in the views. Defaults to `true`. */
+  animations?: boolean
+}
+
 /**
  * Map of entity views keyed by entity id. `add` draws the view into the given
  * layer, `remove`/`destroyAll` tear down views, keeping map and scene in sync.
@@ -41,6 +49,8 @@ export class EntityViewMap<V extends EntityView<unknown>> extends Map<number, V>
 export class EntityViewStore {
   _ws: Workspace
   _theme: ThemeContext
+  /** Passed to every view: `false` disables animated transitions. */
+  _animations: boolean
   nodeLayer: Konva.Layer
   edgeLayer: Konva.Layer
   groupLayer: Konva.Layer
@@ -49,9 +59,11 @@ export class EntityViewStore {
   _edgeViews = new EntityViewMap<EdgeView>()
   _groupViews = new EntityViewMap<GroupView>()
 
-  constructor(ws: Workspace, theme?: ThemeContext) {
+  constructor(ws: Workspace, options: EntityViewStoreOptions = {}) {
+    const { theme = new ThemeContext(), animations = true } = options
     this._ws = ws
-    this._theme = theme ?? new ThemeContext()
+    this._theme = theme
+    this._animations = animations
     this.groupLayer = new Konva.Layer({ name: LAYER_NAME.GROUPS })
     this.edgeLayer = new Konva.Layer({ name: LAYER_NAME.EDGES })
     this.nodeLayer = new Konva.Layer({ name: LAYER_NAME.NODES })
@@ -94,7 +106,14 @@ export class EntityViewStore {
   // --- Node ---
 
   addNode(node: Node) {
-    this._nodeViews.add(this.nodeLayer, node.id, new NodeView(node, this._theme.value))
+    this._nodeViews.add(
+      this.nodeLayer,
+      node.id,
+      new NodeView(node, {
+        theme: this._theme.value,
+        animations: this._animations,
+      }),
+    )
   }
 
   removeNode(node: Node) {
