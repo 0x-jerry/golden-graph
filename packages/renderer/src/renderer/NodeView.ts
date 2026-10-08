@@ -389,7 +389,10 @@ export class NodeView extends EntityView<Node> {
 
     this._name.fill(theme.colors.headerText)
 
-    this._resize.visible(active && !collapsed)
+    // The grip stays in the hit graph whenever the node has a body, so a
+    // corner grab works without selecting first; it is never painted.
+    this._resize.visible(!collapsed)
+    this._resize.opacity(0)
   }
 
   _syncHandles(): void {
