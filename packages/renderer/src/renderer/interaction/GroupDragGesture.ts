@@ -1,5 +1,4 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
-import { ActiveType } from '@0x-jerry/golden-graph'
 import type { GestureContext, IGesture } from './types'
 
 export class GroupDragGesture implements IGesture {
@@ -20,8 +19,6 @@ export class GroupDragGesture implements IGesture {
 
     this._groupId = groupId
     this._lastPos = { x: pos.x, y: pos.y }
-
-    this._ctx.ws.setActiveIds(ActiveType.Group, [groupId])
   }
 
   move(screenPos: IVec2) {

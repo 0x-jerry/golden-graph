@@ -186,8 +186,20 @@ export class InteractionManager extends EventEmitter<InteractionManagerEvents> {
           this._activeGesture = this._nodeDrag
         }
       } else {
-        this._groupDrag.start(hit.id)
-        this._activeGesture = this._groupDrag
+        if (
+          this._ws.state.activeType !== ActiveType.Group ||
+          !this._ws.isActive(hit.id)
+        ) {
+          this._ws.setActiveIds(ActiveType.Group, [hit.id])
+        }
+        const name = target.name()
+        if (name === NODE_SHAPE.HEADER || name === NODE_SHAPE.NAME) {
+          this._groupDrag.start(hit.id)
+          this._activeGesture = this._groupDrag
+        } else {
+          this._canvasPan.start()
+          this._activeGesture = this._canvasPan
+        }
       }
       return
     }
