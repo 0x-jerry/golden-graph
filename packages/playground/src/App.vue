@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
 import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
-import { KonvaRenderer } from '@0x-jerry/golden-graph-renderer'
+import {
+  applyThemeToElement,
+  KonvaRenderer,
+  ThemeContext,
+} from '@0x-jerry/golden-graph-renderer'
 import type { DeepPartial, GraphTheme } from '@0x-jerry/golden-graph-renderer'
 import { setup as _setup } from './editor'
 import { buildSceneExample } from './examples'
@@ -55,6 +59,25 @@ const DARK_THEME: DeepPartial<GraphTheme> = {
 const themeName = ref<'light' | 'dark'>('light')
 const theme = computed<DeepPartial<GraphTheme>>(() =>
   themeName.value === 'dark' ? DARK_THEME : {},
+)
+
+// The renderer mirrors its theme onto the `--gr-*` vars of its own wrapper
+// only, so the app chrome (toolbar, page background) re-applies the same vars
+// on the root element to follow a live theme switch.
+const chrome = new ThemeContext()
+const root = useTemplateRef<HTMLElement>('root')
+
+watch(
+  [root, theme],
+  () => {
+    if (!root.value) {
+      return
+    }
+
+    chrome.setTheme(theme.value)
+    applyThemeToElement(root.value, chrome.value)
+  },
+  { immediate: true },
 )
 
 // Workspace/executor state is plain, non-reactive data driven by the
@@ -277,7 +300,7 @@ async function loadFromJSON() {
 </script>
 
 <template>
-  <div class="full-screen">
+  <div ref="root" class="full-screen">
     <div class="tools">
       <button @click="clear">Clear</button>
       <button @click="save">Save</button>
@@ -308,24 +331,58 @@ async function loadFromJSON() {
   </div>
 </template>
 
-<style>
+<style scoped>
 .full-screen {
   display: flex;
   flex-direction: column;
 
   width: 100vw;
   height: 100vh;
+  color: var(--gr-color-text, #1f2328);
+  background: var(--gr-color-canvas-bg, #fdfcf7);
 }
 
 .tools {
-  height: 50px;
   display: flex;
-  padding: 0 20px;
   align-items: center;
-  border: 0 solid #eee;
-  border-width: 0 0 1px 0;
-
+  height: 48px;
+  padding: 0 16px;
   gap: 8px;
+  background: var(--gr-color-bg-toolbar, rgba(253, 252, 247, 0.94));
+  border-bottom: 1px solid var(--gr-color-border, rgba(31, 35, 40, 0.18));
+}
+
+.tools button,
+.tools select {
+  height: 28px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--gr-color-text, #1f2328);
+  background: var(--gr-color-bg-input, #f4f1e8);
+  border: 1px solid var(--gr-color-border, rgba(31, 35, 40, 0.25));
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tools button:hover,
+.tools select:hover {
+  background: var(--gr-color-bg-hover, rgba(31, 35, 40, 0.07));
+}
+
+.tools button:active {
+  transform: translateY(1px);
+}
+
+.tools button:focus-visible,
+.tools select:focus-visible {
+  outline: 1px solid var(--gr-color-accent, #b3261e);
+  outline-offset: 1px;
+}
+
+/* The theme switch is a view setting, not a graph action — push it apart. */
+.tools select {
+  margin-left: auto;
 }
 
 .body {
