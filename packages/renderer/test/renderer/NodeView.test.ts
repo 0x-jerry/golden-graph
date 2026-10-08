@@ -3,7 +3,9 @@ import Konva from 'konva'
 import { HandlePosition } from '@0x-jerry/golden-graph'
 import { makeNode, addHandle } from '../helpers/entities'
 import { find } from '../helpers/konva'
+import { makeStage } from '../helpers/stage'
 import { NodeView } from '../../src/renderer/NodeView'
+import { applyStageCursor } from '../../src/renderer/cursor'
 import { getHandleView } from '../../src/renderer/HandleView'
 import { notifyContentResized } from '../../src/renderer/HandleView'
 import {
@@ -214,6 +216,50 @@ describe('Konva shape construction in jsdom', () => {
     addHandle(node, 'a')
 
     expect(() => new NodeView(node)).not.toThrow()
+  })
+})
+
+describe('NodeView drag cursor', () => {
+  it('shows the move cursor over the header band and the title only', () => {
+    const node = makeNode(1, 'Move me')
+    addHandle(node, 'a')
+    const view = new NodeView(node)
+    const { stage, layer } = makeStage()
+    layer.add(view.group)
+    stage.draw()
+
+    const hover = (pos: { x: number; y: number }) => {
+      stage.setPointersPositions(
+        new MouseEvent('pointermove', { clientX: pos.x, clientY: pos.y }),
+      )
+      applyStageCursor(stage)
+    }
+
+    const name = find<Konva.Text>(view.group, '.name')
+    const header = find<Konva.Rect>(view.group, '.header')
+    const body = find<Konva.Rect>(view.group, '.body')
+    const nameRect = name.getClientRect()
+    const headerRect = header.getClientRect()
+    const bodyRect = body.getClientRect()
+    const cursor = () => stage.content.style.cursor
+
+    // Title glyphs, and the header band below their text box.
+    hover({ x: nameRect.x + nameRect.width / 2, y: nameRect.y + 2 })
+    expect(cursor()).toBe('move')
+
+    hover({
+      x: nameRect.x + nameRect.width / 2,
+      y: headerRect.y + headerRect.height - 2,
+    })
+    expect(cursor()).toBe('move')
+
+    hover({
+      x: bodyRect.x + bodyRect.width - 4,
+      y: bodyRect.y + bodyRect.height - 5,
+    })
+    expect(cursor()).toBe('')
+
+    stage.destroy()
   })
 })
 

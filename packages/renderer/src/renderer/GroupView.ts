@@ -11,6 +11,7 @@ import {
 import { EntityView } from './EntityView'
 import { EditableText } from './components/EditableText'
 import { ResizeHandle } from './components/ResizeHandle'
+import { registerStageCursor } from './cursor'
 import { DEFAULT_THEME } from '../theme'
 import type { GraphTheme } from '../theme'
 
@@ -85,6 +86,11 @@ export class GroupView extends EntityView<Group> {
     this._body = body
     this._header = header
     this._name = nameText
+
+    // Title band is the group's only drag affordance; the cursor center walks
+    // ancestors, so registering the EditableText group covers its text node.
+    registerStageCursor(header, 'move')
+    registerStageCursor(nameText, 'move')
 
     header.on('dblclick', () => this.startRename())
 

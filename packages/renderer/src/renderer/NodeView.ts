@@ -17,6 +17,7 @@ import {
 } from './constants'
 import { HandleView } from './HandleView'
 import { EntityView } from './EntityView'
+import { registerStageCursor } from './cursor'
 import { getNodeHeight } from './nodeMetrics'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CaretHandle } from './components/CaretHandle'
@@ -147,6 +148,11 @@ export class NodeView extends EntityView<Node> {
     this._headerDivider = headerDivider
     this._name = nameText
     this._caret = caret
+
+    // Header band is the node's drag affordance (see InteractionManager). The
+    // caret and SubGraph tag paint above it without inheriting the cursor.
+    registerStageCursor(header, 'move')
+    registerStageCursor(nameText, 'move')
 
     if (isSubGraphNode(node)) {
       const tag = new SubGraphTag(theme)

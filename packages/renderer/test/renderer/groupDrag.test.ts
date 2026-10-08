@@ -6,6 +6,7 @@ import { makeStage } from '../helpers/stage'
 import { find } from '../helpers/konva'
 import { GroupView } from '../../src/renderer/GroupView'
 import { InteractionManager } from '../../src/renderer/interaction/InteractionManager'
+import { applyStageCursor } from '../../src/renderer/cursor'
 
 function setup() {
   const ws = createWorkspace()
@@ -28,9 +29,14 @@ function setup() {
   return {
     ws,
     group,
+    stage,
     body: find<Konva.Rect>(view.group, '.body'),
     header: find<Konva.Rect>(view.group, '.header'),
     title: find<Konva.Text>(view.group, '.name'),
+    hover(pos: { x: number; y: number }) {
+      setPointer(pos)
+      applyStageCursor(stage)
+    },
     press(target: Konva.Node, pos = { x: 50, y: 60 }) {
       setPointer(pos)
       manager._onPointerDown({
@@ -68,5 +74,19 @@ describe('group drag', () => {
     expect(ws.isActive(group.id)).toBe(true)
     expect(group.pos).toEqual({ x: 10, y: 20 })
     expect(ws.coord.origin).toEqual({ x: 200, y: 200 })
+  })
+
+  it('shows the move cursor over the title band only', () => {
+    const { stage, hover } = setup()
+    stage.draw()
+
+    hover({ x: 200, y: 30 })
+    expect(stage.content.style.cursor).toBe('move')
+
+    hover({ x: 30, y: 42 })
+    expect(stage.content.style.cursor).toBe('move')
+
+    hover({ x: 200, y: 150 })
+    expect(stage.content.style.cursor).toBe('')
   })
 })
