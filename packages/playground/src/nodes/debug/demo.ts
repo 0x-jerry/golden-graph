@@ -36,6 +36,40 @@ export const selectDemoDefinition: INodeDefinition = {
   },
 }
 
+/** Debug node for exercising the slider widget and its value-box toggle. */
+export const rangeDemoDefinition: INodeDefinition = {
+  schema: {
+    name: 'Range',
+    description: 'Slider handle — drag, click the track, or type a value',
+    handles: [
+      {
+        key: 'value',
+        name: 'Amount',
+        value: 50,
+        type: 'range',
+        options: { min: 0, max: 100, step: 1 },
+      },
+      {
+        key: 'plain',
+        name: 'No value box',
+        value: 0.5,
+        type: 'range',
+        options: { min: -1, max: 1, step: 0.05, showEditableValue: false },
+      },
+      {
+        key: 'out',
+        name: 'Value',
+        position: HandlePosition.Right,
+        accepts: 'float',
+        value: 50,
+      },
+    ],
+  },
+  execute: (ctx) => {
+    ctx.setData('out', toTslCode(ctx.getData('value')))
+  },
+}
+
 const TEXT = [
   'A multiline textarea soft-wraps long lines and scrolls vertically.',
   'Enter adds a newline; Escape or clicking away commits.',

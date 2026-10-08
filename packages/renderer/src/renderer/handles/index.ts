@@ -4,6 +4,7 @@ import { registry } from './registry'
 import { textHandleFactory } from './TextHandle'
 import { textareaHandleFactory } from './TextareaHandle'
 import { numberHandleFactory } from './NumberHandle'
+import { rangeHandleFactory } from './RangeHandle'
 import { selectHandleFactory } from './SelectHandle'
 import { displayHandleFactory } from './DisplayHandle'
 import { imageHandleFactory } from './ImageHandle'
@@ -13,6 +14,7 @@ const factories: NodeHandleFactory[] = [
   textHandleFactory,
   textareaHandleFactory,
   numberHandleFactory,
+  rangeHandleFactory,
   selectHandleFactory,
   displayHandleFactory,
   imageHandleFactory,

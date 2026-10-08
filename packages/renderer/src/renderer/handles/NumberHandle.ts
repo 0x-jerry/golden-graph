@@ -1,6 +1,7 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import { Input } from '../components/input'
+import { filterNumericText, stepValue } from '../numeric'
 import { availableWidth } from './utils'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
 import { DEFAULT_THEME } from '../../theme'
@@ -28,7 +29,7 @@ class NumberModule extends Konva.Group implements NodeHandleModule {
         inputWidth: availableWidth(handle),
         inputHeight: INPUT_HEIGHT,
         value: String(handle.getValue() ?? ''),
-        beforeChange: numberFilter,
+        beforeChange: filterNumericText,
         onChange: (v) => {
           const num = v === '' ? NaN : Number(v)
           handle.setValue(Number.isNaN(num) ? undefined : num)
@@ -65,22 +66,7 @@ export const numberHandleFactory: NodeHandleFactory = {
       new NumberModule(handle, theme ?? DEFAULT_THEME),
 }
 
-function numberFilter(v: string): string {
-  return v.replace(/[^0-9.-]/g, '')
-}
-
 function readStep(handle: NodeHandle): number {
   const step = Number(handle.getOptions<NodeHandleOptions>().step ?? 1)
   return Number.isFinite(step) && step > 0 ? step : 1
-}
-
-/** Rounds to the widest precision of the operands, so `0.1 + 0.1` is `0.2`. */
-function stepValue(current: number, step: number, times: number): number {
-  const digits = Math.max(decimalPlaces(current), decimalPlaces(step))
-  const next = current + step * times
-  return digits > 0 ? Number(next.toFixed(digits)) : next
-}
-
-function decimalPlaces(n: number): number {
-  return String(n).split('.')[1]?.length ?? 0
 }

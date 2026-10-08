@@ -2,6 +2,7 @@ import type { INodeProvider } from '@0x-jerry/golden-graph'
 import type { INodeDefinition } from '@0x-jerry/golden-graph-backend'
 import {
   displayDemoDefinition,
+  rangeDemoDefinition,
   selectDemoDefinition,
   textareaDemoDefinition,
 } from './demo'
@@ -13,6 +14,7 @@ export const debugNodeProviders: INodeProvider<INodeDefinition>[] = [
     nodes: {
       Select: selectDemoDefinition,
       Textarea: textareaDemoDefinition,
+      Range: rangeDemoDefinition,
       Display: displayDemoDefinition,
     },
   },
