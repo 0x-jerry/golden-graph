@@ -5,7 +5,6 @@ import type { GestureContext, IGesture } from './types'
 
 export class GroupResizeGesture implements IGesture {
   _groupId = 0
-  _lastPos: IVec2 = { x: 0, y: 0 }
   _ctx: GestureContext
 
   constructor(_ctx: GestureContext) {
@@ -13,11 +12,7 @@ export class GroupResizeGesture implements IGesture {
   }
 
   start(groupId: number) {
-    const pos = this._ctx.stage.getPointerPosition()
-    if (!pos) return
-
     this._groupId = groupId
-    this._lastPos = { x: pos.x, y: pos.y }
 
     this._ctx.ws.setActiveIds(ActiveType.Group, [groupId])
   }
@@ -27,13 +22,11 @@ export class GroupResizeGesture implements IGesture {
     const group = ws.groups.find((g) => g.id === this._groupId)
     if (!group) return
 
-    const dx = (screenPos.x - this._lastPos.x) / ws.coord.scale
-    const dy = (screenPos.y - this._lastPos.y) / ws.coord.scale
-    this._lastPos = { x: screenPos.x, y: screenPos.y }
-
+    // Same as the node grip: drag the bottom-right corner to the pointer.
+    const corner = ws.coord.convertScreenCoord(screenPos)
     group.setSize({
-      x: Math.max(GROUP_MIN_WIDTH, group.size.x + dx),
-      y: Math.max(GROUP_MIN_HEIGHT, group.size.y + dy),
+      x: Math.max(GROUP_MIN_WIDTH, corner.x - group.pos.x),
+      y: Math.max(GROUP_MIN_HEIGHT, corner.y - group.pos.y),
     })
   }
 

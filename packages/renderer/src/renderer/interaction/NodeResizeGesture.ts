@@ -1,12 +1,10 @@
 import type { IVec2 } from '@0x-jerry/golden-graph'
-import { LAYOUT, getNodeWidth } from '../constants'
-import { getNodeHeight } from '../nodeMetrics'
+import { LAYOUT } from '../constants'
 import { getNodeStaticMinHeight } from '../handles/layout'
 import type { GestureContext, IGesture } from './types'
 
 export class NodeResizeGesture implements IGesture {
   _nodeId = 0
-  _lastPos: IVec2 = { x: 0, y: 0 }
   _ctx: GestureContext
 
   constructor(_ctx: GestureContext) {
@@ -14,11 +12,7 @@ export class NodeResizeGesture implements IGesture {
   }
 
   start(nodeId: number) {
-    const pos = this._ctx.stage.getPointerPosition()
-    if (!pos) return
-
     this._nodeId = nodeId
-    this._lastPos = { x: pos.x, y: pos.y }
   }
 
   move(screenPos: IVec2) {
@@ -26,20 +20,15 @@ export class NodeResizeGesture implements IGesture {
     const node = ws.getNode(this._nodeId)
     if (!node) return
 
-    const dx = (screenPos.x - this._lastPos.x) / ws.coord.scale
-    const dy = (screenPos.y - this._lastPos.y) / ws.coord.scale
-    this._lastPos = { x: screenPos.x, y: screenPos.y }
-
+    // Drag the node's bottom-right corner to the pointer: an absolute size, not
+    // an accumulation of movement deltas, so the corner can't trail the cursor
+    // after a clamp or a content-driven resize. The floors keep the node
+    // readable and stop block rows collapsing; taller content is still
+    // contained/clipped above the static minimum (see `layoutRows`).
+    const corner = ws.coord.convertScreenCoord(screenPos)
     node.setSize({
-      // A node can't be resized narrower than its default width, nor shorter
-      // than its static content height — content stays readable and block
-      // rows never collapse onto each other. Taller content is still
-      // contained/clipped above the static minimum (see `layoutRows`).
-      x: Math.max(LAYOUT.NODE_WIDTH, getNodeWidth(node) + dx),
-      y: Math.max(
-        getNodeStaticMinHeight(node),
-        getNodeHeight(node) + dy,
-      ),
+      x: Math.max(LAYOUT.NODE_WIDTH, corner.x - node.pos.x),
+      y: Math.max(getNodeStaticMinHeight(node), corner.y - node.pos.y),
     })
   }
 
