@@ -22,6 +22,13 @@ export interface ThemeColors {
   textMuted: string
   accent: string
   accentSoft: string
+  /**
+   * Track of a numeric field bar (number/range handles) — the unfilled part
+   * behind the label and value.
+   */
+  fieldBg: string
+  /** Filled part of a field bar: a range's progress, i.e. its current value. */
+  fieldFill: string
   subgraphTagBg: string
   subgraphTagText: string
   edge: string

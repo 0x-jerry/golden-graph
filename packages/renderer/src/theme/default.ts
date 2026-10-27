@@ -27,6 +27,8 @@ export const DEFAULT_THEME: GraphTheme = {
     textMuted: '#6b6f76',
     accent: '#b3261e',
     accentSoft: 'rgba(179, 38, 30, 0.22)',
+    fieldBg: 'rgba(31, 35, 40, 0.06)',
+    fieldFill: 'rgba(74, 107, 138, 0.55)',
     subgraphTagBg: '#eae5d8',
     subgraphTagText: '#5b4a2f',
     edge: 'rgba(74, 107, 138, 0.75)',
