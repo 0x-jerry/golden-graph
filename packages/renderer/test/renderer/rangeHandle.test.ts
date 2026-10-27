@@ -12,7 +12,11 @@ import { makeStage } from '../helpers/stage'
 import { NodeView } from '../../src/renderer/NodeView'
 import { getHandleFactory } from '../../src/renderer/handles'
 import { RangeField } from '../../src/renderer/components/numeric/RangeField'
-import { DEFAULT_DRAG_SPEED } from '../../src/renderer/components/scrub'
+import {
+  DEFAULT_DRAG_SPEED,
+  SCRUB_DRAG_THRESHOLD,
+} from '../../src/renderer/components/scrub'
+import { HIDDEN_CURSOR } from '../../src/renderer/cursor'
 import {
   filterNumericText,
   formatValue,
@@ -232,6 +236,23 @@ describe('range handle', () => {
     release()
     dragBy(DEFAULT_DRAG_SPEED * 40)
     expect(m.handle.getValue()).toBe(30)
+  })
+
+  it('hides the pointer while the bar is being dragged', () => {
+    const m = mountRangeHandle({ value: 50 })
+    pointerX = 100
+    m.stage.setPointersPositions(
+      new MouseEvent('pointermove', { clientX: 100, clientY: 20 }),
+    )
+    pressBar(m.field)
+
+    // A press alone keeps the pointer visible; a drag hides it under the bar.
+    expect(m.stage.content.style.cursor).not.toBe(HIDDEN_CURSOR)
+    dragBy(SCRUB_DRAG_THRESHOLD)
+    expect(m.stage.content.style.cursor).toBe(HIDDEN_CURSOR)
+
+    release()
+    expect(m.stage.content.style.cursor).not.toBe(HIDDEN_CURSOR)
   })
 
   it('adds up many small moves instead of dropping the remainder', () => {

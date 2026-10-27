@@ -1,5 +1,9 @@
 import Konva from 'konva'
-import { registerStageCursor } from '../cursor'
+import {
+  hideStageCursor,
+  registerStageCursor,
+  showStageCursor,
+} from '../cursor'
 
 /** Stage-container cursor over a scrub surface (Blender's resize arrow). */
 export const SCRUB_CURSOR = 'ew-resize'
@@ -41,7 +45,9 @@ export interface ScrubConfig {
  * outside the canvas cannot leave it stuck.
  *
  * The target's press, touch and double-click events are consumed — the stage
- * never sees them, so neither node dragging nor canvas panning starts.
+ * never sees them, so neither node dragging nor canvas panning starts. Once
+ * the press becomes a drag the pointer glyph is hidden, so it cannot cover
+ * the value it is changing; releasing puts it back where it was hidden.
  */
 export class Scrub {
   readonly target: Konva.Node
@@ -56,6 +62,8 @@ export class Scrub {
   _originX = 0
   /** Modifier state of the last emitted move, to detect a change mid-drag. */
   _modifiers = ''
+  /** Stage whose pointer this gesture hid, if any. */
+  _hiddenStage: Konva.Stage | null = null
 
   constructor(cfg: ScrubConfig) {
     this._cfg = cfg
@@ -106,7 +114,12 @@ export class Scrub {
 
     const delta = (x - this._lastX) / this._speed
     this._lastX = x
-    if (x !== this._originX) this._dragged = true
+    // Travel below the threshold is still emitted (it accumulates towards the
+    // next step); it only stops short of turning the gesture into a drag.
+    if (!this._dragged && Math.abs(x - this._originX) >= SCRUB_DRAG_THRESHOLD) {
+      this._dragged = true
+      this._hidePointer()
+    }
     this._emit(delta, e)
   }
 
@@ -146,10 +159,31 @@ export class Scrub {
 
   _endGesture() {
     this._unbind()
+    this._showPointer()
     if (!this._pressed) return
     this._pressed = false
     this._dragged = false
     this._cfg.onEnd?.()
+  }
+
+  /**
+   * Hide the pointer once a press has traveled far enough to count as a drag:
+   * the glyph would otherwise sit on top of the value the drag is changing.
+   * A click — and the shaky press of a double-click — never hides it.
+   */
+  _hidePointer() {
+    const stage = this.target.getStage()
+    if (!stage) return
+    this._hiddenStage = stage
+    hideStageCursor(stage)
+  }
+
+  /** Put the pointer back where the drag hid it. */
+  _showPointer() {
+    const stage = this._hiddenStage
+    if (!stage) return
+    this._hiddenStage = null
+    showStageCursor(stage)
   }
 
   _bind() {

@@ -12,6 +12,33 @@ export function registerStageCursor(node: Konva.Node, cursor: string) {
   cursorByNode.set(node, cursor)
 }
 
+/** Cursor value that hides the pointer glyph entirely. */
+export const HIDDEN_CURSOR = 'none'
+
+/** Stages whose pointer is hidden because a drag owns it. */
+const hiddenStages = new WeakSet<Konva.Stage>()
+
+/**
+ * Hide the pointer over a stage, e.g. while a drag is changing the value under
+ * it. The flag outlives redraws ({@link applyStageCursor} honours it), so no
+ * hover update can bring the pointer back before the gesture ends.
+ */
+export function hideStageCursor(stage: Konva.Stage) {
+  hiddenStages.add(stage)
+  stage.content.style.cursor = HIDDEN_CURSOR
+}
+
+/**
+ * Put the pointer back where it was hidden and re-derive the cursor for
+ * whatever now sits under it. The cleared cursor is written first so the
+ * pointer reappears even when no hover target can be resolved.
+ */
+export function showStageCursor(stage: Konva.Stage) {
+  if (!hiddenStages.delete(stage)) return
+  stage.content.style.cursor = ''
+  applyStageCursor(stage)
+}
+
 /**
  * Re-compute the cursor for whatever is under the pointer. Hit-tests the
  * stage and walks the ancestor chain to the first registered element, then
@@ -20,7 +47,17 @@ export function registerStageCursor(node: Konva.Node, cursor: string) {
  * themselves, they never attach their own `mouseover`/`mouseout` listeners.
  */
 export function applyStageCursor(stage: Konva.Stage) {
-  const pos = stage.getPointerPosition()
+  // A drag that hid the pointer keeps it hidden: hit-testing here would
+  // otherwise restore the hover cursor on the next redraw.
+  if (hiddenStages.has(stage)) {
+    stage.content.style.cursor = HIDDEN_CURSOR
+    return
+  }
+  // getPointerPosition() warns when the stage has never registered a
+  // pointer; there is nothing to hover then, so ask the cheap getter first.
+  const pos = stage.getPointersPositions().length
+    ? stage.getPointerPosition()
+    : null
   // Konva keeps the last known pointer position after the pointer leaves the
   // stage (only `_pointerPositions`, not `_changedPointerPositions`, is
   // cleared on `pointerleave`). Bail when it is outside the stage so a redraw

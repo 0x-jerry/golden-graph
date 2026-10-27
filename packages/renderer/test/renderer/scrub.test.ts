@@ -8,7 +8,7 @@ import {
   Scrub,
   normalizeSpeed,
 } from '../../src/renderer/components/scrub'
-import { applyStageCursor } from '../../src/renderer/cursor'
+import { applyStageCursor, HIDDEN_CURSOR } from '../../src/renderer/cursor'
 
 interface Mounted {
   stage: Konva.Stage
@@ -134,11 +134,18 @@ describe('Scrub', () => {
     expect(events).toEqual(['start', 'end'])
   })
 
-  it('keeps a stationary press a click, and any travel a drag', () => {
+  it('keeps a stationary press a click, and travel past the threshold a drag', () => {
     const small = mountScrub()
     press(small.target, 100)
     dblclick(small.target)
     expect(small.events).toContain('edit')
+
+    // A shaky press — the usual double-click — stays a click.
+    const shaky = mountScrub()
+    press(shaky.target, 100)
+    move(100 + SCRUB_DRAG_THRESHOLD - 1)
+    dblclick(shaky.target)
+    expect(shaky.events).toContain('edit')
 
     const large = mountScrub()
     press(large.target, 100)
@@ -146,6 +153,29 @@ describe('Scrub', () => {
     dblclick(large.target)
     expect(large.events).not.toContain('edit')
     expect(large.events).toEqual(['start', 'end'])
+  })
+
+  it('hides the pointer while dragging and puts it back on release', () => {
+    const { stage, target } = mountScrub()
+    stage.setPointersPositions(
+      new MouseEvent('pointermove', { clientX: 50, clientY: 18 }),
+    )
+    applyStageCursor(stage)
+    expect(stage.content.style.cursor).toBe(SCRUB_CURSOR)
+
+    press(target, 50)
+    // A press alone is not a drag: the pointer stays visible.
+    expect(stage.content.style.cursor).toBe(SCRUB_CURSOR)
+    move(50 + SCRUB_DRAG_THRESHOLD)
+    expect(stage.content.style.cursor).toBe(HIDDEN_CURSOR)
+
+    // A redraw must not bring it back mid-drag.
+    applyStageCursor(stage)
+    expect(stage.content.style.cursor).toBe(HIDDEN_CURSOR)
+
+    release()
+    // Back at the pointer, showing the cursor of whatever is under it.
+    expect(stage.content.style.cursor).toBe(SCRUB_CURSOR)
   })
 
   it('opens the editor on a plain double-click', () => {
