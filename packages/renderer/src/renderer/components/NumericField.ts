@@ -395,6 +395,10 @@ export abstract class NumericField extends Konva.Group {
     }
     // Measure every candidate through the node and keep the widest.
     const text = this._value.text()
+    // Measure on an auto-width box: a box narrower than the text makes Konva
+    // lay the line out to fit and report the *clipped* width, so a value that
+    // gained a digit could never make room for itself again.
+    this._value.width('auto')
     // An open range has no bounds to measure, so the value itself is the only
     // width candidate.
     const candidates = this.bounded
@@ -408,10 +412,12 @@ export abstract class NumericField extends Konva.Group {
 
     const start = FIELD_INSET + ARROW_WIDTH + FIELD_PADDING
     const end = this._w - FIELD_INSET - ARROW_WIDTH - FIELD_PADDING
-    const width = Math.min(
-      Math.max(0, end - start),
-      Math.ceil(Math.max(...widths)),
-    )
+    // Never narrower than the text itself: Konva drops whatever characters do
+    // not fit, without an ellipsis — which silently ate a value's decimals as
+    // soon as it gained a digit (10.00 drew as "10."). A value wider than its
+    // column now keeps every digit and runs into the chevron area instead; the
+    // bar's own clip still bounds it.
+    const width = Math.ceil(Math.max(...widths))
     return {
       x: atLeft ? start : end - width,
       width,

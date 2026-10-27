@@ -186,6 +186,23 @@ describe('number handle stepping', () => {
 })
 
 describe('number handle bar', () => {
+  it('keeps every digit of a value that grows a place', () => {
+    const m = mountNumberHandle({ value: 9.99, options: { step: 0.01 } })
+    const value = m.field._value
+    // The line Konva actually lays out, which is what reaches the canvas.
+    const rendered = () => value.textArr.map((line) => line.text).join('')
+    expect(rendered()).toBe('9.99')
+
+    for (const next of [10, 12.35, 100, 1234.5, 123456789.12]) {
+      m.handle.setValue(next)
+      m.field.refresh()
+      // A box narrower than the text silently dropped the trailing digits;
+      // a fast drag crosses these boundaries constantly.
+      expect(rendered()).toBe(value.text())
+      expect(value.textArr.length).toBe(1)
+    }
+  })
+
   it('centers the bar on its handle row', () => {
     const { field, handle, view } = mountNumberHandle({ value: 5 })
 
