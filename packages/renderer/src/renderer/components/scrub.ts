@@ -4,6 +4,7 @@ import {
   registerStageCursor,
   showStageCursor,
 } from '../cursor'
+import { PointerLock } from './pointerLock'
 
 /** Stage-container cursor over a scrub surface (Blender's resize arrow). */
 export const SCRUB_CURSOR = 'ew-resize'
@@ -64,6 +65,8 @@ export class Scrub {
   _modifiers = ''
   /** Stage whose pointer this gesture hid, if any. */
   _hiddenStage: Konva.Stage | null = null
+  /** Pointer lock of the current drag — see {@link _hidePointer}. */
+  _lock = new PointerLock()
 
   constructor(cfg: ScrubConfig) {
     this._cfg = cfg
@@ -109,7 +112,7 @@ export class Scrub {
 
   _onMove = (e: MouseEvent | TouchEvent) => {
     if (!this._pressed) return
-    const x = eventClientX(e)
+    const x = this._pointerX(e)
     if (x === undefined) return
 
     const delta = (x - this._lastX) / this._speed
@@ -167,20 +170,40 @@ export class Scrub {
   }
 
   /**
-   * Hide the pointer once a press has traveled far enough to count as a drag:
-   * the glyph would otherwise sit on top of the value the drag is changing.
-   * A click — and the shaky press of a double-click — never hides it.
+   * Pointer X of a move. While the pointer is locked it no longer moves on
+   * screen, so its frozen position carries no travel — the raw movement
+   * reported by the browser stands in for it.
+   */
+  _pointerX(evt: MouseEvent | TouchEvent): number | undefined {
+    if (this._lock.locked) {
+      return this._lastX + movementX(evt)
+    }
+    return eventClientX(evt)
+  }
+
+  /**
+   * Hide and pin the pointer once a press has traveled far enough to count as
+   * a drag: the glyph would otherwise sit on top of the value the drag is
+   * changing, and would be left wherever the drag ended instead of where it
+   * started. A click — and the shaky press of a double-click — never touches
+   * it.
+   *
+   * The pointer lock is what pins it and gives it back in place; the hidden
+   * CSS cursor covers the moment before the browser grants the lock, and the
+   * case where it refuses (no support, no permission inside a frame).
    */
   _hidePointer() {
     const stage = this.target.getStage()
     if (!stage) return
     this._hiddenStage = stage
     hideStageCursor(stage)
+    this._lock.request(stage.content)
   }
 
-  /** Put the pointer back where the drag hid it. */
+  /** Release the pointer, which puts it back where it was locked. */
   _showPointer() {
     const stage = this._hiddenStage
+    this._lock.release()
     if (!stage) return
     this._hiddenStage = null
     showStageCursor(stage)
@@ -214,6 +237,13 @@ function eventClientX(evt: MouseEvent | TouchEvent): number | undefined {
     return evt.clientX
   }
   return (evt as TouchEvent).changedTouches?.[0]?.clientX
+}
+
+/** Raw pointer travel of a move; zero when the event carries none (touch). */
+function movementX(evt: MouseEvent | TouchEvent): number {
+  return 'movementX' in evt && typeof evt.movementX === 'number'
+    ? evt.movementX
+    : 0
 }
 
 function modifierKey(evt: MouseEvent | TouchEvent | KeyboardEvent): string {

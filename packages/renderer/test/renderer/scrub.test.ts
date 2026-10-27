@@ -79,6 +79,72 @@ function dblclick(target: Konva.Node) {
   })
 }
 
+/**
+ * A move as a locked pointer reports it: the on-screen position is frozen,
+ * so the travel arrives as `movementX` instead. jsdom has no `movementX`,
+ * hence the own property.
+ */
+function moveLocked(movementX: number, clientX: number) {
+  const evt = new MouseEvent('mousemove', { clientX, clientY: 20 })
+  Object.defineProperty(evt, 'movementX', { value: movementX })
+  window.dispatchEvent(evt)
+}
+
+interface FakeLock {
+  readonly requests: number
+  readonly releases: number
+  /** Whether the fake browser is holding the pointer, and for what. */
+  readonly holder: Element | null
+  restore(): void
+}
+
+/**
+ * A stand-in for the browser pointer lock API. `grant: false` models a
+ * browser (or an embedding frame) that refuses the lock.
+ */
+function fakePointerLock(stage: Konva.Stage, grant = true): FakeLock {
+  const state = { requests: 0, releases: 0, holder: null as Element | null }
+  const content = stage.content
+  // Patched through narrow views so the added members can be removed again.
+  const lockable = content as unknown as {
+    requestPointerLock?: () => Promise<void>
+  }
+  const doc = document as unknown as {
+    exitPointerLock?: () => void
+    pointerLockElement?: Element | null
+  }
+  Object.defineProperty(document, 'pointerLockElement', {
+    configurable: true,
+    get: () => state.holder,
+  })
+  lockable.requestPointerLock = () => {
+    state.requests++
+    if (!grant) return Promise.reject(new Error('denied'))
+    state.holder = content
+    return Promise.resolve()
+  }
+  doc.exitPointerLock = () => {
+    state.releases++
+    state.holder = null
+  }
+  return {
+    get requests() {
+      return state.requests
+    },
+    get releases() {
+      return state.releases
+    },
+    get holder() {
+      return state.holder
+    },
+    restore() {
+      delete lockable.requestPointerLock
+      delete doc.exitPointerLock
+      delete doc.pointerLockElement
+    },
+  }
+}
+
 describe('Scrub', () => {
   it('emits the pointer travel, not the absolute position', () => {
     const { target, scrub, events, deltas } = mountScrub()
@@ -208,6 +274,55 @@ describe('Scrub', () => {
     )
     applyStageCursor(stage)
     expect(stage.content.style.cursor).toBe(SCRUB_CURSOR)
+  })
+})
+
+describe('Scrub pointer lock', () => {
+  it('locks the pointer for the drag and gives it back in place', () => {
+    const { stage, target, deltas } = mountScrub()
+    const lock = fakePointerLock(stage)
+    try {
+      press(target, 100)
+      // A press alone never locks: a click has to keep its pointer.
+      expect(lock.requests).toBe(0)
+
+      move(100 + SCRUB_DRAG_THRESHOLD)
+      expect(lock.requests).toBe(1)
+      expect(lock.holder).toBe(stage.content)
+
+      // Locked: the pointer stops moving on screen, so the scrub follows the
+      // browser's raw travel instead of a frozen client X.
+      const seen = deltas.length
+      moveLocked(16, 100 + SCRUB_DRAG_THRESHOLD)
+      expect(deltas.slice(seen)).toEqual([16 / DEFAULT_DRAG_SPEED])
+
+      release()
+      expect(lock.releases).toBe(1)
+      expect(document.pointerLockElement).toBe(null)
+    } finally {
+      lock.restore()
+    }
+  })
+
+  it('keeps scrubbing by pointer position when the lock is refused', () => {
+    const { stage, target, deltas } = mountScrub()
+    const lock = fakePointerLock(stage, false)
+    try {
+      press(target, 100)
+      move(100 + SCRUB_DRAG_THRESHOLD)
+      expect(lock.requests).toBe(1)
+      expect(lock.holder).toBe(null)
+      expect(stage.content.style.cursor).toBe(HIDDEN_CURSOR)
+
+      const seen = deltas.length
+      move(100 + SCRUB_DRAG_THRESHOLD + 16)
+      expect(deltas.slice(seen)).toEqual([16 / DEFAULT_DRAG_SPEED])
+
+      release()
+      expect(stage.content.style.cursor).not.toBe(HIDDEN_CURSOR)
+    } finally {
+      lock.restore()
+    }
   })
 })
 
