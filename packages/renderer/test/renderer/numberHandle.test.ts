@@ -6,6 +6,9 @@ import { addHandle, makeNode } from '../helpers/entities'
 import { find } from '../helpers/konva'
 import { makeStage } from '../helpers/stage'
 import { NodeView } from '../../src/renderer/NodeView'
+import { handleY } from '../../src/renderer/handles/layout'
+import { FIELD_HEIGHT } from '../../src/renderer/components/NumericField'
+import { LAYOUT } from '../../src/renderer/constants'
 import type { NodeHandleModule } from '../../src/renderer/handles/types'
 import { TextModel } from '../../src/renderer/components/input/TextModel'
 import {
@@ -46,7 +49,12 @@ afterEach(() => {
 function mountNumberHandle(opts: {
   value?: number
   options?: Record<string, unknown>
-}): { stage: Konva.Stage; handle: NodeHandle; field: NumberField } {
+}): {
+  stage: Konva.Stage
+  handle: NodeHandle
+  field: NumberField
+  view: NodeView
+} {
   const node = makeNode(1, 'Number')
   const handle = addHandle(node, 'value', {
     position: HandlePosition.Left,
@@ -67,7 +75,7 @@ function mountNumberHandle(opts: {
   const module = find<Konva.Group>(view.group, '.content') as NumberModule
   modules.push(module)
   stages.push(stage)
-  return { stage, handle, field: module._field }
+  return { stage, handle, field: module._field, view }
 }
 
 function pressBar(field: NumberField, x = 100) {
@@ -178,6 +186,23 @@ describe('number handle stepping', () => {
 })
 
 describe('number handle bar', () => {
+  it('centers the bar on its handle row', () => {
+    const { field, handle, view } = mountNumberHandle({ value: 5 })
+
+    const bar = field._bar
+    const top = bar.getAbsolutePosition().y
+    const rowTop =
+      view.group.getAbsolutePosition().y +
+      handleY(handle.node, handle) -
+      LAYOUT.HANDLE_ROW_HEIGHT / 2
+    const gap = (LAYOUT.HANDLE_ROW_HEIGHT - FIELD_HEIGHT) / 2
+
+    // Centered: the same gap above the bar as below it.
+    expect(top - rowTop).toBeCloseTo(gap)
+    expect(rowTop + LAYOUT.HANDLE_ROW_HEIGHT - (top + bar.height()))
+      .toBeCloseTo(gap)
+  })
+
   it('draws an unfilled bar with the value and no chevrons in range', () => {
     const { field } = mountNumberHandle({ value: 5 })
     expect(field.displayed).toBe(5)

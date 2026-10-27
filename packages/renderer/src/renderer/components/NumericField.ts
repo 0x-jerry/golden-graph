@@ -8,7 +8,7 @@ import {
   resolveRange,
   type NumericRange,
 } from '../numeric'
-import { LAYOUT } from '../constants'
+import { HANDLE_CONTENT_Y_OFFSET, LAYOUT } from '../constants'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'
 
@@ -18,6 +18,13 @@ import type { GraphTheme } from '../../theme'
  * row — the proportions of the scene field it is modelled on.
  */
 export const FIELD_HEIGHT = LAYOUT.HANDLE_ROW_HEIGHT - 6
+/**
+ * Local Y of the bar inside the handle content group. That group starts
+ * `HANDLE_CONTENT_Y_OFFSET` above the row's center line — an offset tuned for
+ * text rows, whose glyphs hang below it — so the bar shifts up by half its own
+ * height to sit centered in the row instead of flush with its bottom edge.
+ */
+export const FIELD_Y = HANDLE_CONTENT_Y_OFFSET - FIELD_HEIGHT / 2
 /** Inset of the bar from the content box, so its rounded caps stay visible. */
 export const FIELD_INSET = 2
 export const FIELD_RADIUS = 4
@@ -125,6 +132,7 @@ export abstract class NumericField extends Konva.Group {
     this.clipY(0)
     this.clipWidth(this._w)
     this.clipHeight(this._h)
+    this.y(FIELD_Y)
 
     this._bar = new Konva.Rect({
       height: this._h,
