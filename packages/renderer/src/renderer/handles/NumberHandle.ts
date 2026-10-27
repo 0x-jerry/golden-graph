@@ -1,61 +1,56 @@
 import Konva from 'konva'
 import type { NodeHandle } from '@0x-jerry/golden-graph'
-import { Input } from '../components/input'
-import { filterNumericText, stepValue } from '../numeric'
-import { availableWidth } from './utils'
+import { NumberField } from '../components/numeric/NumberField'
+import {
+  numericFieldConfig,
+  numericFieldOptions,
+  readNumericOptions,
+} from './numericOptions'
+import type { NumericHandleOptions } from './numericOptions'
 import type { NodeHandleFactory, NodeHandleModule } from './types'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'
 
-const INPUT_HEIGHT = 18
+export type NodeHandleOptions = NumericHandleOptions
 
-export interface NodeHandleOptions {
-  /** Amount ArrowUp/ArrowDown add or subtract. Defaults to `1`. */
-  step?: number
-}
-
+/**
+ * A numeric handle drawn as a value bar beside its row label: drag the bar to
+ * scrub the value, double-click it to type. A value outside `[min, max]`
+ * grows a chevron at the bound it fell past.
+ */
 class NumberModule extends Konva.Group implements NodeHandleModule {
   _handle: NodeHandle
-  _input: Input
-  _step: number
+  _field: NumberField
 
   constructor(handle: NodeHandle, theme: GraphTheme) {
     super()
     this._handle = handle
-    this._step = readStep(handle)
-
-    this._input = new Input(
-      {
-        inputWidth: availableWidth(handle),
-        inputHeight: INPUT_HEIGHT,
-        value: String(handle.getValue() ?? ''),
-        beforeChange: filterNumericText,
-        onChange: (v) => {
-          const num = v === '' ? NaN : Number(v)
-          handle.setValue(Number.isNaN(num) ? undefined : num)
-        },
-        onStep: (delta) => this._stepBy(delta),
-      },
+    this._field = new NumberField(
+      handle,
+      numericFieldConfig(handle, 'number', readNumericOptions(handle)),
       theme,
     )
-    this.add(this._input)
-  }
-
-  _stepBy(delta: number) {
-    const current = Number(this._input.getValue())
-    const base = Number.isNaN(current) ? 0 : current
-    this._input.setValue(String(stepValue(base, this._step, delta)))
+    this.add(this._field)
   }
 
   update(): void {
-    if (!this._input.active) {
-      this._input.setValue(String(this._handle.getValue() ?? ''))
+    const field = this._field
+    const options = readNumericOptions(this._handle)
+    // A live edit owns the value; everything else follows the handle.
+    field.setOptions(numericFieldOptions('number', options))
+    if (!field.editing) {
+      field.refresh()
     }
-    this._input.setWidth(availableWidth(this._handle))
+    field.setWidth(numericFieldConfig(this._handle, 'number', options).width)
   }
 
   applyTheme(theme: GraphTheme): void {
-    this._input.applyTheme(theme)
+    this._field.applyTheme(theme)
+  }
+
+  destroy(): this {
+    this._field.destroy()
+    return super.destroy()
   }
 }
 
@@ -63,10 +58,5 @@ export const numberHandleFactory: NodeHandleFactory = {
   type: 'number',
   config: { joint: { color: '#6366f1', shape: 'circle' } },
   create: (handle, _options, render) =>
-      new NumberModule(handle, render?.theme ?? DEFAULT_THEME),
-}
-
-function readStep(handle: NodeHandle): number {
-  const step = Number(handle.getOptions<NodeHandleOptions>().step ?? 1)
-  return Number.isFinite(step) && step > 0 ? step : 1
+    new NumberModule(handle, render?.theme ?? DEFAULT_THEME),
 }
