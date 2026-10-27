@@ -9,6 +9,7 @@ import {
   type NumericRange,
 } from '../numeric'
 import { HANDLE_CONTENT_Y_OFFSET, LAYOUT } from '../constants'
+import { PADDING as INPUT_PADDING } from './shared'
 import { DEFAULT_THEME } from '../../theme'
 import type { GraphTheme } from '../../theme'
 
@@ -373,14 +374,24 @@ export abstract class NumericField extends Konva.Group {
   /** Whether the bar paints progress behind the value (range handles do). */
   protected abstract showsProgress(): boolean
 
+  /**
+   * Width reserved at each end of the bar for a step chevron column. A field
+   * that draws no chevrons keeps its whole width for the value; one that does
+   * reserves the columns even while they are hidden, so the value cannot
+   * shift when a chevron appears.
+   */
+  protected get arrowInset(): number {
+    return this._arrows.length > 0 ? ARROW_WIDTH : 0
+  }
+
   /** Build the subclass chrome (chevron columns) — once, before first paint. */
-  protected abstract _buildChrome(): void
+  protected _buildChrome(): void {}
 
   /**
    * Show / place the subclass chrome. Also runs during the first paint, before
    * the subclass constructor body, so it must tolerate a missing chrome.
    */
-  protected abstract _layoutChrome(): void
+  protected _layoutChrome(): void {}
 
   /**
    * The value's column, in local space: the end away from the handle's joint,
@@ -410,8 +421,8 @@ export abstract class NumericField extends Konva.Group {
     })
     this._value.text(text)
 
-    const start = FIELD_INSET + ARROW_WIDTH + FIELD_PADDING
-    const end = this._w - FIELD_INSET - ARROW_WIDTH - FIELD_PADDING
+    const start = FIELD_INSET + this.arrowInset + FIELD_PADDING
+    const end = this._w - FIELD_INSET - this.arrowInset - FIELD_PADDING
     // Never narrower than the text itself: Konva drops whatever characters do
     // not fit, without an ellipsis — which silently ate a value's decimals as
     // soon as it gained a digit (10.00 drew as "10."). A value wider than its
@@ -433,9 +444,12 @@ export abstract class NumericField extends Konva.Group {
     this._value.width(span.width)
     this._value.align(span.align)
     this._value.x(span.x)
-    // The caret takes the value's seat, widened over the chevron columns.
-    const start = FIELD_INSET + ARROW_WIDTH
-    const end = this._w - FIELD_INSET - ARROW_WIDTH
+    // The caret takes the value's seat. Its own text padding is folded in, so
+    // its text starts exactly where the painted value does.
+    const start =
+      FIELD_INSET + this.arrowInset + FIELD_PADDING - INPUT_PADDING
+    const end =
+      this._w - FIELD_INSET - this.arrowInset - FIELD_PADDING + INPUT_PADDING
     this._input.setWidth(Math.max(0, end - start))
     this._input.x(start)
     this._input.y(0)

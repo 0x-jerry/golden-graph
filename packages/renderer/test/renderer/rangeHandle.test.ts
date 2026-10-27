@@ -13,6 +13,10 @@ import { NodeView } from '../../src/renderer/NodeView'
 import { getHandleFactory } from '../../src/renderer/handles'
 import { RangeField } from '../../src/renderer/components/numeric/RangeField'
 import {
+  FIELD_INSET,
+  FIELD_PADDING,
+} from '../../src/renderer/components/NumericField'
+import {
   DEFAULT_DRAG_SPEED,
   SCRUB_DRAG_THRESHOLD,
 } from '../../src/renderer/components/scrub'
@@ -187,10 +191,13 @@ describe('range handle', () => {
     expect(fractional._value.text()).toBe('0.3')
   })
 
-  it('shows both step chevrons', () => {
+  it('draws no step chevrons, so the value owns the bar', () => {
     const { field } = mountRangeHandle({ value: 50 })
-    expect(field._arrows.length).toBe(2)
-    expect(field._arrows.map((a) => a.group.visible())).toEqual([true, true])
+    expect(field.arrows).toEqual([])
+    // Nothing to dodge: the value ends one bar inset from the edge.
+    expect(field._value.x() + field._value.width()).toBeCloseTo(
+      field._w - FIELD_INSET - FIELD_PADDING,
+    )
   })
 
   it('never writes to the handle while rendering', () => {
@@ -324,16 +331,6 @@ describe('range handle', () => {
     release()
   })
 
-  it('steps from the chevrons', () => {
-    const m = mountRangeHandle({ value: 50 })
-    const [left, right] = m.field._arrows
-
-    right!.scrub._cfg.onStart?.()
-    expect(m.handle.getValue()).toBe(51)
-    left!.scrub._cfg.onStart?.()
-    left!.scrub._cfg.onStart?.()
-    expect(m.handle.getValue()).toBe(49)
-  })
 
   it('opens the caret on a double-click, with the value selected', () => {
     const { field } = mountRangeHandle({ value: 50 })
@@ -342,9 +339,8 @@ describe('range handle', () => {
     expect(field.editing).toBe(true)
     expect(field._input.active).toBe(true)
     expect(field._input._model.selectedText()).toBe('50')
-    // The painted value and the chevrons give way to the caret.
+    // The painted value gives way to the caret.
     expect(field._value.visible()).toBe(false)
-    expect(field.arrows.every((a) => !a.group.visible())).toBe(true)
 
     field.stopEdit(false)
     expect(field.editing).toBe(false)
@@ -355,14 +351,12 @@ describe('range handle', () => {
     const { field } = mountRangeHandle({ value: 50 })
     dblclickBar(field)
     expect(field._value.visible()).toBe(false)
-    expect(field.arrows.every((a) => !a.group.visible())).toBe(true)
 
     // Blur / an outside click ends the edit session on the Input itself.
     field._input.deactivate()
 
     expect(field.editing).toBe(false)
     expect(field._value.visible()).toBe(true)
-    expect(field.arrows.every((a) => a.group.visible())).toBe(true)
   })
 
   it('recovers the idle look from a repaint after an unfinished session', () => {
@@ -375,7 +369,6 @@ describe('range handle', () => {
 
     expect(field.editing).toBe(false)
     expect(field._value.visible()).toBe(true)
-    expect(field.arrows.every((a) => a.group.visible())).toBe(true)
   })
 
   it('steps the typed value with the arrow keys', () => {
