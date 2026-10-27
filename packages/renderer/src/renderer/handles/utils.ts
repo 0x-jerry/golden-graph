@@ -10,7 +10,13 @@ import {
 export function availableWidth(handle: NodeHandle): number {
   const nameWidth = handle.name ? HANDLE_NAME_WIDTH : 0
   const nameGap = nameWidth > 0 ? HANDLE_NAME_GAP : 0
-  return getNodeWidth(handle.node) - HANDLE_CONTENT_X - nameWidth - nameGap - LAYOUT.HANDLE_PADDING
+  return (
+    getNodeWidth(handle.node) -
+    HANDLE_CONTENT_X -
+    nameWidth -
+    nameGap -
+    LAYOUT.HANDLE_PADDING
+  )
 }
 
 /** Content width of a block-layout handle: the node's inner width. */

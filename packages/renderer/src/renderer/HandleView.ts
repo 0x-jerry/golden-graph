@@ -79,11 +79,7 @@ export class HandleView {
   _animations: boolean
 
   constructor(handle: NodeHandle, options: HandleViewOptions = {}) {
-    const {
-      onResize,
-      theme = DEFAULT_THEME,
-      animations = true,
-    } = options
+    const { onResize, theme = DEFAULT_THEME, animations = true } = options
     this.handle = handle
     this._theme = theme
     this._animations = animations
@@ -147,9 +143,7 @@ export class HandleView {
     if (joint) {
       joint.y(y)
       joint.x(
-        handle.position === HandlePosition.Left
-          ? 0
-          : getNodeWidth(handle.node),
+        handle.position === HandlePosition.Left ? 0 : getNodeWidth(handle.node),
       )
       this._applyJointStyle()
     }
@@ -215,9 +209,7 @@ export class HandleView {
     const joint = createJointShape(resolveJointStyle(handle, theme))
     joint.position({
       x:
-        handle.position === HandlePosition.Left
-          ? 0
-          : getNodeWidth(handle.node),
+        handle.position === HandlePosition.Left ? 0 : getNodeWidth(handle.node),
       y,
     })
     joint.name(ELEMENT_TYPE.JOINT)
