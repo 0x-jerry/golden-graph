@@ -389,6 +389,16 @@ export abstract class NumericField extends Konva.Group {
     return this._arrows.length > 0 ? ARROW_WIDTH : 0
   }
 
+  /**
+   * Width reserved per end for chevrons that are **currently shown**. Unlike
+   * {@link arrowInset}, which keeps a hidden chevron's gutter reserved so the
+   * idle value never shifts, this tracks what is actually on screen — the
+   * editor may claim the space of any chevron folded away.
+   */
+  protected get visibleArrowInset(): number {
+    return this._arrows.some((arrow) => arrow.group.visible()) ? ARROW_WIDTH : 0
+  }
+
   /** Build the subclass chrome (chevron columns) — once, before first paint. */
   protected _buildChrome(): void {}
 
@@ -450,10 +460,13 @@ export abstract class NumericField extends Konva.Group {
     this._value.align(span.align)
     this._value.x(span.x)
     // The caret takes the value's seat. Its own text padding is folded in, so
-    // its text starts exactly where the painted value does.
-    const start = FIELD_INSET + this.arrowInset + FIELD_PADDING - INPUT_PADDING
-    const end =
-      this._w - FIELD_INSET - this.arrowInset - FIELD_PADDING + INPUT_PADDING
+    // its text starts exactly where the painted value does. The columns it
+    // leaves room for are the ones actually shown: a field whose chevrons are
+    // currently hidden gives the caret the whole track, so a long value typed
+    // into a plain number is not squeezed by two unused gutters.
+    const reserve = this.visibleArrowInset
+    const start = FIELD_INSET + reserve + FIELD_PADDING - INPUT_PADDING
+    const end = this._w - FIELD_INSET - reserve - FIELD_PADDING + INPUT_PADDING
     this._input.setWidth(Math.max(0, end - start))
     this._input.x(start)
     this._input.y(0)

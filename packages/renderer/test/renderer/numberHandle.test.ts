@@ -7,7 +7,13 @@ import { find } from '../helpers/konva'
 import { makeStage } from '../helpers/stage'
 import { NodeView } from '../../src/renderer/NodeView'
 import { handleY } from '../../src/renderer/handles/layout'
-import { FIELD_HEIGHT } from '../../src/renderer/components/NumericField'
+import {
+  ARROW_WIDTH,
+  FIELD_HEIGHT,
+  FIELD_INSET,
+  FIELD_PADDING,
+} from '../../src/renderer/components/NumericField'
+import { PADDING as INPUT_PADDING } from '../../src/renderer/components/shared'
 import { LAYOUT } from '../../src/renderer/constants'
 import type { NodeHandleModule } from '../../src/renderer/handles/types'
 import { TextModel } from '../../src/renderer/components/input/TextModel'
@@ -216,8 +222,9 @@ describe('number handle bar', () => {
 
     // Centered: the same gap above the bar as below it.
     expect(top - rowTop).toBeCloseTo(gap)
-    expect(rowTop + LAYOUT.HANDLE_ROW_HEIGHT - (top + bar.height()))
-      .toBeCloseTo(gap)
+    expect(
+      rowTop + LAYOUT.HANDLE_ROW_HEIGHT - (top + bar.height()),
+    ).toBeCloseTo(gap)
   })
 
   it('draws an unfilled bar with the value and no chevrons in range', () => {
@@ -336,6 +343,27 @@ describe('number handle bar', () => {
     expect(handle.getValue()).toBe(-3)
     expect(outside(field)).toBe('')
     expect(field.arrows.every((a) => !a.group.visible())).toBe(true)
+  })
+
+  it('gives the caret the whole bar while the chevrons are hidden', () => {
+    // A value in range shows no chevrons, so there are no gutters to leave the
+    // editor — a long value typed into a plain number uses the full width.
+    const { field } = mountNumberHandle({
+      value: 5,
+      options: { min: 0, max: 10, step: 1 },
+    })
+    expect(field.arrows.every((a) => !a.group.visible())).toBe(true)
+
+    field.startEdit()
+    const full =
+      field._w - FIELD_INSET * 2 - FIELD_PADDING * 2 + 2 * INPUT_PADDING
+    expect(field._input._iw).toBeCloseTo(full)
+
+    // Pushed past a bound, the chevron appears and takes its gutter back.
+    field.stopEdit(false)
+    field._leftArrow.group.visible(true)
+    field._layoutValue()
+    expect(field._input._iw).toBeCloseTo(full - 2 * ARROW_WIDTH)
   })
 
   it('opens the caret and selects the value on a double-click', () => {
