@@ -30,7 +30,7 @@ describe('GroupView', () => {
     expect(body.stroke()).toBe(DEFAULT_THEME.colors.groupBorder)
   })
 
-  it('shows the resize grip only while selected and syncs its position', () => {
+  it('keeps the resize grip invisible but hittable regardless of selection and syncs its position', () => {
     const group = new Group()
     group.id = 3
     group.setSize({ x: 300, y: 200 })
@@ -38,15 +38,18 @@ describe('GroupView', () => {
     const view = new GroupView(group)
     const resize = find<Konva.Group>(view.group, '.resize')
 
-    expect(resize.visible()).toBe(false)
+    expect(resize.visible()).toBe(true)
+    expect(resize.opacity()).toBe(0)
 
     view.setActive(true)
     expect(resize.visible()).toBe(true)
+    expect(resize.opacity()).toBe(0)
 
     group.setSize({ x: 500, y: 400 })
     view.update()
     expect(resize.x()).toBe(500 - RESIZE_HANDLE_SIZE)
     expect(resize.y()).toBe(400 - RESIZE_HANDLE_SIZE)
+    expect(resize.opacity()).toBe(0)
   })
 
   it('opens a title editor on startRename and tears it down on stop or destroy', () => {

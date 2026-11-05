@@ -97,6 +97,10 @@ export class GroupView extends EntityView<Group> {
     const resize = new ResizeHandle(theme)
     resize.x(group.size.x - RESIZE_HANDLE_SIZE)
     resize.y(group.size.y - RESIZE_HANDLE_SIZE)
+    // Kept in the hit graph (invisible) so the group can be resized without
+    // selecting it first, matching the node grip.
+    resize.visible(true)
+    resize.opacity(0)
     g.add(resize)
     this._resize = resize
   }
@@ -115,15 +119,15 @@ export class GroupView extends EntityView<Group> {
 
     this._resize.x(group.size.x - RESIZE_HANDLE_SIZE)
     this._resize.y(group.size.y - RESIZE_HANDLE_SIZE)
+    this._resize.opacity(0)
   }
 
-  /** Reflect active group selection state: body border + resize grip. */
+  /** Reflect active group selection state: body border. */
   setActive(isActive: boolean): void {
     this._isActive = isActive
     this._body.stroke(
       isActive ? this._theme.colors.accent : this._theme.colors.groupBorder,
     )
-    this._resize.visible(isActive)
   }
 
   applyTheme(theme: GraphTheme): void {
