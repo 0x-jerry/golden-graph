@@ -71,6 +71,13 @@ function openRange(step: number | undefined): NumericRange {
   }
 }
 
+/** The value's painted column: its local x, width and text alignment. */
+export interface NumericFieldSpan {
+  x: number
+  width: number
+  align: 'left' | 'right' | 'center'
+}
+
 export interface NumericFieldOptions {
   range?: NumericRange
   step?: number
@@ -369,8 +376,6 @@ export abstract class NumericField extends Konva.Group {
     this.getLayer()?.batchDraw()
   }
 
-
-
   /** Whether the bar paints progress behind the value (range handles do). */
   protected abstract showsProgress(): boolean
 
@@ -398,7 +403,7 @@ export abstract class NumericField extends Konva.Group {
    * between the chevron columns, wide enough for the widest number the range
    * can print — so the text does not shift while the value is scrubbed.
    */
-  _valueSpan(): { x: number; width: number; align: 'left' | 'right' } {
+  _valueSpan(): NumericFieldSpan {
     // `side: 'left'` means the value sits on the left half of the bar.
     const atLeft = this._cfg.side === 'left'
     if (!this._value) {
@@ -446,8 +451,7 @@ export abstract class NumericField extends Konva.Group {
     this._value.x(span.x)
     // The caret takes the value's seat. Its own text padding is folded in, so
     // its text starts exactly where the painted value does.
-    const start =
-      FIELD_INSET + this.arrowInset + FIELD_PADDING - INPUT_PADDING
+    const start = FIELD_INSET + this.arrowInset + FIELD_PADDING - INPUT_PADDING
     const end =
       this._w - FIELD_INSET - this.arrowInset - FIELD_PADDING + INPUT_PADDING
     this._input.setWidth(Math.max(0, end - start))

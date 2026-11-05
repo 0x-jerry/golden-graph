@@ -1,9 +1,11 @@
 import type { NodeHandle } from '@0x-jerry/golden-graph'
 import {
   FIELD_INSET,
+  FIELD_PADDING,
   ARROW_WIDTH,
   NumericField,
   type NumericFieldConfig,
+  type NumericFieldSpan,
   type StepArrow,
 } from '../NumericField'
 import type { GraphTheme } from '../../../theme'
@@ -46,6 +48,26 @@ export class NumberField extends NumericField {
     // steps *off* that edge: from below the minimum it steps up to `min`.
     this._leftArrow.scrub._cfg.onStart = () => this._emit(this._range.min)
     this._rightArrow.scrub._cfg.onStart = () => this._emit(this._range.max)
+  }
+
+  /**
+   * Center the value between the chevron columns. A plain number reads as a
+   * free-standing value, not a bar filling toward one end, so it sits in the
+   * middle of the track rather than hugging the side away from the joint.
+   *
+   * The column stays as wide as the widest number the range can print (the
+   * base measurement), so a growing value never re-flows or gets clipped; only
+   * its x and alignment change, pinning its center to the track's midpoint.
+   */
+  _valueSpan(): NumericFieldSpan {
+    const span = super._valueSpan()
+    const left = FIELD_INSET + this.arrowInset + FIELD_PADDING
+    const right = this._w - FIELD_INSET - this.arrowInset - FIELD_PADDING
+    return {
+      x: left + Math.max(0, (right - left - span.width) / 2),
+      width: span.width,
+      align: 'center',
+    }
   }
 
   protected _layoutChrome(): void {
