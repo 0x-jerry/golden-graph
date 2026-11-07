@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  reactive,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import { useStorage } from '@vueuse/core'
 import { isCancelledError, Workspace } from '@0x-jerry/golden-graph'
 import {
   applyThemeToElement,
@@ -7,6 +15,7 @@ import {
   ThemeContext,
 } from '@0x-jerry/golden-graph-renderer'
 import type { DeepPartial, GraphTheme } from '@0x-jerry/golden-graph-renderer'
+import Select from './components/Select.vue'
 import { setup as _setup } from './editor'
 import { buildSceneExample } from './examples'
 import { readTslSource } from './nodes/tsl'
@@ -56,7 +65,14 @@ const DARK_THEME: DeepPartial<GraphTheme> = {
   },
 }
 
-const themeName = ref<'light' | 'dark'>('light')
+type ThemeName = 'light' | 'dark'
+
+const THEME_OPTIONS: { value: ThemeName; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
+
+const themeName = useStorage<ThemeName>('tsl-graph-theme', 'light')
 const theme = computed<DeepPartial<GraphTheme>>(() =>
   themeName.value === 'dark' ? DARK_THEME : {},
 )
@@ -312,10 +328,12 @@ async function loadFromJSON() {
       <button @click="uiState.isProcessing ? cancel() : run()">
         {{ uiState.isProcessing ? 'Cancel' : 'Run' }}
       </button>
-      <select v-model="themeName" title="Theme">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
+      <Select
+        v-model="themeName"
+        class="theme-select"
+        title="Theme"
+        :options="THEME_OPTIONS"
+      />
     </div>
 
     <div class="body">
@@ -352,8 +370,7 @@ async function loadFromJSON() {
   border-bottom: 1px solid var(--gr-color-border, rgba(31, 35, 40, 0.18));
 }
 
-.tools button,
-.tools select {
+.tools button {
   height: 28px;
   padding: 0 10px;
   font-family: inherit;
@@ -365,8 +382,7 @@ async function loadFromJSON() {
   cursor: pointer;
 }
 
-.tools button:hover,
-.tools select:hover {
+.tools button:hover {
   background: var(--gr-color-bg-hover, rgba(31, 35, 40, 0.07));
 }
 
@@ -374,14 +390,13 @@ async function loadFromJSON() {
   transform: translateY(1px);
 }
 
-.tools button:focus-visible,
-.tools select:focus-visible {
+.tools button:focus-visible {
   outline: 1px solid var(--gr-color-accent, #b3261e);
   outline-offset: 1px;
 }
 
 /* The theme switch is a view setting, not a graph action — push it apart. */
-.tools select {
+.tools .theme-select {
   margin-left: auto;
 }
 

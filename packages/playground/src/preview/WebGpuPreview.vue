@@ -8,6 +8,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
+import Select from '../components/Select.vue'
 import { createPreview } from './createPreview'
 import type { Preview } from './createPreview'
 import {
@@ -15,7 +16,6 @@ import {
   DEFAULT_SHAPE,
   SCENES,
   SHAPES,
-  readSceneId,
 } from './scene-meta'
 import type { PreviewShape, SceneId } from './scene-meta'
 
@@ -45,6 +45,9 @@ const state = reactive({
 })
 
 const showShape = computed(() => state.sceneId === 'material')
+const sceneOptions = computed(() =>
+  SCENES.map(({ id, label }) => ({ value: id, label })),
+)
 const sourceText = computed(() => props.source ?? '')
 const { copy, copied } = useClipboard({ source: () => sourceText.value })
 
@@ -109,8 +112,7 @@ function applySource() {
   }
 }
 
-function onSceneChange(event: Event) {
-  const sceneId = readSceneId((event.target as HTMLSelectElement).value)
+function onSceneChange(sceneId: SceneId) {
   state.sceneId = sceneId
 
   // Drop the old source first: it belonged to the previous scene's graph,
@@ -121,8 +123,7 @@ function onSceneChange(event: Event) {
   emit('scene-change', sceneId)
 }
 
-function onShapeChange(event: Event) {
-  const shape = (event.target as HTMLSelectElement).value as PreviewShape
+function onShapeChange(shape: PreviewShape) {
   state.shape = shape
 
   if (!preview) {
@@ -147,30 +148,24 @@ function fail(error: unknown) {
     <header class="preview-header">
       <span class="preview-title">three.js · WebGPU</span>
       <div class="preview-controls">
-        <select
+        <Select
           v-if="showShape"
           class="preview-select"
-          :value="state.shape"
+          :model-value="state.shape"
+          :options="SHAPES"
           :disabled="state.status !== 'ready'"
           title="Shape"
-          @change="onShapeChange"
-        >
-          <option v-for="shape in SHAPES" :key="shape.value" :value="shape.value">
-            {{ shape.label }}
-          </option>
-        </select>
+          @update:model-value="onShapeChange"
+        />
 
-        <select
+        <Select
           class="preview-select"
-          :value="state.sceneId"
+          :model-value="state.sceneId"
+          :options="sceneOptions"
           :disabled="state.status !== 'ready'"
           title="Scene"
-          @change="onSceneChange"
-        >
-          <option v-for="scene in SCENES" :key="scene.id" :value="scene.id">
-            {{ scene.label }}
-          </option>
-        </select>
+          @update:model-value="onSceneChange"
+        />
       </div>
     </header>
 
@@ -233,20 +228,12 @@ function fail(error: unknown) {
 }
 
 .preview-select {
-  height: 24px;
   max-width: 132px;
-  padding: 0 6px;
-  font-family: inherit;
-  font-size: 12px;
-  color: inherit;
-  background: var(--gr-color-bg-input, #f6f6f8);
-  border: 1px solid var(--gr-color-border, #e2e2e8);
-  border-radius: 4px;
-  cursor: pointer;
 }
 
-.preview-select:hover {
-  background: var(--gr-color-bg-hover, rgba(0, 0, 0, 0.05));
+.preview-select :deep(.select-trigger) {
+  height: 24px;
+  padding: 0 6px;
 }
 
 .preview-stage {
